@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { mulberry32, clamp } from '../engine/utils.js';
 import {
+  makeBillboardTexture,
   makeGlowTexture,
   makeFacadeTextures,
   makeRoofTexture,
@@ -256,6 +257,8 @@ export class City {
     this._buildBridge();
     this._buildSkyline();
     this._buildSigns();
+    this._buildBillboards();
+    this._buildStations();
     this._buildGrid();
 
     const sp = this.landmarks.bugle;
@@ -327,6 +330,19 @@ export class City {
     }
   }
 
+  // Petite boîte pleine (UV monde) ajoutée à un GeoBuilder
+  _solid(gb, minX, maxX, minY, maxY, minZ, maxZ, c) {
+    const s = 1 / 8;
+    const q = (p, n, uv) => gb.quad(p, n, uv, c);
+    q([minX, maxY, maxZ, maxX, maxY, maxZ, maxX, maxY, minZ, minX, maxY, minZ], [0, 1, 0], [minX * s, maxZ * s, maxX * s, maxZ * s, maxX * s, minZ * s, minX * s, minZ * s]);
+    const v0 = minY * s;
+    const v1 = maxY * s;
+    q([minX, minY, maxZ, maxX, minY, maxZ, maxX, maxY, maxZ, minX, maxY, maxZ], [0, 0, 1], [minX * s, v0, maxX * s, v0, maxX * s, v1, minX * s, v1]);
+    q([maxX, minY, minZ, minX, minY, minZ, minX, maxY, minZ, maxX, maxY, minZ], [0, 0, -1], [maxX * s, v0, minX * s, v0, minX * s, v1, maxX * s, v1]);
+    q([maxX, minY, maxZ, maxX, minY, minZ, maxX, maxY, minZ, maxX, maxY, maxZ], [1, 0, 0], [maxZ * s, v0, minZ * s, v0, minZ * s, v1, maxZ * s, v1]);
+    q([minX, minY, minZ, minX, minY, maxZ, minX, maxY, maxZ, minX, maxY, minZ], [-1, 0, 0], [minZ * s, v0, maxZ * s, v0, maxZ * s, v1, minZ * s, v1]);
+  }
+
   _building(x0, x1, z0, z1, h, rng, chunkOf, role, bi, bj) {
     const style = role === 'bank' ? 1 : role === 'bugle' ? 1 : this._pickStyle(h, rng);
     const tint = this._tint(rng, style);
@@ -356,6 +372,17 @@ export class City {
     }
     const tw = top.x1 - top.x0;
     const td = top.z1 - top.z0;
+    // Rebords (parapets) autour du toit
+    if (tw > 4 && td > 4) {
+      const rb = chunkOf((top.x0 + top.x1) / 2, (top.z0 + top.z1) / 2).roof;
+      const t = 0.35;
+      const ph = 0.5;
+      const pc = new THREE.Color(0.75, 0.74, 0.72);
+      this._solid(rb, top.x0, top.x1, roofY, roofY + ph, top.z0, top.z0 + t, pc);
+      this._solid(rb, top.x0, top.x1, roofY, roofY + ph, top.z1 - t, top.z1, pc);
+      this._solid(rb, top.x0, top.x0 + t, roofY, roofY + ph, top.z0 + t, top.z1 - t, pc);
+      this._solid(rb, top.x1 - t, top.x1, roofY, roofY + ph, top.z0 + t, top.z1 - t, pc);
+    }
     // Équipements de toit
     if (h < 80 && tw > 12 && td > 12 && rng() < 0.4 && !role) {
       const x = top.x0 + 4 + rng() * (tw - 8);
@@ -497,7 +524,8 @@ export class City {
     tex.offset.set(0.5, 0.5);
     const g = new THREE.PlaneGeometry(L, L);
     g.rotateX(-Math.PI / 2);
-    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.92 }));
+    this.groundMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.92 });
+    const m = new THREE.Mesh(g, this.groundMat);
     m.receiveShadow = true;
     this.group.add(m);
 
@@ -976,6 +1004,127 @@ export class City {
       }
     }
     return best;
+  }
+
+  // Chaussée et toits mouillés sous la pluie (reflets du ciel)
+  setWet(r) {
+    if (Math.abs(r - (this._wet || 0)) < 0.01) return;
+    this._wet = r;
+    if (this.groundMat) {
+      this.groundMat.roughness = 0.92 - r * 0.62;
+      this.groundMat.color.setScalar(1 - r * 0.3);
+      this.groundMat.envMapIntensity = 1 + r * 1.5;
+    }
+    if (this.roofMat) {
+      this.roofMat.roughness = 0.95 - r * 0.5;
+      this.roofMat.color.setScalar(1 - r * 0.25);
+    }
+  }
+
+  // Panneaux lumineux : quartier « Times Square » + panneaux sur les toits
+  _buildBillboards() {
+    const rng = mulberry32(4242);
+    const texts = [
+      ['JOE’S PIZZA', '#ff3b3b', '#1a0505'],
+      ['BROADWAY', '#ffd23f', '#1a1030'],
+      ['NEW YORK', '#ffffff', '#0a3aa8'],
+      ['OSCORP', '#7dffb5', '#032014'],
+      ['DAILY BUGLE', '#ffffff', '#111111'],
+      ['HOT DOGS', '#ffcf3a', '#b31313'],
+      ['CINÉMA', '#ff6ad5', '#200a1c'],
+      ['HÔTEL', '#6ad8ff', '#051a24'],
+      ['SUSHI BAR', '#ff8a3a', '#140a02'],
+      ['24 / 7', '#8aff5a', '#07140a'],
+      ['ALCHEMAX', '#5ad2ff', '#021018'],
+      ['THÉÂTRE', '#ffe28a', '#3a0a0a'],
+      ['SPIDEY FAN CLUB', '#ff3030', '#0a1a55'],
+      ['MUSÉE', '#ffffff', '#3a2a14'],
+    ];
+    const mats = texts.map(([t, fg, bg], k) => {
+      const m = new THREE.MeshBasicMaterial({ map: makeBillboardTexture(t, fg, bg, k), toneMapped: false });
+      m.color.setScalar(1.15);
+      return m;
+    });
+    this.billboardMats = mats;
+    const planeG = new THREE.PlaneGeometry(1, 1);
+    const add = (x, y, z, rotY, w, h) => {
+      const m = new THREE.Mesh(planeG, mats[Math.floor(rng() * mats.length)]);
+      m.position.set(x, y, z);
+      m.rotation.y = rotY;
+      m.scale.set(w, h, 1);
+      this.group.add(m);
+    };
+    const district = (b) => b.bi >= 6 && b.bi <= 8 && b.bj >= 7 && b.bj <= 8 && !b.role;
+    let n = 0;
+    for (const b of this.buildings) {
+      if (b.fx0 === undefined || b.roof < 16) continue;
+      const inD = district(b);
+      if (!inD && rng() > 0.05) continue;
+      const faces = [
+        { x0: b.fx0, x1: b.fx1, z: b.fz0 - 0.12, rot: Math.PI, axis: 'x' },
+        { x0: b.fx0, x1: b.fx1, z: b.fz1 + 0.12, rot: 0, axis: 'x' },
+        { z0: b.fz0, z1: b.fz1, x: b.fx0 - 0.12, rot: -Math.PI / 2, axis: 'z' },
+        { z0: b.fz0, z1: b.fz1, x: b.fx1 + 0.12, rot: Math.PI / 2, axis: 'z' },
+      ];
+      for (const f of faces) {
+        if (!inD && rng() > 0.3) continue;
+        const len = f.axis === 'x' ? f.x1 - f.x0 : f.z1 - f.z0;
+        if (len < 8) continue;
+        const count = inD ? 1 + Math.floor(rng() * 2) : 1;
+        for (let k = 0; k < count; k++) {
+          const w = Math.min(len - 2, 7 + rng() * 6);
+          const h = w * (0.4 + rng() * 0.25);
+          const y = 5 + h / 2 + rng() * Math.max(0, Math.min(26, b.roof - 8 - h));
+          const t = 0.5 + (rng() - 0.5) * Math.max(0, len - w - 2) / len;
+          if (f.axis === 'x') add(f.x0 + (f.x1 - f.x0) * t, y, f.z, f.rot, w, h);
+          else add(f.x, y, f.z0 + (f.z1 - f.z0) * t, f.rot, w, h);
+          n++;
+        }
+      }
+    }
+    this.billboardCount = n;
+  }
+
+  // Stations de métro (voyage rapide)
+  _buildStations() {
+    const defs = [
+      [6, 2, 'Central Park Nord'],
+      [9, 4, 'Oscorp Plaza'],
+      [7, 8, 'Times Square'],
+      [3, 9, 'Midtown Ouest'],
+      [2, 12, 'Quartier financier'],
+      [12, 7, 'Pont de l’Est'],
+    ];
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x1f3a2a, metalness: 0.5, roughness: 0.5 });
+    const globeMat = new THREE.MeshStandardMaterial({ color: 0x0f5a2a, emissive: 0x3dff7a, emissiveIntensity: 1.2 });
+    const signMat = new THREE.MeshBasicMaterial({ map: makeBillboardTexture('M  MÉTRO', '#ffffff', '#0f7a3a', 99), toneMapped: false });
+    const railMat = new THREE.MeshStandardMaterial({ color: 0x2b2f2c, metalness: 0.6, roughness: 0.4 });
+    this.stations = defs.map(([i, j, name], k) => {
+      const p = this.intersection(i, j);
+      const x = p.x + STREET / 2 + 2.2;
+      const z = p.z + STREET / 2 + 2.2;
+      const g = new THREE.Group();
+      for (const dx of [-1.6, 1.6]) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 3, 6), postMat);
+        post.position.set(dx, 1.5, 0);
+        const globe = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8), globeMat);
+        globe.position.set(dx, 3.15, 0);
+        g.add(post, globe);
+      }
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1, 0.08), railMat);
+      rail.position.set(0, 0.5, 1.4);
+      const rail2 = rail.clone();
+      rail2.position.set(0, 0.5, -1.4);
+      const sign = new THREE.Mesh(new THREE.PlaneGeometry(3, 0.75), signMat);
+      sign.position.set(0, 2.6, 0.06);
+      const sign2 = sign.clone();
+      sign2.rotation.y = Math.PI;
+      sign2.position.z = -0.06;
+      g.add(rail, rail2, sign, sign2);
+      g.position.set(x, 0, z);
+      this.group.add(g);
+      return { key: `m${k}`, name, pos: new THREE.Vector3(x, 0, z) };
+    });
   }
 
   update(dt, night, time) {

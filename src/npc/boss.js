@@ -3,15 +3,18 @@ import { Rig } from '../player/rig.js';
 import * as A from '../player/anims.js';
 import { damp, angleLerp, rand } from '../engine/utils.js';
 
-// Le Bouffon Vert sur son planeur
+// Boss volants : le Bouffon Vert (planeur) et le Vautour (ailes mécaniques)
 export class Boss {
-  constructor(game, center, roofY) {
+  constructor(game, center, roofY, variant = 'bouffon') {
     this.game = game;
+    this.variant = variant;
+    this.vautour = variant === 'vautour';
     this.center = center.clone();
     this.roofY = roofY;
     this.isBoss = true;
-    this.name = 'Le Bouffon Vert';
-    this.maxHp = 520;
+    this.name = this.vautour ? 'Le Vautour' : 'Le Bouffon Vert';
+    this.webNeeded = this.vautour ? 5 : 4;
+    this.maxHp = this.vautour ? 640 : 520;
     this.hp = this.maxHp;
     this.alive = true;
     this.active = true;
@@ -32,6 +35,10 @@ export class Boss {
     this.hitFlash = 0;
 
     const std = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.5, metalness: 0.2, ...o });
+    if (this.vautour) {
+      this._buildVulture(std);
+      return;
+    }
     this.mats = {
       head: std('#4f8f2f'),
       torso: std('#3f7a2a'),
@@ -102,6 +109,86 @@ export class Boss {
     this.cocoon = null;
   }
 
+  _buildVulture(std) {
+    this.mats = {
+      head: std('#d9b08a', { metalness: 0 }),
+      torso: std('#3d5c2e'),
+      pelvis: std('#23331b'),
+      upperArm: std('#3d5c2e'),
+      foreArm: std('#23331b'),
+      hand: std('#23331b'),
+      thigh: std('#3d5c2e'),
+      shin: std('#23331b'),
+      foot: std('#1a1a1a'),
+    };
+    this.rig = new Rig({ materials: this.mats, scale: 1.1, bulk: 1.05, kind: 'boss' });
+    const head = this.rig.j.head;
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0xff3a1a, emissive: 0xff2a00, emissiveIntensity: 1.5 });
+    for (const sx of [1, -1]) {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), eyeMat);
+      eye.position.set(sx * 0.045, 0.11, 0.11);
+      head.add(eye);
+    }
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.09, 6), this.mats.head);
+    nose.rotation.x = Math.PI / 2;
+    nose.position.set(0, 0.07, 0.13);
+    head.add(nose);
+    // col de fourrure blanche
+    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.07, 8, 16), std('#eeeae0', { roughness: 1, metalness: 0 }));
+    collar.rotation.x = Math.PI / 2;
+    collar.position.y = 0.27;
+    this.rig.j.chest.add(collar);
+    // ailes mécaniques fixées aux bras
+    const wingShape = new THREE.Shape();
+    wingShape.moveTo(0, 0);
+    wingShape.lineTo(0.15, -1.6);
+    wingShape.lineTo(0.55, -1.25);
+    wingShape.lineTo(0.7, -0.6);
+    wingShape.lineTo(0.55, 0.05);
+    wingShape.lineTo(0, 0);
+    const wingG = new THREE.ShapeGeometry(wingShape);
+    const wingMat = std('#7d8a66', { side: THREE.DoubleSide, metalness: 0.5, roughness: 0.45 });
+    for (const side of ['l', 'r']) {
+      const sx = side === 'l' ? 1 : -1;
+      // la membrane part vers l'arrière (-Z) le long du bras
+      const w = new THREE.Mesh(wingG, wingMat);
+      w.rotation.y = Math.PI / 2;
+      w.position.set(sx * 0.01, 0.05, -0.05);
+      this.rig.j[`${side}Shoulder`].add(w);
+      const w2 = new THREE.Mesh(wingG, wingMat);
+      w2.rotation.y = Math.PI / 2;
+      w2.scale.set(0.8, 0.8, 1);
+      w2.position.set(0, 0, -0.05);
+      this.rig.j[`${side}Elbow`].add(w2);
+    }
+    const pack = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.4, 0.18), std('#4a4a44', { metalness: 0.7 }));
+    pack.position.set(0, 0.08, -0.2);
+    this.rig.j.chest.add(pack);
+    // planeur inexistant : objets vides pour garder le même code
+    this.glider = new THREE.Group();
+    this.jet = new THREE.Object3D();
+    this.group = new THREE.Group();
+    this.group.add(this.rig.group);
+    this.game.scene.add(this.group);
+  }
+
+  // pose ailes déployées du Vautour
+  _wingsPose(t) {
+    const f = Math.sin(t * 4) * 0.25;
+    return {
+      spine: [0.35, 0, 0],
+      head: [-0.35, 0, 0],
+      lShoulder: [-0.3, 0, 1.35 + f],
+      rShoulder: [-0.3, 0, -1.35 - f],
+      lElbow: [-0.2, 0, 0],
+      rElbow: [-0.2, 0, 0],
+      lHip: [0.35, 0, 0.1],
+      rHip: [0.45, 0, -0.1],
+      lKnee: [0.5, 0, 0],
+      rKnee: [0.6, 0, 0],
+    };
+  }
+
   get targetable() {
     return this.alive;
   }
@@ -120,13 +207,14 @@ export class Boss {
   addWeb(n) {
     if (this.stunned || !this.alive) return;
     this.web += n;
-    this.game.hud.floatText(this.chest, `Planeur ${Math.min(4, this.web)}/4`, '#ffffff');
-    if (this.web >= 4) {
+    const part = this.vautour ? 'Ailes' : 'Planeur';
+    this.game.hud.floatText(this.chest, `${part} ${Math.min(this.webNeeded, this.web)}/${this.webNeeded}`, '#ffffff');
+    if (this.web >= this.webNeeded) {
       this.web = 0;
       this.stunned = true;
       this.setState('fall');
       this.vel.set(0, 2, 0);
-      this.game.hud.toast('Le planeur est englué ! Frappe le Bouffon !');
+      this.game.hud.toast(this.vautour ? 'Ses ailes sont engluées ! Frappe le Vautour !' : 'Le planeur est englué ! Frappe le Bouffon !');
       this.game.audio.play('zap');
     }
   }
@@ -139,7 +227,7 @@ export class Boss {
     this.hitFlash = 0.12;
     if (this.hp <= this.maxHp * 0.5 && this.phase === 1) {
       this.phase = 2;
-      this.game.hud.toast('Le Bouffon Vert enrage !');
+      this.game.hud.toast(`${this.name} enrage !`);
       this.game.audio.play('laugh');
       if (this.onPhase2) this.onPhase2();
     }
@@ -165,7 +253,7 @@ export class Boss {
     const player = game.player;
     const c = this.center;
     const speedMul = this.phase === 2 ? 1.35 : 1;
-    let pose = A.guard(this.t);
+    let pose = this.vautour ? this._wingsPose(this.t) : A.guard(this.t);
     let gliderOn = true;
     const toP = new THREE.Vector3().subVectors(player.chestPos, this.pos);
 
@@ -173,7 +261,7 @@ export class Boss {
       case 'intro': {
         const target = new THREE.Vector3(c.x + 34, this.roofY + 14, c.z);
         this.pos.lerp(target, damp(1.2, dt));
-        pose = A.cheer(this.t);
+        pose = this.vautour ? this._wingsPose(this.t) : A.cheer(this.t);
         if (this.stateT > 3) this.setState('fly');
         break;
       }
@@ -198,7 +286,18 @@ export class Boss {
         pose = A.attackPose('crossR', Math.min(this.stateT, 0.6), 0.8, 0.45);
         if (this.stateT > 0.45 && !this.thrown) {
           this.thrown = true;
-          const n = this.phase === 2 ? 3 : 1;
+          if (this.vautour) {
+            // éventail de plumes d'acier
+            const n = this.phase === 2 ? 7 : 5;
+            const base = player.chestPos.clone().addScaledVector(player.vel, 0.3).sub(this.chest).normalize();
+            const side = new THREE.Vector3(-base.z, 0, base.x).normalize();
+            for (let k = 0; k < n; k++) {
+              const d = base.clone().addScaledVector(side, (k - (n - 1) / 2) * 0.09).normalize();
+              game.projectiles.spawn('feather', this.chest.clone(), d.multiplyScalar(42), { dmg: 7 });
+            }
+            game.audio.play('whoosh', 1.1);
+          }
+          const n = this.vautour ? 0 : this.phase === 2 ? 3 : 1;
           for (let k = 0; k < n; k++) {
             const tgt = player.pos.clone().addScaledVector(player.vel, 0.6);
             tgt.x += (k - (n - 1) / 2) * 4;
@@ -290,7 +389,7 @@ export class Boss {
     }
 
     // le planeur, une fois englué, reste au sol à côté
-    this.glider.visible = true;
+    this.glider.visible = !this.vautour;
     if (gliderOn) {
       this.glider.position.set(0, 0, 0);
       this.rig.group.position.set(0, 0.2, 0);
@@ -310,7 +409,7 @@ export class Boss {
     const flash = this.hitFlash > 0;
     for (const m of Object.values(this.mats)) m.emissive.setScalar(flash ? 0.6 : 0);
     this.chest.set(this.pos.x, this.pos.y + (this.stunned ? 0.4 : 1.4), this.pos.z);
-    if (gliderOn && Math.random() < 0.6) game.fx.trail(this.pos.clone().add(new THREE.Vector3(-Math.sin(this.facing), 0, -Math.cos(this.facing))), '#ff9a3a', 0.5, 0.25);
+    if (gliderOn && !this.vautour && Math.random() < 0.6) game.fx.trail(this.pos.clone().add(new THREE.Vector3(-Math.sin(this.facing), 0, -Math.cos(this.facing))), '#ff9a3a', 0.5, 0.25);
   }
 
   dispose() {

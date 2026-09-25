@@ -28,6 +28,7 @@ const KEYMAP = {
   KeyP: ['pause'],
   Tab: ['map'],
   KeyN: ['music'],
+  KeyO: ['photo'],
 };
 
 // Manette (mapping standard)

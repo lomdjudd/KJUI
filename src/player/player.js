@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { Rig, SUITS, makeSuitMaterials } from './rig.js';
+import { Rig, makeSuitMaterials } from './rig.js';
+import { SUITS } from './suits.js';
 import * as A from './anims.js';
 import { clamp, damp, angleLerp } from '../engine/utils.js';
 
@@ -65,6 +66,7 @@ export class Player {
     this.rig.swapMaterials(this.suits[this.suitKey], this.suits[key]);
     this.suitKey = key;
     this._glow = -1; // force la mise à jour de la lueur nocturne
+    if (this.game.refreshStats) this.game.refreshStats();
   }
 
   get grounded() {
@@ -77,6 +79,7 @@ export class Player {
 
   setState(s) {
     if (this.state === s) return;
+    this.charging = null;
     if (this.state === 'swing') this._endSwingVisual();
     this.state = s;
     this.stateTime = 0;
@@ -139,7 +142,7 @@ export class Player {
 
     // Régénération hors combat
     if (this.time - this.lastHurt > 4 && this.time - this.lastCombat > 3 && this.health < this.maxHealth) {
-      this.health = Math.min(this.maxHealth, this.health + 10 * dt);
+      this.health = Math.min(this.maxHealth, this.health + 10 * this.game.stats.regenMul * dt);
     }
 
     // Tombé à l'eau
@@ -166,7 +169,32 @@ export class Player {
     this.vel.y = 0;
     if (amt > 0.05) this.facing = angleLerp(this.facing, Math.atan2(wish.x, wish.z), damp(14, dt));
 
-    if (input.wasPressed('jump')) {
+    // Super-saut : maintenir Espace à l'arrêt puis relâcher
+    if (this.charging !== null && this.charging !== undefined) {
+      if (input.isDown('jump')) {
+        this.charging += dt;
+        this.vel.x *= 0.8;
+        this.vel.z *= 0.8;
+        if (this.charging > 0.25 && Math.random() < dt * 20) this.game.fx.dust(this.pos, 1);
+      } else {
+        const c = clamp((this.charging - 0.15) / 0.85, 0, 1);
+        this.charging = null;
+        this.vel.y = 12.5 + c * 17 * this.game.stats.superJump;
+        if (c > 0.3) {
+          this.game.fx.dust(this.pos, 14);
+          this.game.cam.shake(0.15 + c * 0.2);
+          this.game.audio.play('whoosh', 1.2);
+          if (c > 0.9) this.game.hud.floatText(this.chestPos, 'SUPER-SAUT !', '#9fd0ff');
+        } else this.game.audio.play('whoosh', 0.6);
+        this.setState('air');
+        this._integrate(dt);
+        this._collide(false);
+        return;
+      }
+    }
+    if (input.wasPressed('jump') && !sprint && Math.hypot(this.vel.x, this.vel.z) < 3) {
+      this.charging = 0;
+    } else if (input.wasPressed('jump')) {
       this.vel.y = sprint ? 15 : 12.5;
       if (sprint) {
         this.vel.x *= 1.15;
@@ -226,7 +254,7 @@ export class Player {
     if (hs > 2) this.facing = angleLerp(this.facing, Math.atan2(this.vel.x, this.vel.z), damp(6, dt));
 
     // Propulsion (web-zip) : saut en l'air
-    if (input.wasPressed('jump') && this.boostCd <= 0 && this.airBoosts < 3) this._airBoost(wish, amt);
+    if (input.wasPressed('jump') && this.boostCd <= 0 && this.airBoosts < this.game.stats.airBoosts) this._airBoost(wish, amt);
 
     if (input.wasPressed('zip') && this.zipPoint) {
       this._startZip();
@@ -253,6 +281,20 @@ export class Player {
     }
     this.ground = this.city.groundHeight(this.pos.x, this.pos.z, this.pos.y, RADIUS * 0.5);
     if (this.pos.y <= this.ground && this.vel.y <= 0) this._land();
+  }
+
+  // Plongeon : piqué vers le sol pour prendre de la vitesse
+  dive() {
+    const cam = this.game.cam;
+    const hs = Math.hypot(this.vel.x, this.vel.z);
+    const dir = hs > 4 ? _v2.set(this.vel.x / hs, 0, this.vel.z / hs) : _v2.set(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw));
+    const sp = Math.max(hs, 24);
+    this.vel.x = dir.x * sp;
+    this.vel.z = dir.z * sp;
+    this.vel.y = Math.min(this.vel.y - 22, -32);
+    this.diveT = 1.4;
+    this.game.audio.play('whoosh', 1.3);
+    this.game.cam.shake(0.1);
   }
 
   _airBoost(wish, amt) {
@@ -350,6 +392,7 @@ export class Player {
     const g = this.city.groundHeight(this.pos.x, this.pos.z, this.pos.y);
     this.ropeLen = Math.min(dist, Math.max(8, this.anchor.y - g - 3));
     this.setState('swing');
+    this.game.stat('swings');
     this.webLine = this.game.webs.acquire();
     this.game.audio.play('thwip');
     this.airBoosts = 0;
@@ -406,7 +449,7 @@ export class Player {
     if (amt > 0.05) {
       // composante tangentielle de l'entrée
       const t = _v3.copy(wish).addScaledVector(rope, -wish.dot(rope));
-      v.addScaledVector(t, 10 * dt);
+      v.addScaledVector(t, 10 * this.game.stats.swingMul * dt);
     } else {
       // assistance : accélère dans le sens du mouvement
       const hv = _v3.set(v.x, 0, v.z);
@@ -415,7 +458,8 @@ export class Player {
     // raccourcit légèrement la corde au début (effet de traction)
     if (this.stateTime < 0.35) this.ropeLen = Math.max(8, this.ropeLen - 10 * dt);
     const sp = v.length();
-    if (sp > 58) v.multiplyScalar(58 / sp);
+    const maxSp = 58 * this.game.stats.swingMul;
+    if (sp > maxSp) v.multiplyScalar(maxSp / sp);
     v.multiplyScalar(1 - 0.1 * dt);
     // vitesse minimale : on ne cale jamais en plein balancement
     if (sp < 17 && sp > 0.1) v.multiplyScalar(1 + Math.min(1, ((17 - sp) / sp) * 3 * dt));
@@ -754,6 +798,7 @@ export class Player {
   takeDamage(amount, from, kind = 'hit') {
     if (this.invuln > 0 || this.game.godMode) return false;
     if (this.action && this.action.iframes) return false;
+    amount *= this.game.stats.dmgTakenMul;
     this.health -= amount;
     this.lastHurt = this.time;
     this.lastCombat = this.time;
@@ -803,7 +848,11 @@ export class Player {
       pose = a.pose;
       speed = a.blend || 30;
     } else if (this.state === 'ground') {
-      if (this.landT < 1 && hs < 12) {
+      if (this.charging > 0.15) {
+        const c = Math.min(1, this.charging);
+        pose = A.lerpPose(A.idle(this.time), A.land(0), 0.5 + c * 0.5);
+        speed = 12;
+      } else if (this.landT < 1 && hs < 12) {
         pose = A.land(this.landT);
         speed = 20;
       } else if (hs > 0.6) {
@@ -818,8 +867,9 @@ export class Player {
         speed = 6;
       } else pose = A.idle(this.time);
     } else if (this.state === 'air') {
+      if (this.diveT > 0) this.diveT -= dt;
       if (this.boostT > 0) pose = A.zip(this.time);
-      else if (this.vel.y < -20 && hs < 25) pose = A.dive(this.time);
+      else if (this.diveT > 0 || (this.vel.y < -20 && hs < 25)) pose = A.dive(this.time);
       else pose = A.jump(this.vel.y);
       speed = 8;
     } else if (this.state === 'swing') {

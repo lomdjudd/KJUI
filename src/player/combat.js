@@ -134,7 +134,7 @@ export class Combat {
   setStyle(i) {
     if (i < 0 || i >= STYLES.length) return;
     this.styleIndex = i;
-    this.game.player.setSuit(STYLES[i].key);
+    if (this.game.save.suit === 'auto') this.game.player.setSuit(STYLES[i].key);
     this.game.hud.styleChanged(STYLES[i]);
     this.game.audio.play('ui');
   }
@@ -224,8 +224,10 @@ export class Combat {
     const cur = p.action;
     const canCancel = !cur || (cur.kind === 'attack' && cur.t > cur.hitT + 0.04) || (cur.kind === 'dodge' && cur.t > cur.dur * 0.7);
 
-    // Esquive
-    if (input.wasPressed('dodge') && (!cur || cur.kind === 'attack' || cur.kind === 'hit' && cur.t > 0.15)) {
+    // Plongeon (en l'air, hors combat) ou esquive
+    if (input.wasPressed('dodge') && !cur && p.state === 'air' && !this.inCombat && p.pos.y - p.ground > 8) {
+      p.dive();
+    } else if (input.wasPressed('dodge') && (!cur || cur.kind === 'attack' || cur.kind === 'hit' && cur.t > 0.15)) {
       this._dodge();
       return;
     }
@@ -238,7 +240,23 @@ export class Combat {
     // Gadget
     if (input.wasPressed('gadget')) this._useGadget();
     // Tir de toile
-    if (input.wasPressed('webShoot') && this.webCd <= 0 && (!cur || cur.kind !== 'strike')) this._webShoot();
+    // Tir de toile (appui court) ou lancer d'ennemi (maintenir)
+    if (input.wasPressed('webShoot')) {
+      this.webHold = 0;
+      this.webHolding = true;
+    }
+    if (this.webHolding) {
+      if (input.isDown('webShoot')) {
+        this.webHold += dt;
+        if (this.webHold > 0.32) {
+          this.webHolding = false;
+          if (!this._webThrow() && this.webCd <= 0) this._webShoot();
+        }
+      } else {
+        this.webHolding = false;
+        if (this.webCd <= 0 && (!cur || cur.kind !== 'strike')) this._webShoot();
+      }
+    }
     // Frappe-toile (sauf si la touche a servi à interagir)
     if (input.wasPressed('webStrike') && canCancel && !game.interactConsumed) {
       if (this._webStrike()) return;
@@ -416,6 +434,55 @@ export class Combat {
         a.pose = A.guard(p.time);
         break;
       }
+      case 'throw': {
+        const e = a.target;
+        const hand = p.rig.handWorld('r', _v2);
+        if (!e.alive && !a.thrown) {
+          a.t = a.dur;
+          this.game.webs.release(a.line);
+          break;
+        }
+        if (!a.thrown) {
+          this.game.webs.update(a.line, hand, e.chest, 0.022);
+          const fwd = new THREE.Vector3(Math.sin(p.facing), 0, Math.cos(p.facing));
+          const want = p.pos.clone().addScaledVector(fwd, 2.4).setY(p.pos.y + 1.2);
+          const pull = want.sub(e.pos).multiplyScalar(7);
+          if (pull.length() > 32) pull.setLength(32);
+          e.vel.copy(pull);
+          if (e.state !== 'air') e.setState('air');
+          a.pose = A.attackPose('webPull', Math.min(a.t, 0.3), 0.35, 0.3);
+          a.face = Math.atan2(e.pos.x - p.pos.x, e.pos.z - p.pos.z);
+          if (a.t >= 0.38) {
+            a.thrown = true;
+            this.game.webs.release(a.line);
+            a.line = null;
+            // vise l'ennemi le plus proche
+            let other = null;
+            let bd = 26;
+            for (const o of this.game.enemies.enemies) {
+              if (o === e || !o.alive) continue;
+              const d = o.pos.distanceTo(p.pos);
+              if (d < bd) {
+                bd = d;
+                other = o;
+              }
+            }
+            const cam = this.game.cam;
+            const dir = other
+              ? other.pos.clone().sub(e.pos).setY(0).normalize()
+              : new THREE.Vector3(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw));
+            e.vel.set(dir.x * 30, 5, dir.z * 30);
+            e.thrown = { mul: this.game.stats.throwMul };
+            e.knockdown = true;
+            a.face = Math.atan2(dir.x, dir.z);
+            this.game.audio.play('whoosh', 1.3);
+            this.game.cam.shake(0.2);
+          }
+        } else {
+          a.pose = A.attackPose('webSpin', 0.3 + (a.t - 0.38), 0.9, 0.3);
+        }
+        break;
+      }
     }
   }
 
@@ -483,7 +550,7 @@ export class Combat {
     this.combo++;
     this.bestCombo = Math.max(this.bestCombo, this.combo);
     this.comboTimer = 2.8;
-    p.focus = Math.min(100, p.focus + (r.blocked ? 1 : 3 + Math.min(this.combo, 25) * 0.25));
+    p.focus = Math.min(100, p.focus + (r.blocked ? 1 : 3 + Math.min(this.combo, 25) * 0.25) * this.game.stats.focusMul);
     p.lastCombat = p.time;
     const fx = this.game.fx;
     fx.sparks(e.chest, r.blocked ? 6 : 14, r.blocked ? '#9fd0ff' : '#ffd27a', 9);
@@ -510,7 +577,7 @@ export class Combat {
     if (dot > 0.7) anim = 'front';
     else if (dot < -0.7) anim = 'back';
     else anim = cross > 0 ? 'right' : 'left';
-    const bonus = this.style.dodgeBonus || 0;
+    const bonus = (this.style.dodgeBonus || 0) + game.stats.dodgeBonus;
     p.action = {
       kind: 'dodge',
       t: 0,
@@ -528,7 +595,8 @@ export class Combat {
     game.audio.play('whoosh', 0.8);
     // Esquive parfaite : le coup allait tomber
     const threat = Math.min(game.enemies.nextThreat(), game.projectiles.threatTime(p), game.boss ? game.boss.threatTime() : Infinity);
-    if (threat < 0.45) {
+    if (threat < 0.45 + game.stats.perfectWindow) {
+      game.stat('perfectDodges');
       game.slowmo(0.7, 0.3);
       p.focus = Math.min(100, p.focus + 12);
       this.counterT = 1.5;
@@ -539,11 +607,12 @@ export class Combat {
 
   _heal() {
     const p = this.game.player;
-    if (p.focus < 50 || p.health >= p.maxHealth) {
-      if (p.focus < 50) this.game.hud.toast('Concentration insuffisante (il faut 1 barre)');
+    const cost = this.game.stats.focusCost;
+    if (p.focus < cost || p.health >= p.maxHealth) {
+      if (p.focus < cost) this.game.hud.toast('Concentration insuffisante (il faut 1 barre)');
       return;
     }
-    p.focus -= 50;
+    p.focus -= cost;
     p.health = Math.min(p.maxHealth, p.health + p.maxHealth * 0.45);
     this.game.audio.play('heal');
     for (let i = 0; i < 12; i++) this.game.fx.trail(p.chestPos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 1.2, Math.random() * 1.2 - 0.5, (Math.random() - 0.5) * 1.2)), '#6fff9a', 0.6, 0.6);
@@ -552,7 +621,8 @@ export class Combat {
 
   _finisher() {
     const p = this.game.player;
-    if (p.focus < 50) {
+    const cost = this.game.stats.focusCost;
+    if (p.focus < cost) {
       this.game.hud.toast('Coup de grâce : il faut 1 barre de concentration');
       return false;
     }
@@ -561,7 +631,7 @@ export class Combat {
       if (t && t.isBoss) this.game.hud.toast('Étourdis d’abord le Bouffon avec ta toile !');
       return false;
     }
-    p.focus -= 50;
+    p.focus -= cost;
     const def = this.style.finisher;
     _v.subVectors(t.pos, p.pos).setY(0);
     p.facing = Math.atan2(_v.x, _v.z);
@@ -586,9 +656,29 @@ export class Combat {
       dir = new THREE.Vector3(-Math.sin(yaw), -Math.sin(game.cam.pitch) * 0.6 + 0.05, -Math.cos(yaw)).normalize();
       p.aim = { dir: dir.clone(), t: 0.3 };
     }
-    const webN = this.style.key === 'tisseur' ? 2 : 1;
+    const webN = (this.style.key === 'tisseur' ? 2 : 1) + game.stats.webBonus;
     game.projectiles.spawn('web', from, dir.multiplyScalar(70), { target: t, web: webN });
     game.audio.play('webshot');
+  }
+
+  // Lancer d'ennemi : on attrape un ennemi à la toile et on le projette sur un autre
+  _webThrow() {
+    const p = this.game.player;
+    const t = this.selectTarget(22, this._prefer());
+    if (!t || t.isBoss || t.isCar || !t.alive || t.state === 'dead') return false;
+    if (t.typeKey === 'costaud' && t.state !== 'webbed') {
+      this.game.hud.toast('Trop lourd ! Entoile d’abord le costaud.');
+      return false;
+    }
+    if (t.state === 'webbed') {
+      t.cocoon.visible = false;
+      t.web = 0;
+    }
+    const line = this.game.webs.acquire();
+    p.action = { kind: 'throw', t: 0, dur: 0.9, lock: true, target: t, line, thrown: false, vel: { x: 0, z: 0, y: p.inAir ? 0 : null }, hover: p.inAir };
+    if (p.state === 'swing' || p.state === 'wall' || p.state === 'zip') p.setState('air');
+    this.game.audio.play('thwip');
+    return true;
   }
 
   _webStrike() {
@@ -649,7 +739,7 @@ export class Combat {
         break;
       }
     }
-    this.gadgetCd[i] = g.cd;
+    this.gadgetCd[i] = g.cd * game.stats.gadgetCdMul;
     game.hud.gadgetUsed(g);
   }
 }

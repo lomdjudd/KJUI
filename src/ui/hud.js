@@ -18,6 +18,7 @@ export class HUD {
       focusBar: $('focus-fill').parentElement,
       xp: $('xp-fill'),
       lvl: $('lvl'),
+      spBadge: $('sp-badge'),
       mPanel: $('mission-panel'),
       mTitle: $('mission-title'),
       mObj: $('mission-obj'),
@@ -272,7 +273,10 @@ export class HUD {
     ctx.font = '26px Bangers, Impact, sans-serif';
     ctx.textAlign = 'left';
     const s = g.save;
-    ctx.fillText(`Missions : ${s.completed.length}/7   Sacs à dos : ${s.bags.length}/${g.missions.totalBags}   Crimes arrêtés : ${s.crimes || 0}`, 16, 34);
+    ctx.fillText(`Missions : ${s.completed.length}/${g.missions.storyCount}   Sacs : ${s.bags.length}/${g.missions.totalBags}   Bases : ${s.bases.length}/3   Métro : ${(s.stations || []).length}/6`, 16, 34);
+    ctx.font = '20px Barlow Condensed, Arial, sans-serif';
+    ctx.fillStyle = '#9dffb8';
+    ctx.fillText('Clique sur une station M découverte pour y voyager', 16, S - 16);
   }
 
   // ---------- Projection 3D -> écran ----------
@@ -310,6 +314,7 @@ export class HUD {
     for (const poi of pois) {
       const d = Math.hypot(poi.pos.x - pp.x, poi.pos.z - pp.z);
       if (poi.bag && d > 120) continue;
+      if (poi.station && d > 150) continue;
       if (poi.small && d > 90) continue;
       if (poi.far && d > 500) continue;
       if (!poi.active && !poi.story && !poi.bag && d > 700) continue;
@@ -320,7 +325,7 @@ export class HUD {
       let y = scr.y;
       let edge = false;
       if (!scr.on) {
-        if (poi.small || poi.bag) continue;
+        if (poi.small || poi.bag || poi.station) continue;
         edge = true;
         // replie sur le bord de l'écran
         let dx = x - w / 2;
@@ -463,15 +468,39 @@ export class HUD {
     this._introT = setTimeout(() => b.classList.add('hidden'), 5000);
   }
 
-  missionComplete(title, xp, final) {
+  missionComplete(title, xp, final, outro) {
     this.game.showResult({
       kicker: final ? 'VICTOIRE !' : 'MISSION RÉUSSIE',
       title,
-      text: final
-        ? `Le Bouffon Vert est vaincu. New York est sauvée… pour l'instant !<br>+${xp} XP<br><br>La ville reste ouverte : arrête les crimes, trouve les sacs à dos et bats tes records.`
-        : `+${xp} XP`,
+      text: `+${xp} XP${outro ? `<br><br>${outro}` : ''}`,
       retry: false,
     });
+  }
+
+  trophy(a) {
+    this.toast(`🏆 Trophée : ${a.icon} ${a.name}`, 'trophy');
+  }
+
+  // Station de métro découverte sous le clic (grande carte)
+  stationAt(e) {
+    const c = this.el.bigmap;
+    const r = c.getBoundingClientRect();
+    const mx = ((e.clientX - r.left) / r.width) * this.mapCanvas.width;
+    const my = ((e.clientY - r.top) / r.height) * this.mapCanvas.height;
+    const wx = mx / this.mapScale - this.mapW / 2;
+    const wz = my / this.mapScale - this.mapW / 2;
+    const found = this.game.save.stations || [];
+    let best = null;
+    let bd = 70;
+    for (const st of this.game.city.stations) {
+      if (!found.includes(st.key)) continue;
+      const d = Math.hypot(st.pos.x - wx, st.pos.z - wz);
+      if (d < bd) {
+        bd = d;
+        best = st;
+      }
+    }
+    return best;
   }
 
   missionFailed(title, reason) {
@@ -528,7 +557,7 @@ export class HUD {
     this.el.hp.style.width = hpPct;
     this.el.hpLag.style.width = hpPct;
     this.el.focus.style.width = `${p.focus}%`;
-    this.el.focusBar.classList.toggle('full', p.focus >= 50);
+    this.el.focusBar.classList.toggle('full', p.focus >= g.stats.focusCost);
     this.el.lvl.textContent = s.level;
     this.el.xp.style.width = `${(s.xp / g.xpForNext()) * 100}%`;
 
@@ -561,7 +590,7 @@ export class HUD {
     }
 
     // Gadget recharge
-    const cd = g.combat.gadgetCd[g.combat.gadgetIndex] / g.combat.gadget.cd;
+    const cd = g.combat.gadgetCd[g.combat.gadgetIndex] / (g.combat.gadget.cd * g.stats.gadgetCdMul);
     this.el.gadgetCd.style.strokeDashoffset = `${94.25 * cd}`;
 
     // Boss
@@ -588,7 +617,13 @@ export class HUD {
       } else this.el.target.classList.add('hidden');
     } else this.el.target.classList.add('hidden');
 
-    this.el.clock.textContent = g.env.hourLabel;
+    this.el.clock.textContent = `${g.env.hourLabel}${g.weather && g.weather.rain > 0.5 ? ' · Pluie' : ''}`;
+    const sp = g.save.skillPoints;
+    if (sp !== this._sp) {
+      this._sp = sp;
+      this.el.spBadge.classList.toggle('hidden', sp <= 0);
+      this.el.spBadge.textContent = `+${sp} pt${sp > 1 ? 's' : ''}`;
+    }
     const pois = g.missions.getPOIs();
     this._mmT = (this._mmT || 0) - dt;
     if (this._mmT <= 0) {

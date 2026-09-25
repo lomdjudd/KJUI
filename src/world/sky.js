@@ -18,6 +18,8 @@ uniform vec3 sunDir;
 uniform float stars;
 uniform float time;
 uniform float cloudLight;
+uniform float cover;
+uniform float flash;
 varying vec3 vDir;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -51,12 +53,14 @@ void main() {
   if (h > 0.0) {
     vec2 uv = d.xz / (h + 0.12) * 1.3 + vec2(time * 0.004, time * 0.0015);
     float c = fbm(uv);
-    c = smoothstep(0.5, 0.85, c) * clamp(h * 6.0, 0.0, 1.0);
-    vec3 cl = mix(horizon * 0.9 + 0.08, vec3(1.0), cloudLight);
+    c = smoothstep(0.5 - cover * 0.42, 0.85 - cover * 0.2, c) * clamp(h * 6.0, 0.0, 1.0);
+    vec3 cl = mix(horizon * 0.9 + 0.08, vec3(1.0), cloudLight) * (1.0 - cover * 0.55);
     cl += sunColor * pow(s, 8.0) * 0.6;
-    col = mix(col, cl, c * 0.85);
+    col = mix(col, cl, c * (0.85 + cover * 0.15));
   }
 
+  col = mix(col, col * 0.55 + vec3(0.08, 0.09, 0.1), cover * 0.6);
+  col += vec3(0.8, 0.85, 1.0) * flash * 0.9;
   gl_FragColor = vec4(col, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
@@ -73,6 +77,7 @@ const PALETTES = [
 
 const _c1 = new THREE.Color();
 const _nightSky = new THREE.Color('#6d82c8');
+const _rainFog = new THREE.Color('#5a6270');
 const _dayGround = new THREE.Color('#4a4036');
 const _nightGround = new THREE.Color('#2a2a3a');
 const _c2 = new THREE.Color();
@@ -111,6 +116,8 @@ export class Environment {
     this.timeSpeed = 1 / 30; // 1 heure de jeu = 30 s
     this.cycle = true;
     this.night = 0;
+    this.rain = 0;
+    this.flash = 0;
     this.sunDir = new THREE.Vector3();
 
     this.uniforms = {
@@ -122,6 +129,8 @@ export class Environment {
       stars: { value: 0 },
       time: { value: 0 },
       cloudLight: { value: 1 },
+      cover: { value: 0 },
+      flash: { value: 0 },
     };
     const skyMat = new THREE.ShaderMaterial({
       uniforms: this.uniforms,
@@ -184,22 +193,27 @@ export class Environment {
     this.uniforms.stars.value = p.stars;
     this.uniforms.cloudLight.value = p.cloud;
 
-    this.night = clamp(1 - (elev + 0.08) / 0.3, 0, 1);
+    this.night = clamp(1 - (elev + 0.2) / 0.35, 0, 1);
 
     // Lumière principale : soleil le jour, lune la nuit
     const lightDir = elev > -0.02 ? this.sunDir : new THREE.Vector3(-this.sunDir.x, -this.sunDir.y, 0.3).normalize();
     this.sun.color.copy(p.light);
-    this.sun.intensity = p.li;
+    this.sun.intensity = p.li * (1 - this.rain * 0.7);
     this.sun.position.copy(focus).addScaledVector(lightDir, 300);
     this.sun.target.position.copy(focus);
-    this.hemi.intensity = p.hemi;
+    this.hemi.intensity = p.hemi * (1 - this.rain * 0.25) + this.flash * 2.5;
+    this.uniforms.cover.value = this.rain;
+    this.uniforms.flash.value = this.flash;
     this.hemi.color.copy(p.horizon).lerp(p.zenith, 0.5).lerp(_nightSky, this.night * 0.75);
     this.hemi.groundColor.copy(_dayGround).lerp(_nightGround, this.night);
-    this.scene.fog.color.copy(p.fog);
+    this.scene.fog.color.copy(p.fog).lerp(_rainFog, this.rain * 0.6);
+    this.scene.fog.far = this.fogFar * (1 - this.rain * 0.45);
+    this.scene.fog.near = 150 * (1 - this.rain * 0.6);
     this.sky.position.copy(focus);
 
-    if (Math.abs(this.time - this.lastEnvTime) > 0.25 || !this.envRT) {
+    if (Math.abs(this.time - this.lastEnvTime) > 0.25 || Math.abs(this.rain - (this.lastEnvRain || 0)) > 0.15 || !this.envRT) {
       this.lastEnvTime = this.time;
+      this.lastEnvRain = this.rain;
       const old = this.envRT;
       this.envRT = this.pmrem.fromScene(this.envScene, 0, 0.1, 1000);
       this.scene.environment = this.envRT.texture;

@@ -1315,3 +1315,365 @@ body {
     font-size: 16px !important;
   }
 }
+
+/* ===== v2 : menus, compétences, photo ===== */
+.sp-badge {
+  font-family: var(--font);
+  font-size: 15px;
+  letter-spacing: 1px;
+  background: var(--gold);
+  color: #1a1030;
+  padding: 2px 8px;
+  border-radius: 10px;
+  align-self: flex-start;
+  box-shadow: 0 0 10px rgba(255, 210, 63, 0.6);
+  animation: pulse 0.8s infinite alternate;
+}
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.btn .badge {
+  display: inline-block;
+  background: var(--gold);
+  color: #1a1030;
+  border-radius: 10px;
+  padding: 0 8px;
+  font-size: 16px;
+  margin-left: 4px;
+}
+
+.toast.trophy {
+  border: 2px solid var(--gold);
+  background: linear-gradient(90deg, rgba(60, 40, 0, 0.9), rgba(10, 14, 38, 0.9));
+  font-family: var(--font);
+  font-size: 20px;
+  letter-spacing: 1px;
+  color: var(--gold);
+}
+
+.menu-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 92vh;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.tab {
+  pointer-events: auto;
+  font-family: var(--font);
+  font-size: 20px;
+  letter-spacing: 1px;
+  color: #fff;
+  background: rgba(20, 28, 64, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 6px 16px;
+  cursor: pointer;
+}
+
+.tab.on {
+  background: var(--red);
+  border-color: #fff;
+}
+
+.menu-body {
+  overflow-y: auto;
+  min-height: 200px;
+  text-align: left;
+  padding-right: 4px;
+}
+
+.menu-note {
+  margin: 0 0 12px;
+  font-size: 17px;
+  opacity: 0.9;
+}
+
+.menu-note .pts {
+  color: var(--gold);
+  font-size: 22px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.card {
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  color: #fff;
+  font-family: var(--ui);
+  background: rgba(20, 28, 64, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  text-align: center;
+}
+
+.card b {
+  font-family: var(--font);
+  font-size: 19px;
+  letter-spacing: 1px;
+}
+
+.card small {
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.card.worn {
+  border-color: var(--gold);
+  box-shadow: 0 0 14px rgba(255, 210, 63, 0.45);
+}
+
+.card.locked {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.card .tag {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--gold);
+  color: #1a1030;
+  font-style: normal;
+  font-size: 12px;
+  padding: 1px 6px;
+  font-weight: 700;
+}
+
+.swatch {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+}
+
+.swatch.auto {
+  background: conic-gradient(#c8161d, #141418, #d4a22a, #18286e, #c8161d);
+  font-family: var(--font);
+  font-size: 18px;
+}
+
+.branches {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.branch h3 {
+  font-family: var(--font);
+  letter-spacing: 2px;
+  margin: 0 0 8px;
+  font-size: 24px;
+}
+
+.skill {
+  pointer-events: auto;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'n c' 'd c';
+  gap: 2px 8px;
+  text-align: left;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  color: #fff;
+  font-family: var(--ui);
+  background: rgba(20, 28, 64, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-left: 5px solid var(--c);
+  cursor: pointer;
+}
+
+.skill b {
+  grid-area: n;
+  font-size: 18px;
+}
+
+.skill small {
+  grid-area: d;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.skill i {
+  grid-area: c;
+  align-self: center;
+  font-style: normal;
+  font-family: var(--font);
+  font-size: 16px;
+  letter-spacing: 1px;
+}
+
+.skill.owned {
+  background: rgba(40, 70, 40, 0.85);
+  cursor: default;
+}
+
+.skill.buy {
+  border-color: var(--gold);
+  box-shadow: 0 0 10px rgba(255, 210, 63, 0.35);
+}
+
+.skill.buy i {
+  color: var(--gold);
+}
+
+.skill.locked,
+.skill.poor {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.trophies {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+}
+
+.trophy {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  background: rgba(20, 28, 64, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  opacity: 0.6;
+}
+
+.trophy.ok {
+  opacity: 1;
+  border-color: var(--gold);
+}
+
+.trophy .ti {
+  font-size: 28px;
+}
+
+.trophy b {
+  display: block;
+  font-size: 17px;
+}
+
+.trophy small {
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.opt-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 18px;
+}
+
+.opt-line span {
+  min-width: 170px;
+}
+
+.chip {
+  pointer-events: auto;
+  font-family: var(--ui);
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(20, 28, 64, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 4px 14px;
+  border-radius: 16px;
+  cursor: pointer;
+}
+
+.chip.on {
+  background: var(--blue);
+  border-color: #fff;
+}
+
+#photo-ui {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+}
+
+#photo-drag {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+  touch-action: none;
+}
+
+.ph-top {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 14, 38, 0.75);
+  padding: 6px 14px;
+  font-size: 15px;
+  pointer-events: none;
+  text-align: center;
+  max-width: 94vw;
+}
+
+#ph-msg {
+  color: var(--gold);
+  font-weight: 700;
+  margin-left: 6px;
+}
+
+.ph-bar {
+  position: absolute;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  background: rgba(10, 14, 38, 0.8);
+  padding: 8px 12px;
+  max-width: 96vw;
+}
+
+.ph-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ph-val {
+  min-width: 110px;
+  text-align: center;
+  font-family: var(--font);
+  font-size: 18px;
+  letter-spacing: 1px;
+}

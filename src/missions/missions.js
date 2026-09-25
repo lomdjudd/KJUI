@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Boss } from '../npc/boss.js';
+import { Rhino } from '../npc/rhino.js';
 import { mulberry32, formatTime, pick } from '../engine/utils.js';
 import { N } from '../world/city.js';
 import { Rig } from '../player/rig.js';
@@ -159,8 +160,8 @@ class CarChase extends BaseMission {
   constructor(game, def) {
     super(game, def);
     const city = game.city;
-    this.ci = 2;
-    this.cj = 12;
+    this.ci = def.start ? def.start.i : 2;
+    this.cj = def.start ? def.start.j : 12;
     const start = city.intersection(this.ci, this.cj);
     this.path = start.clone();
     this.pos = start.clone();
@@ -180,6 +181,7 @@ class CarChase extends BaseMission {
     game.scene.add(this.car);
     this.items.push({ mesh: this.car, kind: 'mesh' });
     this.nextNode = { i: this.ci + 1, j: this.cj };
+    if (this.nextNode.i > N - 1) this.nextNode.i = this.ci - 1;
     this.isCar = true;
     this.chest = this.pos.clone();
     this.alive = true;
@@ -289,13 +291,14 @@ class CarChase extends BaseMission {
 class FallingCivilians extends BaseMission {
   constructor(game, def) {
     super(game, def);
-    this.b = game.city.landmarks.fire;
+    this.b = def.building || game.city.landmarks.fire;
+    this.onFire = def.fire !== false;
     this.center = v(this.b.x, 0, this.b.z);
     this.saved = 0;
-    this.total = 4;
+    this.total = def.total || 4;
     this.falling = null;
-    this.nextT = 4;
-    this.started = false;
+    this.nextT = def.event ? 0.3 : 4;
+    this.started = !!def.event;
     this.markers = [{ pos: this.center, color: '#ff8a3a', label: 'Incendie' }];
     this.objective = 'Rends-toi à l’immeuble en feu';
     this.fireT = 0;
@@ -352,7 +355,7 @@ class FallingCivilians extends BaseMission {
     this.fireT += dt;
     // feu et fumée
     const b = this.b;
-    if (Math.random() < dt * 25) {
+    if (this.onFire && Math.random() < dt * 25) {
       const fx = b.fx0 + Math.random() * (b.fx1 - b.fx0);
       const fz = b.fz0 + Math.random() * (b.fz1 - b.fz0);
       const fy = b.roof * (0.5 + Math.random() * 0.5);
@@ -376,8 +379,8 @@ class FallingCivilians extends BaseMission {
     const f = this.falling;
     f.t += dt;
     if (!f.caught) {
-      f.vy -= 7 * dt; // chute « au ralenti » pour laisser une chance
-      f.vy = Math.max(f.vy, -14);
+      f.vy -= (this.slow ? 3.2 : 7) * dt; // chute « au ralenti » pour laisser une chance
+      f.vy = Math.max(f.vy, this.slow ? -7 : -14);
       f.pos.y += f.vy * dt;
       f.rig.group.position.copy(f.pos);
       f.rig.apply(A.airborne(f.t), dt, 8);
@@ -395,6 +398,7 @@ class FallingCivilians extends BaseMission {
         game.hud.toast(`Civil sauvé ! (${this.saved}/${this.total})`);
         game.webs.flash(p.chestPos.clone(), chest, 0.3);
         game.gainXP(40, 'Sauvetage');
+        game.stat('rescues');
       } else if (f.pos.y <= 0.2) {
         this.failReason = 'Un civil n’a pas été rattrapé…';
         return 'fail';
@@ -487,35 +491,41 @@ class PumpkinBombs extends BaseMission {
 class BossFight extends BaseMission {
   constructor(game, def) {
     super(game, def);
-    const o = game.city.landmarks.oscorp;
-    this.o = o;
-    this.top = v(o.x, o.roof, o.z);
+    this.arena = def.arena(game);
     this.started = false;
-    this.markers = [{ pos: this.top, color: '#6fff6f', label: 'Oscorp' }];
-    this.objective = 'Rejoins le sommet de la tour Oscorp';
+    this.markers = [{ pos: this.arena.pos, color: def.color || '#6fff6f', label: this.arena.label }];
+    this.objective = def.approach;
+  }
+  _inArena(p) {
+    const a = this.arena;
+    const h = Math.hypot(p.pos.x - a.pos.x, p.pos.z - a.pos.z);
+    if (a.ground) return h < 45 && p.pos.y < a.pos.y + 12;
+    return p.pos.y > a.pos.y - 2 && h < a.radius;
   }
   update(dt) {
     const game = this.game;
     const p = game.player;
+    const a = this.arena;
     if (!this.started) {
-      if (p.pos.y > this.o.roof - 2 && Math.hypot(p.pos.x - this.o.x, p.pos.z - this.o.z) < 30) {
+      if (this._inArena(p)) {
         this.started = true;
-        this.boss = new Boss(game, this.top, this.o.roof);
+        const kind = this.def.boss;
+        this.boss = kind === 'rhino' ? new Rhino(game, a.pos) : new Boss(game, a.pos, a.pos.y, kind);
         game.boss = this.boss;
         this.boss.onPhase2 = () => {
-          const c = this.top.clone();
-          this.spawnWave(c.add(v(10, 0, 10)), ['voyou', 'voyou', 'tireur'], 5, { aggro: true, leash: 20 });
+          const c = a.pos.clone().add(v(8, 0, 8));
+          this.spawnWave(c, this.def.minions || ['voyou', 'voyou', 'tireur'], 5, { aggro: true, leash: 22 });
         };
-        game.audio.play('laugh');
+        game.audio.play(kind === 'rhino' ? 'heavy' : 'laugh');
         game.hud.bossBar(this.boss);
-        game.hud.hint('Tire des toiles (R) sur le planeur pour le faire tomber, puis frappe le Bouffon ! Esquive les bombes.', 10);
+        game.hud.hint(this.def.fightHint, 11);
       }
       return 'running';
     }
     const b = this.boss;
-    this.markers = [{ pos: b.pos, color: '#6fff6f', label: 'Bouffon Vert' }];
-    const onRoof = p.pos.y > this.o.roof - 30;
-    this.objective = onRoof ? 'Vaincs le Bouffon Vert' : 'Retourne au sommet de la tour Oscorp !';
+    this.markers = [{ pos: b.pos, color: this.def.color || '#6fff6f', label: b.name }];
+    const near = a.ground ? p.pos.distanceTo(b.pos) < 90 : p.pos.y > a.pos.y - 30;
+    this.objective = near ? `Vaincs ${b.name.replace(/^Le /, 'le ')}` : this.def.returnText;
     if (!b.alive && b.state === 'defeated' && b.stateT > 2.5) return 'success';
     return 'running';
   }
@@ -527,6 +537,21 @@ class BossFight extends BaseMission {
     }
     super.cleanup(keep);
   }
+}
+
+// Toit le plus vaste d'une zone (arènes et bases)
+function bigRoof(city, filter) {
+  let best = null;
+  let area = 0;
+  for (const b of city.buildings) {
+    if (!filter(b)) continue;
+    const a = (b.x1 - b.x0) * (b.z1 - b.z0);
+    if (a > area) {
+      area = a;
+      best = b;
+    }
+  }
+  return best;
 }
 
 export const STORY = [
@@ -613,15 +638,97 @@ export const STORY = [
   {
     id: 'bouffon',
     title: 'Le Bouffon Vert',
-    intro: 'C’est l’heure de l’affrontement final. Le Bouffon Vert t’attend au sommet de la tour Oscorp.',
+    intro: 'C’est l’heure de l’affrontement. Le Bouffon Vert t’attend au sommet de la tour Oscorp.',
     where: (g) => {
       const o = g.city.landmarks.oscorp;
       return v(o.x, 0, o.z + 42);
     },
     create: (g, d) => new BossFight(g, d),
+    boss: 'bouffon',
+    arena: (g) => {
+      const o = g.city.landmarks.oscorp;
+      return { pos: v(o.x, o.roof, o.z), radius: 30, label: 'Oscorp' };
+    },
+    approach: 'Rejoins le sommet de la tour Oscorp',
+    returnText: 'Retourne au sommet de la tour Oscorp !',
+    fightHint: 'Tire des toiles (R) sur le planeur pour le faire tomber, puis frappe le Bouffon ! Esquive les bombes.',
+    outro: 'Le Bouffon Vert est vaincu… mais un monstre blindé, le Rhino, sème déjà la panique dans le quartier financier !',
     xp: 1000,
+    skillPoint: true,
+  },
+  {
+    id: 'rhino',
+    title: 'La charge du Rhino',
+    intro: 'Le Rhino ravage le quartier financier. Esquive ses charges pour qu’il percute les murs, puis frappe-le quand il est sonné !',
+    where: (g) => g.city.intersection(3, 11).setY(0),
+    create: (g, d) => new BossFight(g, d),
+    boss: 'rhino',
+    color: '#c0c4c8',
+    arena: (g) => ({ pos: g.city.intersection(2, 11).setY(0), ground: true, label: 'Rhino' }),
+    approach: 'Trouve le Rhino dans le quartier financier',
+    returnText: 'Retourne affronter le Rhino !',
+    fightHint: 'Ses coups de face sont bloqués : esquive sa charge (clic droit / C) pour qu’il fonce dans un mur, puis cogne ! La toile le ralentit.',
+    minions: ['voyou', 'costaud', 'voyou'],
+    outro: 'Le Rhino est à terre ! Mais au-dessus du pont, un homme ailé attaque les toits : le Vautour…',
+    xp: 900,
+    skillPoint: true,
+  },
+  {
+    id: 'vautour',
+    title: 'Les ailes du Vautour',
+    intro: 'Le Vautour terrorise les toits près du pont de l’Est. Englue ses ailes avec ta toile pour le faire tomber !',
+    where: (g) => {
+      const b = vultureRoof(g.city);
+      return v(b.x, 0, b.z);
+    },
+    create: (g, d) => new BossFight(g, d),
+    boss: 'vautour',
+    color: '#9acb6a',
+    arena: (g) => {
+      const b = vultureRoof(g.city);
+      return { pos: v(b.x, b.roof, b.z), radius: 34, label: 'Toit du Vautour' };
+    },
+    approach: 'Monte sur le toit où rôde le Vautour',
+    returnText: 'Retourne sur le toit du Vautour !',
+    fightHint: 'Tire 5 toiles (R) sur le Vautour pour engluer ses ailes. Esquive ses plumes d’acier et ses piqués !',
+    minions: ['tireur', 'voyou', 'tireur'],
+    outro: 'Le Vautour est tombé. New York est sauvée… pour l’instant ! La ville reste ouverte : bases ennemies, crimes, défis et costumes t’attendent.',
+    xp: 1200,
+    skillPoint: true,
   },
 ];
+
+function vultureRoof(city) {
+  return bigRoof(city, (b) => b.bi >= 11 && b.bj >= 5 && b.bj <= 9 && b.roof > 30 && b.roof < 110 && !b.role) || city.landmarks.bugle;
+}
+
+// ---------- Bases ennemies (toits) ----------
+function baseDefs(city) {
+  const zones = [
+    { name: 'Base du Nord', f: (b) => b.bj <= 2 && b.bi >= 8 },
+    { name: 'Entrepôt de Chinatown', f: (b) => b.bj >= 11 && b.bi >= 7 },
+    { name: 'Repaire de l’Ouest', f: (b) => b.bi <= 2 && b.bj >= 3 && b.bj <= 8 },
+  ];
+  return zones.map((z, k) => {
+    const b = bigRoof(city, (x) => z.f(x) && x.roof > 18 && x.roof < 70 && !x.role) || city.buildings[k * 50];
+    return {
+      id: `base${k}`,
+      title: z.name,
+      intro: 'Des hommes de main du Bouffon ont installé une base sur ce toit. Démantèle-la !',
+      where: () => v(b.x, b.roof, b.z),
+      roof: b,
+      approach: 'Monte sur le toit de la base',
+      fightText: 'Démantèle la base',
+      waves: [
+        ['voyou', 'voyou', 'voyou', 'tireur'],
+        ['voyou', 'costaud', 'tireur', 'tireur', 'voyou'],
+        ['costaud', 'costaud', 'voyou', 'voyou', 'tireur', 'tireur'],
+      ],
+      hpMul: 1.15,
+      xp: 500,
+    };
+  });
+}
 
 // ---------- Activités secondaires ----------
 class StreetCrime extends BaseMission {
@@ -645,6 +752,28 @@ class StreetCrime extends BaseMission {
     }
     return 'running';
   }
+}
+
+function randomChase(game) {
+  const { i, j } = game.city.randomIntersectionNear(game.player.pos, 120, 320);
+  const m = new CarChase(game, { id: 'evt-chase', title: 'Poursuite', start: { i: Math.max(1, Math.min(N - 2, i)), j } });
+  m.kind = 'chase';
+  Object.defineProperty(m, 'center', { get: () => m.pos });
+  return m;
+}
+
+function randomFall(game) {
+  const p = game.player.pos;
+  const cands = game.city.buildings.filter((b) => b.fx0 !== undefined && b.roof > 35 && b.roof < 140 && Math.hypot(b.x - p.x, b.z - p.z) > 60 && Math.hypot(b.x - p.x, b.z - p.z) < 180);
+  if (!cands.length) return null;
+  const b = cands[Math.floor(Math.random() * cands.length)];
+  const m = new FallingCivilians(game, { id: 'evt-fall', title: 'Chute', building: b, total: 1, fire: false, event: true });
+  m.kind = 'fall';
+  // chute plus lente pour laisser le temps d'arriver
+  m.slow = true;
+  Object.defineProperty(m, 'center', { get: () => (m.falling ? m.falling.pos : m.centerPos) });
+  m.centerPos = v(b.x, b.roof, b.z);
+  return m;
 }
 
 class Race {
@@ -691,17 +820,23 @@ export class MissionManager {
     this.save = game.save;
     this.active = null;
     this.activeDef = null;
-    this.crimes = [];
+    this.crimes = []; // événements libres : crimes, poursuites, chutes
     this.crimeTimer = 25;
     this.storyBeam = null;
     this.bags = [];
     this.races = [];
     this.raceBeams = [];
+    this.bases = [];
+  }
+
+  get storyCount() {
+    return STORY.length;
   }
 
   init() {
     this._setupBags();
     this._setupRaces();
+    this._setupBases();
     this._refreshStoryMarker();
   }
 
@@ -758,6 +893,34 @@ export class MissionManager {
     }
   }
 
+  _setupBases() {
+    this.save.bases = this.save.bases || [];
+    this.baseDefs = baseDefs(this.game.city);
+    for (const d of this.baseDefs) {
+      if (this.save.bases.includes(d.id)) continue;
+      const pos = d.where();
+      const beam = this.game.markers.beam(pos, '#b04dff', 90, 2.2);
+      // caisses et drapeau sur le toit
+      const grp = new THREE.Group();
+      const crateMat = new THREE.MeshStandardMaterial({ color: 0x6b5236, roughness: 0.9 });
+      for (let k = 0; k < 6; k++) {
+        const c = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), crateMat);
+        c.position.set((k % 3) * 1.3 - 5, 0.6 + (k > 2 ? 1.2 : 0), -5 + Math.floor(k / 3) * 0.1);
+        c.rotation.y = k * 0.3;
+        c.castShadow = true;
+        grp.add(c);
+      }
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 4), new THREE.MeshStandardMaterial({ color: 0x333333 }));
+      pole.position.set(4, 2, 4);
+      const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1), new THREE.MeshStandardMaterial({ color: 0x5b2a7a, side: THREE.DoubleSide }));
+      flag.position.set(4.8, 3.4, 4);
+      grp.add(pole, flag);
+      grp.position.copy(pos);
+      this.game.scene.add(grp);
+      this.bases.push({ def: d, pos, beam, grp });
+    }
+  }
+
   // Points d'intérêt pour la mini-carte et le HUD
   getPOIs() {
     const out = [];
@@ -767,9 +930,18 @@ export class MissionManager {
     }
     const s = this.nextStory;
     if (s) out.push({ pos: this.storyPos, color: '#ffd23f', label: s.title, icon: '★', story: true });
-    for (const c of this.crimes) out.push({ pos: c.center, color: '#ff3030', label: 'Crime', icon: '!' });
+    for (const c of this.crimes) {
+      const label = c.kind === 'chase' ? 'Poursuite' : c.kind === 'fall' ? 'Au secours !' : 'Crime';
+      out.push({ pos: c.center, color: c.kind === 'fall' ? '#ffe14a' : '#ff3030', label, icon: c.kind === 'chase' ? '🚗' : '!' });
+    }
+    for (const b of this.bases) out.push({ pos: b.pos, color: '#b04dff', label: b.def.title, icon: '⚑', far: true });
     for (const r of this.races) out.push({ pos: r.points[0], color: '#ffe14a', label: r.title.replace('Défi : ', ''), icon: '⏱', race: true, far: true });
     for (const b of this.bags) out.push({ pos: b.pos, color: '#cfcfcf', icon: '◆', bag: true });
+    const found = this.save.stations || [];
+    for (const st of this.game.city.stations) {
+      const known = found.includes(st.key);
+      out.push({ pos: st.pos, color: known ? '#3dff7a' : '#6b7a70', icon: 'M', station: true, bag: !known, label: known ? st.name : '' });
+    }
     return out;
   }
 
@@ -787,20 +959,24 @@ export class MissionManager {
       const st = r.points[0];
       if (Math.hypot(p.x - st.x, p.z - st.z) < 12) return { kind: 'race', def: r, title: r.title };
     }
+    for (const b of this.bases) {
+      if (Math.hypot(p.x - b.pos.x, p.z - b.pos.z) < 18 && p.y > b.pos.y - 3) return { kind: 'base', def: b.def, title: b.def.title };
+    }
     return null;
   }
 
   start(entry) {
     const g = this.game;
+    this.kind = entry.kind;
+    this.activeDef = entry.def;
     if (entry.kind === 'story') {
-      this.activeDef = entry.def;
       this.active = entry.def.create(g, entry.def);
-      this.kind = 'story';
+      g.hud.missionIntro(entry.def.title, entry.def.intro);
+    } else if (entry.kind === 'base') {
+      this.active = new WaveFight(g, entry.def);
       g.hud.missionIntro(entry.def.title, entry.def.intro);
     } else {
-      this.activeDef = entry.def;
       this.active = new Race(g, entry.def);
-      this.kind = 'race';
       g.hud.missionIntro(entry.def.title, `Traverse les anneaux le plus vite possible. Or : ${formatTime(entry.def.gold)}`);
     }
     if (this.storyBeam) {
@@ -808,7 +984,8 @@ export class MissionManager {
       this.storyBeam = null;
     }
     for (const b of this.raceBeams) b.mesh.visible = false;
-    // les crimes en cours disparaissent pendant une mission
+    for (const b of this.bases) b.beam.mesh.visible = false;
+    // les événements en cours disparaissent pendant une mission
     for (const c of this.crimes) c.cleanup();
     this.crimes = [];
     g.audio.play('mission', 0.6);
@@ -834,16 +1011,39 @@ export class MissionManager {
     this.active = null;
     this.activeDef = null;
     for (const b of this.raceBeams) b.mesh.visible = true;
+    for (const b of this.bases) b.beam.mesh.visible = true;
     if (result === 'success') {
       if (kind === 'story') {
-        if (!this.save.completed.includes(def.id)) this.save.completed.push(def.id);
+        if (!this.save.completed.includes(def.id)) {
+          this.save.completed.push(def.id);
+          if (def.skillPoint) {
+            this.save.skillPoints++;
+            g.hud.toast('+1 point de compétence (menu Pause > Compétences)', 'xp');
+          }
+        }
         g.gainXP(def.xp, def.title);
-        g.hud.missionComplete(def.title, def.xp, STORY.indexOf(def) === STORY.length - 1);
+        g.hud.missionComplete(def.title, def.xp, STORY.indexOf(def) === STORY.length - 1, def.outro);
+        g.refreshStats();
+      } else if (kind === 'base') {
+        if (!this.save.bases.includes(def.id)) this.save.bases.push(def.id);
+        this.save.skillPoints++;
+        const b = this.bases.find((x) => x.def === def);
+        if (b) {
+          g.markers.remove(b.beam);
+          g.scene.remove(b.grp);
+          this.bases = this.bases.filter((x) => x !== b);
+        }
+        g.gainXP(def.xp, def.title);
+        g.hud.missionComplete(`${def.title} démantelée !`, def.xp, false, '+1 point de compétence');
       } else {
         const t = mission.t;
         const best = this.save.races[def.id];
         if (!best || t < best) this.save.races[def.id] = t;
         const medal = t <= def.gold ? 'OR' : t <= def.gold * 1.3 ? 'ARGENT' : 'BRONZE';
+        if (medal === 'OR') {
+          this.save.gold = this.save.gold || [];
+          if (!this.save.gold.includes(def.id)) this.save.gold.push(def.id);
+        }
         const xp = medal === 'OR' ? 250 : medal === 'ARGENT' ? 150 : 80;
         g.gainXP(xp, def.title);
         g.hud.missionComplete(`${def.title} — ${formatTime(t)} (${medal})`, xp, false);
@@ -865,6 +1065,29 @@ export class MissionManager {
     }
   }
 
+  // Nouvel événement libre : crime (le plus souvent), poursuite ou chute
+  _spawnEvent() {
+    const g = this.game;
+    const p = g.player;
+    const r = Math.random();
+    let e = null;
+    if (r < 0.2 && !g.carTarget && !this.crimes.some((c) => c.kind === 'chase')) {
+      e = randomChase(g);
+      g.hud.toast('Des voleurs s’enfuient en voiture ! (icône voiture)');
+    } else if (r < 0.38 && !this.crimes.some((c) => c.kind === 'fall')) {
+      e = randomFall(g);
+      if (e) g.hud.toast('Un laveur de vitres est tombé ! Vite, rattrape-le !');
+    }
+    if (!e) {
+      const { p: pos } = g.city.randomIntersectionNear(p.pos, 150, 420);
+      e = new StreetCrime(g, pos, g.save.level);
+      e.kind = 'crime';
+      g.hud.toast('Crime signalé à proximité ! (marqueur rouge)');
+    }
+    this.crimes.push(e);
+    g.audio.play('sense', 0.5);
+  }
+
   update(dt) {
     const g = this.game;
     const p = g.player;
@@ -872,26 +1095,29 @@ export class MissionManager {
       const r = this.active.update(dt);
       if (r === 'success' || r === 'fail') this._end(r);
     } else {
-      // Crimes aléatoires
       this.crimeTimer -= dt;
       if (this.crimeTimer <= 0 && this.crimes.length < 2) {
         this.crimeTimer = 40 + Math.random() * 30;
-        const { p: pos } = g.city.randomIntersectionNear(p.pos, 150, 420);
-        const c = new StreetCrime(g, pos, g.save.level);
-        this.crimes.push(c);
-        g.hud.toast('Crime signalé à proximité ! (marqueur rouge)');
-        g.audio.play('sense', 0.5);
+        this._spawnEvent();
       }
       for (const c of this.crimes) {
         const r = c.update(dt);
         if (r === 'success') {
           c.done = true;
           c.cleanup(true);
-          g.gainXP(100, 'Crime arrêté');
-          g.hud.toast('Crime arrêté ! +100 XP');
+          if (c.kind === 'fall') {
+            g.hud.toast('Civil sauvé !');
+          } else {
+            const xp = c.kind === 'chase' ? 200 : 100;
+            g.gainXP(xp, c.kind === 'chase' ? 'Voleurs arrêtés' : 'Crime arrêté');
+            g.save.crimes = (g.save.crimes || 0) + 1;
+          }
           g.audio.play('checkpoint');
-          g.save.crimes = (g.save.crimes || 0) + 1;
           g.saveGame();
+        } else if (r === 'fail') {
+          c.done = true;
+          c.cleanup();
+          g.hud.toast(c.kind === 'fall' ? 'Trop tard… les secours s’en occupent.' : 'Ils se sont échappés…');
         } else if (p.pos.distanceTo(c.center) > 800) {
           c.done = true;
           c.cleanup();
@@ -913,5 +1139,16 @@ export class MissionManager {
       }
     }
     this.bags = this.bags.filter((b) => !b.taken);
+    // Stations de métro
+    this.save.stations = this.save.stations || [];
+    for (const st of g.city.stations) {
+      if (this.save.stations.includes(st.key)) continue;
+      if (Math.hypot(p.pos.x - st.pos.x, p.pos.z - st.pos.z) < 26 && p.pos.y < 30) {
+        this.save.stations.push(st.key);
+        g.hud.toast(`Station de métro découverte : ${st.name} — voyage rapide depuis la carte (Tab)`, 'xp');
+        g.audio.play('coin');
+        g.saveGame();
+      }
+    }
   }
 }

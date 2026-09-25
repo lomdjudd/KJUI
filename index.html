@@ -19,6 +19,7 @@
       <div class="hud-tl">
         <div class="lvl-row">
           <div id="lvl" class="lvl">1</div>
+          <div id="sp-badge" class="sp-badge hidden"></div>
           <div class="bars">
             <div class="bar hp"><div id="hp-fill" class="fill"></div><div id="hp-lag" class="lag"></div></div>
             <div class="bar focus">
@@ -117,6 +118,13 @@
         <div id="pause-stats" class="stats"></div>
         <div class="menu">
           <button id="btn-resume" class="btn primary">REPRENDRE</button>
+          <div class="menu-grid">
+            <button id="btn-suits" class="btn">COSTUMES</button>
+            <button id="btn-skills" class="btn">COMPÉTENCES</button>
+            <button id="btn-trophies" class="btn">TROPHÉES</button>
+            <button id="btn-options" class="btn">OPTIONS</button>
+          </div>
+          <button id="btn-photo" class="btn">📸 MODE PHOTO</button>
           <button id="btn-abandon" class="btn hidden">ABANDONNER LA MISSION</button>
           <button id="btn-controls2" class="btn">COMMANDES</button>
           <div class="opt-row">
@@ -126,10 +134,6 @@
           <div class="opt-row">
             <label>Musique</label>
             <button id="btn-music" class="btn small">OUI</button>
-          </div>
-          <div class="opt-row">
-            <label>Cycle jour/nuit</label>
-            <button id="btn-daynight" class="btn small">OUI</button>
           </div>
           <button id="btn-quit" class="btn">MENU PRINCIPAL</button>
         </div>
@@ -147,13 +151,16 @@
             <p><b>Espace</b> sauter · en l'air : propulsion-toile</p>
             <p><b>Maj (maintenir)</b> sprint · <b>balancement</b> en l'air · course sur les murs</p>
             <p><b>E</b> point de lancement (vers le cercle blanc)</p>
+            <p><b>Maintenir Espace à l'arrêt</b> super-saut chargé</p>
+            <p><b>Clic droit / C en l'air</b> (hors combat) plongeon</p>
             <p>Fonce contre un mur pour <b>grimper</b>, Espace pour s'en éjecter</p>
           </div>
           <div>
             <h3>Combat</h3>
             <p><b>Clic gauche / J</b> attaquer · <b>maintenir</b> : projection en l'air</p>
             <p><b>Clic droit / C</b> esquive (parfaite quand le sens d'araignée s'allume)</p>
-            <p><b>R</b> tir de toile · <b>F</b> frappe-toile (fonce sur l'ennemi)</p>
+            <p><b>R</b> tir de toile · <b>maintenir R</b> : lancer un ennemi sur un autre</p>
+            <p><b>F</b> frappe-toile (fonce sur l'ennemi)</p>
             <p><b>1 2 3 4</b> styles : Classique, Acrobate, Brute, Tisseur</p>
             <p><b>G</b> gadget · <b>T / molette</b> changer de gadget</p>
             <p><b>H</b> soin · <b>V</b> coup de grâce (1 barre de concentration)</p>
@@ -161,12 +168,38 @@
           <div>
             <h3>Divers</h3>
             <p><b>F / Entrée</b> lancer une mission (dans le faisceau jaune)</p>
-            <p><b>Tab</b> grande carte · <b>Échap / P</b> pause · <b>N</b> musique</p>
+            <p><b>Tab</b> grande carte (voyage rapide en métro) · <b>Échap / P</b> pause · <b>N</b> musique · <b>O</b> mode photo</p>
+            <p><b>Pause</b> : costumes, compétences, trophées et options (météo, heure)</p>
             <p><b>Manette</b> : RT balancement, A saut, X attaque, B esquive, Y frappe-toile, LB toile, RB gadget, LT zip</p>
             <p><b>Tactile</b> : joystick à gauche, glisser à droite pour la caméra</p>
           </div>
         </div>
         <button id="btn-controls-back" class="btn primary">RETOUR</button>
+      </div>
+    </div>
+
+    <div id="menu-screen" class="screen hidden">
+      <div class="panel wide menu-panel">
+        <div class="tabs">
+          <button class="tab" data-tab="costumes">COSTUMES</button>
+          <button class="tab" data-tab="competences">COMPÉTENCES</button>
+          <button class="tab" data-tab="trophees">TROPHÉES</button>
+          <button class="tab" data-tab="options">OPTIONS</button>
+        </div>
+        <div id="menu-body" class="menu-body"></div>
+        <button id="btn-menu-back" class="btn primary">RETOUR</button>
+      </div>
+    </div>
+
+    <div id="photo-ui" class="hidden">
+      <div id="photo-drag"></div>
+      <div class="ph-top">MODE PHOTO — glisse pour tourner, molette ou +/- pour zoomer · Échap pour quitter <span id="ph-msg"></span></div>
+      <div class="ph-bar">
+        <div class="ph-group"><button id="ph-filter-prev" class="btn small">◀</button><span id="ph-filter" class="ph-val">Normal</span><button id="ph-filter-next" class="btn small">▶</button></div>
+        <div class="ph-group"><button id="ph-pose-prev" class="btn small">◀</button><span id="ph-pose" class="ph-val">Libre</span><button id="ph-pose-next" class="btn small">▶</button></div>
+        <div class="ph-group"><button id="ph-zoom-in" class="btn small">＋</button><button id="ph-zoom-out" class="btn small">－</button></div>
+        <button id="ph-shot" class="btn primary">📸 PHOTO</button>
+        <button id="ph-close" class="btn">QUITTER</button>
       </div>
     </div>
 
@@ -195,6 +228,8 @@
         <span><i style="background: #ff3030"></i>Crime</span>
         <span><i style="background: #ffe14a"></i>Défi</span>
         <span><i style="background: #cfcfcf"></i>Sac à dos</span>
+        <span><i style="background: #b04dff"></i>Base</span>
+        <span><i style="background: #3dff7a"></i>Métro</span>
         <span>[Tab] fermer</span>
       </div>
     </div>

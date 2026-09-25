@@ -230,6 +230,7 @@ export class Enemy {
       this.cocoon.scale.set(this.type.bulk, 1, this.type.bulk);
       this.game.audio.play('webshot');
       this.game.hud.floatText(this.chest, 'ENTOILÉ !', '#ffffff');
+      this.game.stat('webbed');
     }
   }
 
@@ -405,11 +406,25 @@ export class Enemy {
         this.manager.releaseAttack(this);
         const juggled = this.game.player.action && this.game.player.action.hover && dist < 4;
         this.vel.y -= (juggled ? 8 : 26) * dt;
+        if (this.thrown) this._thrownImpacts();
         pose = this.dying || this.knockdown ? A.knockdown() : A.airborne(this.t);
         blend = 8;
         if (this.pos.y <= this.groundY && this.vel.y <= 0) {
           this.pos.y = this.groundY;
           this.vel.set(0, 0, 0);
+          if (this.thrown) {
+            const mul = this.thrown.mul;
+            this.thrown = null;
+            this.game.cam.shake(0.25);
+            if (this.alive) {
+              this.hp -= 18 * mul;
+              if (this.hp <= 0) {
+                this.hp = 0;
+                this.alive = false;
+                this.manager.onDefeated(this);
+              }
+            }
+          }
           this.game.fx.dust(this.pos, 5);
           this.game.audio.play('land', 0.5);
           if (this.fallStart - this.pos.y > 14 && this.alive) {
@@ -510,6 +525,26 @@ export class Enemy {
       }
     }
     this.chest.set(this.pos.x, this.pos.y + 1.2 * this.type.scale, this.pos.z);
+  }
+
+  // Ennemi projeté : percute ses camarades
+  _thrownImpacts() {
+    for (const o of this.manager.enemies) {
+      if (o === this || !o.alive) continue;
+      this.thrown.hits = this.thrown.hits || new Set();
+      if (this.thrown.hits.has(o)) continue;
+      if (o.pos.distanceTo(this.pos) < 1.9) {
+        this.thrown.hits.add(o);
+        const dir = this.vel.clone().setY(0).normalize();
+        o.hit({ dmg: 22 * this.thrown.mul, dir, knock: 12, source: 'throw', breakGuard: true });
+        this.game.fx.sparks(o.chest, 16, '#ffd27a', 10);
+        this.game.audio.play('heavy');
+        this.game.hitstop(0.08);
+        this.game.stat('throwHits');
+        this.game.hud.floatText(o.chest, 'STRIKE !', '#ffd23f', true);
+        this.vel.multiplyScalar(0.3);
+      }
+    }
   }
 
   _pushOut(city) {

@@ -20,6 +20,7 @@ export class CameraRig {
   }
 
   shake(a) {
+    if (!this.game.save.settings.shake) return;
     this.trauma = Math.min(1, this.trauma + a);
   }
 
@@ -44,7 +45,7 @@ export class CameraRig {
     const hs = Math.hypot(p.vel.x, p.vel.z);
     const moving = p.state === 'swing' || p.state === 'air' || p.state === 'zip';
     // suivi automatique derrière le joueur lorsqu'il file à toute vitesse
-    if (moving && hs > 12 && performance.now() - this.lastLook > 1200 && performance.now() - input.lookInputTime > 1200) {
+    if (g.save.settings.autoCam && moving && hs > 12 && performance.now() - this.lastLook > 1200 && performance.now() - input.lookInputTime > 1200) {
       const want = Math.atan2(-p.vel.x, -p.vel.z);
       this.yaw = angleLerp(this.yaw, want, damp(1.4, dt));
       this.pitch += (0.18 - this.pitch) * damp(0.8, dt);

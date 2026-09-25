@@ -19,6 +19,13 @@ import { Markers } from './fx/markers.js';
 import { MissionManager, STORY } from './missions/missions.js';
 import { HUD } from './ui/hud.js';
 import { CameraRig } from './camera.js';
+import { computeStats, SKILLS, canBuy } from './player/skills.js';
+import { SUITS, suitUnlocked } from './player/suits.js';
+import { STYLES } from './player/combat.js';
+import { Achievements } from './progress/achievements.js';
+import { Weather, Helicopters } from './world/weather.js';
+import { Menus } from './ui/menus.js';
+import { PhotoMode } from './ui/photo.js';
 
 const SAVE_KEY = 'spiderman-monde-ouvert-v1';
 const $ = (id) => document.getElementById(id);
@@ -31,13 +38,34 @@ const QUALITY = {
 };
 
 function defaultSave() {
-  return { xp: 0, level: 1, completed: [], bags: [], races: {}, crimes: 0, settings: { quality: 'auto', sens: 1, music: true, daynight: true } };
+  return {
+    xp: 0,
+    level: 1,
+    completed: [],
+    bags: [],
+    races: {},
+    crimes: 0,
+    suit: 'auto',
+    skills: [],
+    skillPoints: 0,
+    achievements: [],
+    counters: {},
+    bases: [],
+    stations: [],
+    gold: [],
+    settings: { quality: 'auto', sens: 1, music: true, daynight: true, weather: 'auto', timeMode: 'auto', autoCam: true, shake: true },
+  };
 }
 
 export class Game {
   constructor() {
     this.save = { ...defaultSave(), ...storage.get(SAVE_KEY, {}) };
     this.save.settings = { ...defaultSave().settings, ...(this.save.settings || {}) };
+    // anciennes sauvegardes : points de compétence rétroactifs
+    if (!Array.isArray(this.save.skills)) this.save.skills = [];
+    if (typeof this.save.skillPoints !== 'number') this.save.skillPoints = this.save.level - 1;
+    if (!this.save.counters) this.save.counters = {};
+    if (this.save.settings.timeMode === 'auto' && this.save.settings.daynight === false) this.save.settings.timeMode = 'dusk';
     const qs = new URLSearchParams(location.search);
     let q = qs.get('q') || this.save.settings.quality;
     if (q === 'auto') {
@@ -98,7 +126,6 @@ export class Game {
     this.city.generate();
     await setLoad(45, 'Allumage du ciel…');
     this.env = new Environment(this.scene, renderer, this.quality);
-    this.env.cycle = this.save.settings.daynight;
     await setLoad(55, 'Mise en circulation…');
     this.traffic = new Traffic(this.scene, this.city, this.quality);
     await setLoad(65, 'Enfilage du costume…');
@@ -112,9 +139,18 @@ export class Game {
     this.enemies = new EnemyManager(this);
     this.projectiles = new Projectiles(this);
     this.missions = new MissionManager(this);
+    this.stats = computeStats(this.save, 'classique');
     this.missions.init();
     this.hud.buildMap();
-    this._applyLevel();
+    this.weather = new Weather(this);
+    this.helis = new Helicopters(this.scene, this.city);
+    this.achievements = new Achievements(this);
+    this.menus = new Menus(this);
+    this.photo = new PhotoMode(this);
+    const saved = this.save.suit;
+    if (saved && saved !== 'auto' && SUITS[saved] && suitUnlocked(saved, this.save)) this.player.setSuit(saved);
+    this._applyTimeMode();
+    this.refreshStats();
     await setLoad(80, 'Compilation des shaders…');
 
     if (this.quality.bloom) {
@@ -205,14 +241,7 @@ export class Game {
       $('btn-music').textContent = on ? 'OUI' : 'NON';
       this.saveGame();
     });
-    click('btn-daynight', () => {
-      this.env.cycle = !this.env.cycle;
-      this.save.settings.daynight = this.env.cycle;
-      $('btn-daynight').textContent = this.env.cycle ? 'OUI' : 'NON';
-      this.saveGame();
-    });
     $('btn-music').textContent = this.save.settings.music ? 'OUI' : 'NON';
-    $('btn-daynight').textContent = this.save.settings.daynight ? 'OUI' : 'NON';
     $('opt-sens').value = this.save.settings.sens;
     $('opt-sens').addEventListener('input', (e) => {
       this.input.sensitivity = parseFloat(e.target.value);
@@ -225,6 +254,19 @@ export class Game {
       this.save.settings.quality = qsel.value;
       this.saveGame();
       location.reload();
+    });
+    click('btn-suits', () => this.menus.open('costumes'));
+    click('btn-skills', () => this.menus.open('competences'));
+    click('btn-trophies', () => this.menus.open('trophees'));
+    click('btn-options', () => this.menus.open('options'));
+    click('btn-photo', () => {
+      this.setPaused(false, true);
+      this.photo.open();
+    });
+    // Voyage rapide : clic sur une station de métro découverte dans la grande carte
+    $('bigmap').addEventListener('click', (e) => {
+      const st = this.hud.stationAt(e);
+      if (st && this.fastTravel(st)) this.toggleMap();
     });
     click('btn-result-ok', () => this._closeResult());
     click('btn-retry', () => {
@@ -291,10 +333,10 @@ export class Game {
     this.input.reset();
     $('pause-screen').classList.toggle('hidden', !p || silent);
     $('btn-abandon').classList.toggle('hidden', !this.missions.active);
+    if (!p && this.menus) $('menu-screen').classList.add('hidden');
     if (p) {
       this.input.exitPointerLock();
-      const s = this.save;
-      $('pause-stats').innerHTML = `Niveau ${s.level} · Missions ${s.completed.length}/${STORY.length} · Sacs à dos ${s.bags.length}/${this.missions.totalBags} · Crimes arrêtés ${s.crimes || 0}<br>Meilleur combo : ${this.combat.bestCombo}`;
+      this.refreshPauseStats();
       this.audio.setWind(0);
     } else if (this.mode === 'play' && !this.input.isTouch && !silent) {
       try {
@@ -304,6 +346,83 @@ export class Game {
         /* ignore */
       }
     }
+  }
+
+  refreshPauseStats() {
+    const s = this.save;
+    $('pause-stats').innerHTML = `Niveau ${s.level} · Missions ${s.completed.length}/${STORY.length} · Sacs à dos ${s.bags.length}/${this.missions.totalBags} · Crimes arrêtés ${s.crimes || 0}<br>Bases ${s.bases.length}/3 · Trophées ${s.achievements.length} · Meilleur combo : ${Math.max(this.combat.bestCombo, s.counters.maxCombo || 0)}`;
+    const pts = s.skillPoints;
+    $('btn-skills').innerHTML = pts > 0 ? `COMPÉTENCES <span class="badge">${pts}</span>` : 'COMPÉTENCES';
+  }
+
+  // ---------- Costumes, compétences, options ----------
+  refreshStats() {
+    if (!this.player || !this.combat) return;
+    this.stats = computeStats(this.save, this.player.suitKey);
+    const p = this.player;
+    const ratio = p.maxHealth ? p.health / p.maxHealth : 1;
+    p.maxHealth = this.stats.maxHealth;
+    p.health = Math.min(p.maxHealth, Math.max(1, ratio * p.maxHealth));
+    this.combat.dmgMul = this.stats.dmgMul;
+    this.enemies.difficulty = 1 + Math.min(0.7, this.save.completed.length * 0.08);
+  }
+
+  equipSuit(key) {
+    if (key !== 'auto' && (!SUITS[key] || !suitUnlocked(key, this.save))) return;
+    this.save.suit = key;
+    if (key === 'auto') this.player.setSuit(STYLES[this.combat.styleIndex].key);
+    else this.player.setSuit(key);
+    this.refreshStats();
+    this.saveGame();
+  }
+
+  buySkill(key) {
+    const sk = SKILLS.find((x) => x.key === key);
+    if (!sk || !canBuy(sk, this.save)) return;
+    this.save.skillPoints -= sk.cost;
+    this.save.skills.push(key);
+    this.refreshStats();
+    this.saveGame();
+    this.audio.play('level', 0.8);
+  }
+
+  setOption(key, val) {
+    this.save.settings[key] = val;
+    if (key === 'weather') this.weather.setMode(val);
+    if (key === 'timeMode') this._applyTimeMode();
+    this.saveGame();
+  }
+
+  _applyTimeMode() {
+    const m = this.save.settings.timeMode;
+    this.env.cycle = m === 'auto';
+    if (m === 'day') this.env.time = 13;
+    else if (m === 'dusk') this.env.time = 18.0;
+    else if (m === 'night') this.env.time = 22.5;
+    this.env.lastEnvTime = -99;
+  }
+
+  stat(name, n = 1) {
+    const c = this.save.counters;
+    c[name] = (c[name] || 0) + n;
+  }
+
+  statMax(name, v) {
+    const c = this.save.counters;
+    if (v > (c[name] || 0)) c[name] = v;
+  }
+
+  fastTravel(st) {
+    if (this.missions.active || this.combat.inCombat) {
+      this.hud.toast('Impossible de voyager pendant une mission ou un combat');
+      return false;
+    }
+    this.player.teleport(st.pos.clone().add(new THREE.Vector3(0, 0.5, 0)));
+    this.cam.snapBehind();
+    this.hud.whiteFlash();
+    this.hud.toast(`Métro : arrivée à ${st.name}`);
+    this.audio.play('whoosh');
+    return true;
   }
 
   showResult({ kicker, title, text, retry }) {
@@ -337,25 +456,19 @@ export class Game {
 
   gainXP(n, label) {
     const s = this.save;
+    n = Math.round(n * (this.stats ? this.stats.xpMul : 1));
     s.xp += n;
     if (label) this.hud.xpGain(n, label);
     while (s.xp >= this.xpForNext()) {
       s.xp -= this.xpForNext();
       s.level++;
-      this._applyLevel();
+      s.skillPoints++;
+      this.refreshStats();
       this.player.health = this.player.maxHealth;
       this.hud.levelUp(s.level);
       this.audio.play('level');
     }
     this.saveGame();
-  }
-
-  _applyLevel() {
-    const l = this.save.level;
-    this.player.maxHealth = 100 + (l - 1) * 12;
-    this.player.health = Math.min(this.player.health, this.player.maxHealth);
-    this.combat.dmgMul = 1 + (l - 1) * 0.06;
-    this.enemies.difficulty = 1 + Math.min(0.6, this.save.completed.length * 0.08);
   }
 
   saveGame() {
@@ -372,6 +485,7 @@ export class Game {
   }
 
   onEnemyDefeated(e) {
+    this.stat('enemies');
     this.gainXP(e.type.xp);
     this.enemies.difficulty = 1 + Math.min(0.6, this.save.completed.length * 0.08);
   }
@@ -532,6 +646,7 @@ export class Game {
 
     if (this.mode === 'title') {
       this._titleCam(realDt);
+      this.helis.update(realDt, this.env.night, performance.now() / 1000);
       this.env.update(realDt, this.player.pos);
       this.city.update(realDt, this.env.night, this.env.uniforms.time.value);
       this.traffic.update(realDt, this.player.pos, null);
@@ -544,6 +659,17 @@ export class Game {
       this.save.settings.music = on;
       $('btn-music').textContent = on ? 'OUI' : 'NON';
       this.hud.toast(on ? 'Musique activée' : 'Musique coupée');
+    }
+    if (this.photo.active) {
+      if (input.pressed.has('pause') || input.pressed.has('photo')) this.photo.close();
+      else this.photo.update(realDt, input);
+      input.endFrame();
+      return;
+    }
+    if (input.wasPressed('photo') && !this.paused && !this._mapOpen) {
+      this.photo.open();
+      input.endFrame();
+      return;
     }
     if (input.wasPressed('map') && !this.paused) this.toggleMap();
     if (input.wasPressed('pause')) {
@@ -591,8 +717,15 @@ export class Game {
     obs.length = 0;
     obs.push(p.pos);
     for (const e of this.enemies.enemies) if (e.alive) obs.push(e.pos);
+    if (this.boss && this.boss.alive) obs.push(this.boss.pos);
     this.traffic.update(dt, p.pos, this.combat.inCombat ? p.pos : null);
+    this.weather.update(dt, this.camera.position);
     this.env.update(dt, p.pos);
+    this.helis.update(dt, this.env.night, this.time);
+    this.achievements.update(dt);
+    this.statMax('maxSpeed', Math.round(p.speed));
+    this.statMax('maxAltitude', Math.round(p.pos.y));
+    this.statMax('maxCombo', this.combat.combo);
     this.city.update(dt, this.env.night, this.env.uniforms.time.value);
     this.fx.update(dt);
     this.webs.tick(dt);

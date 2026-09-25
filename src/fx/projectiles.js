@@ -13,6 +13,7 @@ export class Projectiles {
       webbomb: new THREE.IcosahedronGeometry(0.25, 0),
       pumpkin: new THREE.SphereGeometry(0.32, 12, 8),
       impact: new THREE.SphereGeometry(0.22, 8, 6),
+      feather: new THREE.BoxGeometry(0.08, 0.02, 0.6),
     };
     this.mat = {
       web: new THREE.MeshBasicMaterial({ color: 0xffffff }),
@@ -20,6 +21,7 @@ export class Projectiles {
       webbomb: new THREE.MeshStandardMaterial({ color: 0xdddddd, emissive: 0x335577, metalness: 0.6, roughness: 0.3 }),
       pumpkin: new THREE.MeshStandardMaterial({ color: 0xff7a1a, emissive: 0xff5a00, emissiveIntensity: 0.8, roughness: 0.5 }),
       impact: new THREE.MeshBasicMaterial({ color: 0xc9f4ff }),
+      feather: new THREE.MeshStandardMaterial({ color: 0x9aa58a, metalness: 0.8, roughness: 0.3 }),
     };
   }
 
@@ -28,6 +30,7 @@ export class Projectiles {
     mesh.position.copy(from);
     this.game.scene.add(mesh);
     const p = { kind, pos: from.clone(), vel: vel.clone(), mesh, life: kind === 'pumpkin' ? 6 : 3, ...opts };
+    if (kind === 'feather') mesh.lookAt(from.clone().add(vel));
     if (kind === 'bullet') {
       // traînée
       const trail = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.6, 4), new THREE.MeshBasicMaterial({ color: 0xfff0b0, transparent: true, opacity: 0.6 }));
@@ -44,7 +47,7 @@ export class Projectiles {
   threatTime(player) {
     let best = Infinity;
     for (const p of this.list) {
-      if (p.kind !== 'bullet' && p.kind !== 'pumpkin') continue;
+      if (p.kind !== 'bullet' && p.kind !== 'pumpkin' && p.kind !== 'feather') continue;
       const d = p.pos.distanceTo(player.chestPos);
       const sp = p.vel.length();
       if (sp < 0.1) continue;
@@ -105,7 +108,7 @@ export class Projectiles {
       }
       if (p.kind === 'web' && Math.random() < 0.5) game.fx.trail(p.pos, '#ffffff', 0.25, 0.15);
 
-      if (p.kind === 'bullet') {
+      if (p.kind === 'bullet' || p.kind === 'feather') {
         if (p.pos.distanceTo(player.chestPos) < 0.75) {
           if (player.takeDamage(p.dmg, p.pos.clone().sub(p.vel), 'hit')) {
             this._remove(p);
@@ -152,7 +155,7 @@ export class Projectiles {
       if (hit || groundHit || p.life <= 0) {
         if (p.kind === 'webbomb') this._explode(p, 6.5, 6, 2, true);
         else if (p.kind === 'pumpkin') this._explode(p, 4.5, 22, 0, false);
-        else if (p.kind === 'bullet') game.fx.sparks(p.pos, 4, '#ffd27a', 4);
+        else if (p.kind === 'bullet' || p.kind === 'feather') game.fx.sparks(p.pos, 4, '#ffd27a', 4);
         else game.fx.webPuff(p.pos);
         this._remove(p);
       }

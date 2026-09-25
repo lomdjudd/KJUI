@@ -23,6 +23,7 @@ Options d'URL utiles : `?q=low|medium|high` force la qualité graphique, `?god` 
 ### Déplacements
 - **Balancement physique à la toile** : le fil s'accroche aux vrais immeubles, avec pendule, élan, relâche et enchaînement automatique en maintenant la touche.
 - **Propulsion-toile** en l'air, **point de lancement** vers les toits (le cercle blanc), **escalade et course sur les murs**, passage par-dessus les rebords, roulade à l'atterrissage.
+- **Super-saut chargé** (maintenir Espace à l'arrêt) et **plongeon** en piqué (esquive en l'air, hors combat).
 - Caméra qui suit la trajectoire, champ de vision qui s'élargit avec la vitesse, lignes de vitesse.
 
 ### Combat : 4 styles (chacun avec son costume)
@@ -33,15 +34,26 @@ Options d'URL utiles : `?q=low|medium|high` force la qualité graphique, `?god` 
 | 3 | **Brute** (rouge et or) | Lent mais dévastateur, brise la garde des costauds, onde de choc au sol |
 | 4 | **Tisseur** (bleu et noir) | Fouets de toile à longue portée, chaque coup entoile l'ennemi |
 
-Plus : combos avec compteur, **projection en l'air et jonglage aérien**, **sens d'araignée** et **esquive parfaite au ralenti** avec contre-attaque renforcée, tir de toile pour **entoiler** les ennemis, **frappe-toile** (on fonce sur l'ennemi), jauge de **concentration** (soin ou **coup de grâce**) et 4 **gadgets** : bombe de toile, choc électrique, drone araignée, toile d'impact.
+Plus : **lancer d'ennemi** (maintenir R : on attrape un ennemi à la toile et on le projette sur un autre), combos avec compteur, **projection en l'air et jonglage aérien**, **sens d'araignée** et **esquive parfaite au ralenti** avec contre-attaque renforcée, tir de toile pour **entoiler** les ennemis, **frappe-toile** (on fonce sur l'ennemi), jauge de **concentration** (soin ou **coup de grâce**) et 4 **gadgets** : bombe de toile, choc électrique, drone araignée, toile d'impact.
 
-Ennemis : voyous, tireurs (à esquiver ou désarmer à distance), costauds qui bloquent les coups de face… et le **Bouffon Vert** sur son planeur (bombes citrouilles, piqués, deuxième phase).
+Ennemis : voyous, tireurs (à esquiver ou désarmer à distance), costauds qui bloquent les coups de face… et **3 boss** :
+- **le Bouffon Vert** sur son planeur (bombes citrouilles, piqués, deuxième phase) ;
+- **le Rhino**, qui charge dans les rues : esquive-le pour qu'il percute un mur, puis frappe-le pendant qu'il est sonné ;
+- **le Vautour**, qui tourne au-dessus des toits et lance des plumes d'acier : englue ses ailes pour le faire tomber.
+
+### Costumes, compétences, trophées
+- **10 costumes** (Classique, Symbiote, Iron Spider, Spider 2099, Film 2002, Scarlet Spider, Miles, Noir, Négatif, Doré), chacun avec un **bonus** ; les 6 derniers se débloquent en jouant. En mode *Auto*, le costume suit le style de combat.
+- **Arbre de compétences** en 3 branches (Défense, Combat, Toile) : 13 compétences, 1 point par niveau, par boss vaincu et par base démantelée.
+- **21 trophées** à débloquer.
+- **Mode photo** (touche O ou menu Pause) : caméra libre, filtres, poses de Spider-Man, enregistrement de l'image.
 
 ### Missions et monde ouvert
-- **7 missions d'histoire** : tutoriel de balancement, braquage de banque, course-poursuite en voiture, sauvetage de civils dans un immeuble en feu, bombes citrouilles à désamorcer sur les toits, assaut de la tour Oscorp, combat final contre le Bouffon Vert au sommet de la tour.
-- **Crimes aléatoires** qui apparaissent dans la ville, **3 défis de vitesse** chronométrés (médailles or/argent/bronze), **20 sacs à dos** cachés sur les toits.
+- **9 missions d'histoire** : tutoriel de balancement, braquage de banque, course-poursuite en voiture, sauvetage de civils dans un immeuble en feu, bombes citrouilles à désamorcer sur les toits, assaut de la tour Oscorp, puis les combats contre le Bouffon Vert, le Rhino et le Vautour.
+- **Événements aléatoires** dans la ville : crimes, voleurs en fuite en voiture, laveurs de vitres qui tombent.
+- **3 bases ennemies** sur les toits (3 vagues chacune), **3 défis de vitesse** chronométrés (médailles or/argent/bronze), **20 sacs à dos** cachés sur les toits.
+- **6 stations de métro** à découvrir : voyage rapide en cliquant dessus sur la grande carte.
 - Progression : expérience, niveaux (plus de santé et de dégâts), sauvegarde automatique dans le navigateur.
-- Ville vivante : circulation, piétons, parc, pont suspendu, cycle jour/nuit avec fenêtres éclairées, nuages et reflets dans l'eau.
+- Ville vivante : circulation, piétons, parc, pont suspendu, quartier de **néons** façon Times Square, hélicoptères avec projecteurs, cycle jour/nuit avec fenêtres éclairées, **pluie et orages** (chaussée mouillée, éclairs), nuages et reflets dans l'eau. Météo et heure réglables dans les options.
 - Mini-carte, grande carte, marqueurs d'objectifs, musique et bruitages synthétisés.
 
 ## ⌨️ Commandes
@@ -55,13 +67,15 @@ Ennemis : voyous, tireurs (à esquiver ou désarmer à distance), costauds qui b
 | Point de lancement | E | LT |
 | Attaquer (maintenir = projection) | Clic gauche ou J | X |
 | Esquiver | Clic droit ou C | B |
-| Tir de toile | R | LB |
+| Tir de toile (maintenir = lancer d'ennemi) | R | LB |
 | Frappe-toile | F | Y |
 | Gadget / changer de gadget | G / T ou molette | RB / croix haut |
 | Soin / coup de grâce | H / V | croix bas / R3 |
 | Styles de combat | 1 2 3 4 | croix gauche/droite |
 | Lancer une mission (dans le faisceau jaune) | F ou Entrée | Y |
-| Carte / pause / musique | Tab / Échap ou P / N | Select / Start |
+| Super-saut chargé | Maintenir Espace à l'arrêt | Maintenir A |
+| Plongeon (en l'air, hors combat) | Clic droit ou C | B |
+| Carte / pause / musique / mode photo | Tab / Échap ou P / N / O | Select / Start |
 
 Sur téléphone et tablette, des commandes tactiles apparaissent automatiquement : joystick à gauche, glisser à droite pour la caméra, boutons d'action à droite.
 
@@ -72,10 +86,11 @@ src/
   main.js, game.js     boucle de jeu, menus, sauvegarde, rendu (Three.js)
   camera.js            caméra à la 3e personne
   engine/              entrées (clavier, souris, manette, tactile), audio synthétisé, utilitaires
-  world/               génération de la ville, ciel et cycle jour/nuit, circulation et piétons, textures procédurales
-  player/              squelette et costumes, animations procédurales, déplacements (toile, murs), combat et styles
-  npc/                 ennemis (IA, jetons d'attaque), boss
+  world/               ville (néons, métro), ciel et cycle jour/nuit, météo et hélicoptères, circulation et piétons, textures procédurales
+  player/              squelette, costumes, compétences, animations procédurales, déplacements (toile, murs), combat et styles
+  npc/                 ennemis (IA, jetons d'attaque), boss volants (Bouffon, Vautour), Rhino
+  progress/            trophées
   missions/            missions d'histoire et activités secondaires
   fx/                  particules, fils de toile, projectiles, marqueurs
-  ui/                  interface (barres, mini-carte, marqueurs, textes)
+  ui/                  interface (barres, mini-carte, marqueurs), menus (costumes, compétences, trophées, options), mode photo
 ```

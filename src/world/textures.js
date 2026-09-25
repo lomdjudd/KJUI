@@ -351,3 +351,42 @@ export function makeSignTexture(text, color = '#e8f4ff', bg = 'rgba(0,0,0,0)') {
   ctx.fillText(text, 512, 135);
   return tex(c, { repeat: false });
 }
+
+// Panneau publicitaire lumineux (texte néon sur fond coloré)
+export function makeBillboardTexture(text, fg, bg, seed = 0) {
+  const c = makeCanvas(512, 256);
+  const ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 512, 256);
+  g.addColorStop(0, bg);
+  g.addColorStop(1, '#000000');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 512, 256);
+  const rng = mulberry32(seed * 31 + 7);
+  // motifs décoratifs
+  ctx.globalAlpha = 0.25;
+  for (let i = 0; i < 6; i++) {
+    ctx.fillStyle = fg;
+    ctx.beginPath();
+    ctx.arc(rng() * 512, rng() * 256, 20 + rng() * 60, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = fg;
+  ctx.lineWidth = 8;
+  ctx.strokeRect(10, 10, 492, 236);
+  ctx.font = `bold ${text.length > 10 ? 64 : 92}px Arial Black, Impact, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = fg;
+  ctx.shadowBlur = 24;
+  ctx.fillStyle = fg;
+  ctx.fillText(text, 256, 132);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#ffffff';
+  ctx.globalAlpha = 0.85;
+  ctx.fillText(text, 256, 132);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}

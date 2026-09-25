@@ -4,7 +4,7 @@ import { makeCanvas, damp } from '../engine/utils.js';
 export const JOINTS = ['hips', 'spine', 'chest', 'neck', 'head', 'lShoulder', 'lElbow', 'rShoulder', 'rElbow', 'lHip', 'lKnee', 'rHip', 'rKnee'];
 
 // ---------- Textures de costume ----------
-function suitTexture(main, second, lines, emblem, { side = true, spider = true, back = true, w = 256, h = 256, dense = 14 } = {}) {
+function suitTexture(main, second, lines, emblem, { side = true, spider = true, back = true, w = 256, h = 256, dense = 14, lw = 1.6, panel = 0.12, emblemScale = 1 } = {}) {
   const c = makeCanvas(w, h);
   const ctx = c.getContext('2d');
   ctx.fillStyle = main;
@@ -12,14 +12,14 @@ function suitTexture(main, second, lines, emblem, { side = true, spider = true, 
   if (side && second) {
     // Panneaux latéraux (u = 0 et u = 0.5 sont les flancs)
     ctx.fillStyle = second;
-    const pw = w * 0.12;
+    const pw = w * panel;
     ctx.fillRect(0, 0, pw, h * 0.75);
     ctx.fillRect(w - pw, 0, pw, h * 0.75);
     ctx.fillRect(w * 0.5 - pw, 0, pw * 2, h * 0.75);
   }
   // Toile : lignes verticales + arcs horizontaux
   ctx.strokeStyle = lines;
-  ctx.lineWidth = 1.6;
+  ctx.lineWidth = lw * (w / 256);
   ctx.globalAlpha = 0.9;
   for (let x = 0; x <= w; x += w / dense) {
     ctx.beginPath();
@@ -66,21 +66,14 @@ function suitTexture(main, second, lines, emblem, { side = true, spider = true, 
     ctx.restore();
   };
   if (spider && emblem) {
-    drawSpider(w * 0.25, h * 0.52, h * 0.28, emblem); // devant
-    if (back) drawSpider(w * 0.75, h * 0.5, h * 0.4, emblem); // dos
+    drawSpider(w * 0.25, h * 0.52, h * 0.28 * emblemScale, emblem); // devant
+    if (back) drawSpider(w * 0.75, h * 0.5, h * 0.4 * emblemScale, emblem); // dos
   }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
   return t;
 }
-
-export const SUITS = {
-  classique: { main: '#c8161d', second: '#1c3c9c', lines: '#2a0508', emblem: '#0c0c0c', eyes: '#ffffff', limb2: '#1c3c9c' },
-  acrobate: { main: '#141418', second: '#1e1e24', lines: '#3c3c46', emblem: '#f2f2f2', eyes: '#ffffff', limb2: '#141418' },
-  brute: { main: '#b0141b', second: '#d4a22a', lines: '#4a0a0a', emblem: '#e8b83a', eyes: '#ffffff', limb2: '#d4a22a' },
-  tisseur: { main: '#18286e', second: '#0b0b16', lines: '#3551b5', emblem: '#e0222a', eyes: '#ff3030', limb2: '#0b0b16' },
-};
 
 export function makeSuitMaterials(suit) {
   // emissiveMap = map : permet de garder le costume lisible la nuit (intensité réglée en jeu)
@@ -91,18 +84,20 @@ export function makeSuitMaterials(suit) {
       emissiveMap: map || null,
       emissive: map ? 0xffffff : color,
       emissiveIntensity: 0,
-      roughness: 0.55,
-      metalness: 0.05,
+      roughness: suit.metal ? 0.32 : 0.55,
+      metalness: suit.metal ? 0.55 : 0.05,
     });
-  const torso = suitTexture(suit.main, suit.second, suit.lines, suit.emblem);
-  const head = suitTexture(suit.main, null, suit.lines, null, { side: false, spider: false, dense: 18 });
-  const limbMain = suitTexture(suit.main, null, suit.lines, null, { side: false, spider: false, w: 128, h: 128, dense: 8 });
+  const lw = suit.lineWidth || 1.6;
+  const torso = suitTexture(suit.main, suit.second, suit.lines, suit.emblem, { w: 512, h: 512, dense: 20, lw, panel: suit.panel || 0.12, emblemScale: suit.emblemScale || 1 });
+  const head = suitTexture(suit.main, null, suit.lines, null, { side: false, spider: false, w: 512, h: 256, dense: 26, lw });
+  const limbMain = suitTexture(suit.main, null, suit.lines, null, { side: false, spider: false, w: 256, h: 256, dense: 10, lw });
   const limbSecond = suitTexture(suit.limb2, null, suit.limb2 === suit.main ? suit.lines : shade(suit.limb2), null, {
     side: false,
     spider: false,
-    w: 64,
-    h: 64,
-    dense: 4,
+    w: 128,
+    h: 128,
+    dense: suit.limb2 === suit.main ? 6 : 4,
+    lw,
   });
   return {
     head: std(head),
@@ -152,6 +147,12 @@ export class Rig {
       parent.add(mesh);
       return mesh;
     };
+    const ball = (r, mat, parent, y) => {
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 8), mat);
+      mesh.position.y = y;
+      parent.add(mesh);
+      return mesh;
+    };
     const hips = J('hips', this.pivot, 0, 0, 0);
     this.meshes = {};
     this.meshes.pelvis = cap(0.14, 0.08, m.pelvis, hips, 0, 1.25 * bulk, 0.85 * bulk);
@@ -175,8 +176,10 @@ export class Rig {
     for (const side of ['l', 'r']) {
       const sx = side === 'l' ? 1 : -1;
       const sh = J(`${side}Shoulder`, chest, sx * 0.235 * bulk, 0.23, 0);
+      ball(0.07 * bulk, m.upperArm, sh, 0);
       cap(0.056 * bulk, 0.22, m.upperArm, sh, -0.14);
       const el = J(`${side}Elbow`, sh, 0, -0.3, 0);
+      ball(0.05 * bulk, m.foreArm, el, 0);
       cap(0.046 * bulk, 0.21, m.foreArm, el, -0.14);
       const hand = new THREE.Mesh(new THREE.SphereGeometry(0.052 * bulk, 10, 8), m.hand);
       hand.position.y = -0.31;
@@ -185,8 +188,10 @@ export class Rig {
       el.add(hand);
       this.j[`${side}Hand`] = hand;
       const hp = J(`${side}Hip`, hips, sx * 0.1 * bulk, -0.06, 0);
+      ball(0.08 * bulk, m.thigh, hp, -0.02);
       cap(0.078 * bulk, 0.28, m.thigh, hp, -0.21);
       const kn = J(`${side}Knee`, hp, 0, -0.43, 0);
+      ball(0.063 * bulk, m.shin, kn, 0);
       cap(0.06 * bulk, 0.3, m.shin, kn, -0.2);
       const foot = new THREE.Mesh(new THREE.BoxGeometry(0.1 * bulk, 0.07, 0.22), m.foot);
       foot.position.set(0, -0.44, 0.05);

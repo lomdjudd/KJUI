@@ -76,7 +76,24 @@ export class AudioSys {
     this.city.connect(cf).connect(this.cityGain).connect(this.sfx);
     this.city.start();
 
+    // Pluie (bruit filtré, volume réglé par la météo)
+    this.rainSrc = ctx.createBufferSource();
+    this.rainSrc.buffer = this.noise;
+    this.rainSrc.loop = true;
+    const rf = ctx.createBiquadFilter();
+    rf.type = 'highpass';
+    rf.frequency.value = 1200;
+    this.rainGain = ctx.createGain();
+    this.rainGain.gain.value = 0;
+    this.rainSrc.connect(rf).connect(this.rainGain).connect(this.sfx);
+    this.rainSrc.start();
+
     this._startMusic();
+  }
+
+  setRain(r) {
+    if (!this.ctx || !this.rainGain) return;
+    this.rainGain.gain.setTargetAtTime(r * 0.22, this.t, 0.5);
   }
 
   get t() {
@@ -215,6 +232,13 @@ export class AudioSys {
         break;
       case 'car':
         this._tone({ freq: 70, to: 90, dur: 0.6, type: 'sawtooth', gain: 0.06 * v });
+        break;
+      case 'thunder':
+        this._noiseBurst({ dur: 2.8, freq: 260, sweepTo: 40, q: 0.3, type: 'lowpass', gain: 0.9 * v, attack: 0.05 });
+        this._tone({ freq: 55, to: 28, dur: 2.2, type: 'sine', gain: 0.5 * v, delay: 0.05 });
+        break;
+      case 'trophy':
+        [784, 988, 1175, 1568].forEach((f, i) => this._tone({ freq: f, dur: 0.4, type: 'triangle', gain: 0.14 * v, delay: i * 0.08 }));
         break;
       case 'horn':
         this._tone({ freq: 415, dur: 0.35, type: 'square', gain: 0.06 * v });
