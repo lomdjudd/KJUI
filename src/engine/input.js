@@ -320,7 +320,14 @@ export class Input {
   }
 
   _pollGamepad() {
-    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    let pads = [];
+    if (!this._noPad && navigator.getGamepads) {
+      try {
+        pads = navigator.getGamepads() || [];
+      } catch {
+        this._noPad = true; // API manette interdite dans ce contexte
+      }
+    }
     let pad = null;
     for (const p of pads) if (p && p.connected) pad = p;
     this.padMove.x = 0;

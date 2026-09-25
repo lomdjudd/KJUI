@@ -259,7 +259,7 @@ export class City {
     this._buildGrid();
 
     const sp = this.landmarks.bugle;
-    this.spawn = new THREE.Vector3(sp.x, sp.roof, sp.z0 + (sp.z1 - sp.z0) * 0.3);
+    this.spawn = new THREE.Vector3(sp.x, sp.roof, sp.z0 + (sp.z1 - sp.z0) * 0.72);
   }
 
   _splits(a0, a1, n, rng) {
@@ -804,7 +804,8 @@ export class City {
     const bar = new THREE.Mesh(new THREE.BoxGeometry(24, 0.3, 0.3), frameMat);
     bar.position.set(0, 3.6, -0.3);
     sign.add(bar);
-    sign.position.set(bugle.x, bugle.roof, bugle.z1 - 1.5);
+    sign.position.set(bugle.x, bugle.roof, bugle.z0 + 1.5);
+    sign.rotation.y = Math.PI; // face à la rue, côté nord
     this.group.add(sign);
     this.signMats = [signMat];
 

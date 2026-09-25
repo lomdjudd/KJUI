@@ -70,7 +70,13 @@ export class Game {
       await nextFrame();
     };
     await setLoad(5, 'Préparation du rendu…');
+    const probe = document.createElement('canvas').getContext('webgl2');
+    if (!probe) throw new Error('WebGL 2 n’est pas disponible sur cet appareil ou ce navigateur. Essaie avec Chrome, Edge, Firefox ou Safari à jour.');
     const canvas = $('game');
+    canvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      this.showError(new Error('Le téléphone a manqué de mémoire graphique. Recharge la page et choisis « Graphismes : Bas ».'));
+    });
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: this.quality.antialias, powerPreference: 'high-performance' });
     renderer.setPixelRatio(qs.has('pr') ? this.quality.pixelRatio : Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio));
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -131,6 +137,12 @@ export class Game {
     }
     await setLoad(100, 'Prêt !');
 
+    this.fixedPR = qs.has('pr');
+    this.basePR = renderer.getPixelRatio();
+    if (qs.has('fps')) {
+      this.fpsEl = $('fps');
+      this.fpsEl.classList.remove('hidden');
+    }
     window.addEventListener('resize', () => this._resize());
     this._resize();
     this._bindUI();
@@ -147,7 +159,7 @@ export class Game {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     if (this.composer) this.composer.setSize(w, h);
-    if (this.fx) this.fx.setScale(h * Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio));
+    if (this.fx) this.fx.setScale(h * this.renderer.getPixelRatio());
   }
 
   // ---------- Interface ----------
@@ -155,9 +167,13 @@ export class Game {
     const click = (id, fn) =>
       $(id).addEventListener('click', (e) => {
         e.preventDefault();
+        try {
+          fn();
+        } catch (err) {
+          this.showError(err);
+        }
         this.audio.init();
         this.audio.play('ui');
-        fn();
       });
     click('btn-play', () => this.startPlay());
     click('btn-new', () => {
@@ -264,6 +280,9 @@ export class Game {
       if (next && next.id === 'tuto') {
         this.hud.hint('Bienvenue à New York ! Suis le faisceau jaune pour ta première mission. Maintiens MAJ en l’air pour te balancer.', 9);
       } else this.hud.toast('De retour en ville !');
+      if (this.input.isTouch && window.innerHeight > window.innerWidth) {
+        setTimeout(() => this.hud.toast('Astuce : tourne ton téléphone en paysage pour mieux jouer'), 1500);
+      }
     }
   }
 
@@ -459,10 +478,51 @@ export class Game {
   frame() {
     this.frameCount = (this.frameCount || 0) + 1;
     const now = performance.now();
-    const realDt = Math.min((now - this._last) / 1000, 1 / 20);
+    const raw = (now - this._last) / 1000;
+    const realDt = Math.min(raw, 1 / 20);
     this._last = now;
-    this.step(realDt);
-    this.render();
+    try {
+      this.step(realDt);
+      this.render();
+    } catch (err) {
+      // on garde la boucle en vie et on affiche l'erreur
+      this.showError(err);
+    }
+    this._perf(raw);
+  }
+
+  // Résolution dynamique : baisse la définition si l'appareil peine
+  _perf(raw) {
+    if (raw > 0.5) return;
+    this._perfT = (this._perfT || 0) + raw;
+    this._perfN = (this._perfN || 0) + 1;
+    if (this._perfT < 2) return;
+    const avg = this._perfT / this._perfN;
+    this._perfT = 0;
+    this._perfN = 0;
+    if (this.fpsEl) this.fpsEl.textContent = `${Math.round(1 / avg)} i/s · x${this.renderer.getPixelRatio().toFixed(2)}`;
+    if (this.fixedPR || this.mode !== 'play' || this.paused) return;
+    const pr = this.renderer.getPixelRatio();
+    let next = pr;
+    if (avg > 1 / 26 && pr > 0.5) next = Math.max(0.5, pr - 0.15);
+    else if (avg < 1 / 55 && pr < this.basePR) next = Math.min(this.basePR, pr + 0.1);
+    if (next !== pr) {
+      this.renderer.setPixelRatio(next);
+      if (this.composer) this.composer.setPixelRatio(next);
+      this._resize();
+    }
+  }
+
+  showError(err) {
+    const msg = (err && (err.message || String(err))) || 'Erreur inconnue';
+    console.error(err);
+    if (this._lastError === msg) return;
+    this._lastError = msg;
+    const box = $('error-box');
+    if (!box) return;
+    const where = err && err.stack ? String(err.stack).split('\n').slice(1, 2).join('').trim() : '';
+    box.textContent = `Oups, une erreur : ${msg}${where ? `\n(${where.slice(0, 140)})` : ''}`;
+    box.classList.remove('hidden');
   }
 
   // Logique d'une image (sans rendu) : utilisable aussi pour les tests automatisés

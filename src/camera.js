@@ -94,7 +94,9 @@ export class CameraRig {
     if (s > 0) cam.rotation.z += (Math.random() - 0.5) * s * 0.05;
 
     const speed = p.speed;
-    const fovWant = 68 + clamp((speed - 15) / 40, 0, 1) * 20;
+    const aspect = cam.aspect || 1;
+    const portrait = aspect < 1 ? (1 - aspect) * 30 : 0;
+    const fovWant = 68 + portrait + clamp((speed - 15) / 40, 0, 1) * 20;
     this.fov += (fovWant - this.fov) * damp(3, dt);
     if (Math.abs(cam.fov - this.fov) > 0.05) {
       cam.fov = this.fov;

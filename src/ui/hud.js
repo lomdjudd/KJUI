@@ -335,6 +335,8 @@ export class HUD {
         const s = Math.min(sx, sy);
         x = w / 2 + dx * s;
         y = h / 2 + dy * s;
+        // sur tactile, on évite la zone des boutons en bas de l'écran
+        if (this.game.input.isTouch) y = Math.min(y, h * 0.6);
       }
       const m = this._marker(n++);
       if (m.hidden) {

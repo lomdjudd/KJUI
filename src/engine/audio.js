@@ -11,6 +11,17 @@ export class AudioSys {
   }
 
   init() {
+    try {
+      this._init();
+    } catch (e) {
+      console.warn('Audio indisponible', e);
+      this.ctx = null;
+      this.failed = true;
+    }
+  }
+
+  _init() {
+    if (this.failed) return;
     if (this.ctx) {
       if (this.ctx.state === 'suspended') this.ctx.resume();
       return;
@@ -108,6 +119,14 @@ export class AudioSys {
 
   play(name, vol = 1) {
     if (!this.ctx) return;
+    try {
+      this._play(name, vol);
+    } catch {
+      /* son ignoré */
+    }
+  }
+
+  _play(name, vol) {
     const v = vol;
     switch (name) {
       case 'thwip':
@@ -205,7 +224,7 @@ export class AudioSys {
   }
 
   setWind(speed) {
-    if (!this.ctx) return;
+    if (!this.ctx || !this.windGain) return;
     const s = Math.min(1, Math.max(0, (speed - 8) / 45));
     this.windGain.gain.setTargetAtTime(s * 0.35, this.t, 0.1);
     this.windFilter.frequency.setTargetAtTime(300 + s * 1400, this.t, 0.1);
