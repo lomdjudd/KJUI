@@ -1,0 +1,19 @@
+{
+  "name": "spiderman-open-world",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Jeu Spider-Man en monde ouvert (fan game) : balancement en toile, combats, missions.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "vite": "^8.3.1",
+    "vite-plugin-singlefile": "^2.3.3"
+  }
+}
