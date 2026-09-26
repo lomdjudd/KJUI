@@ -7,7 +7,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:solaire": "vite --config systeme-solaire/vite.config.js",
+    "build:solaire": "vite build --config systeme-solaire/vite.config.js",
+    "preview:solaire": "vite preview --config systeme-solaire/vite.config.js"
   },
   "dependencies": {
     "three": "^0.186.1"

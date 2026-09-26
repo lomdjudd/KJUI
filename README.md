@@ -4,6 +4,8 @@ Un jeu Spider-Man en 3D, **en monde ouvert**, jouable directement dans le naviga
 
 > Fan-game non officiel, gratuit et sans but commercial. Spider-Man, le Bouffon Vert, Oscorp et le Daily Bugle sont des marques de Marvel. Tous les graphismes et sons du jeu sont générés par le code (aucun élément extrait des jeux officiels).
 
+> 🪐 **Nouveau : [Mon Système Solaire](systeme-solaire/README.md)**, une animation 3D interactive pour expliquer le système solaire aux enfants (plan 2D qui se transforme en 3D, modèles de la NASA, quiz, fusée…). Lancement : `npm run dev:solaire`.
+
 ## ▶️ Jouer
 
 **Le plus simple :** ouvre le fichier [`dist/index.html`](dist/index.html) dans un navigateur récent (Chrome, Edge, Firefox, Safari). C'est un fichier unique qui contient tout le jeu, il marche même hors ligne (double-clic).
