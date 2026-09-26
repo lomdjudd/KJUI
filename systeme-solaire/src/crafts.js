@@ -65,7 +65,7 @@ export function loadCrafts(world, onProgress) {
 
     const el = document.createElement('div');
     el.className = 'label craft';
-    el.textContent = c.emoji + ' ' + c.name;
+    el.textContent = c.name;
     const label = new CSS2DObject(el);
     label.position.y = c.size * 0.8;
     holder.add(label);

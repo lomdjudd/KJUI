@@ -3,103 +3,108 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#0d1b3d" />
+    <meta name="theme-color" content="#0b0f18" />
     <title>Mon Système Solaire</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪐</text></svg>" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%230b0f18'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23ffb341'/%3E%3Cellipse cx='16' cy='16' rx='13' ry='5' fill='none' stroke='%236fe3ff' stroke-width='1.6' transform='rotate(-20 16 16)'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="./assets/index-rrBdoS2o.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-BBR3A9L5.css">
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Lexend:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script type="module" crossorigin src="./assets/index-B_0AEPGN.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-5xs-BpC5.css">
   </head>
   <body>
-    <div id="stage">
-      <canvas id="scene"></canvas>
-    </div>
+    <div id="stage"><canvas id="scene"></canvas></div>
     <canvas id="confetti"></canvas>
 
-    <!-- Écran de chargement -->
+    <!-- Écran de lancement -->
     <div id="loader">
-      <div class="loader-card">
-        <div class="loader-orbit"><span class="lo-sun"></span><span class="lo-planet"></span><span class="lo-planet p2"></span></div>
-        <h1>Mon Système Solaire</h1>
-        <p class="sub">Un voyage interactif autour du Soleil</p>
-        <div class="progress"><div id="load-fill"></div></div>
-        <p id="load-text" class="load-text">Chargement des planètes…</p>
-        <button id="start-btn" class="big-btn hidden">🚀 C'est parti !</button>
-        <p class="credits">Images et modèles 3D : NASA (domaine public)</p>
+      <div class="loader-inner">
+        <div class="eyebrow">Mission d'exploration · Système solaire</div>
+        <h1>Mon Système<br />Solaire</h1>
+        <p class="sub">Pilote ton vaisseau autour du Soleil, visite les huit planètes et les engins de la NASA.</p>
+        <div class="telemetry">
+          <div class="tm-row"><span>Chargement des planètes</span><b id="load-pct">0 %</b></div>
+          <div class="progress"><div id="load-fill"></div></div>
+          <p id="load-text" class="tm-status">Préparation du lancement…</p>
+        </div>
+        <button id="start-btn" class="launch-btn hidden"><span class="launch-light"></span>Lancer la mission</button>
       </div>
+      <p class="photo-credit">Photo : empreinte de Buzz Aldrin sur la Lune, Apollo 11, 1969 · NASA</p>
     </div>
 
     <!-- Barre du haut -->
     <header id="topbar" class="hidden">
-      <div class="brand"><span class="brand-ico">🪐</span><span class="brand-txt">Mon Système Solaire</span></div>
+      <div class="brand">
+        <span class="patch" aria-hidden="true"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="18.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="20" cy="20" r="5.5" fill="#ffb341"/><ellipse cx="20" cy="20" rx="15" ry="6" fill="none" stroke="#6fe3ff" stroke-width="1.4" transform="rotate(-22 20 20)"/><circle cx="33" cy="15" r="2" fill="#6fe3ff"/></svg></span>
+        <span class="brand-txt"><b>Mon Système Solaire</b><small>Console de mission</small></span>
+      </div>
       <div class="top-actions">
-        <button id="time-chip" class="chip" title="Vitesse du temps"><span id="time-ico">▶️</span> <span id="time-txt">x1</span></button>
-        <button id="dim-btn" class="dim-btn"><span class="dim-ico">✨</span><span class="dim-txt">Passer en 3D</span></button>
-        <button id="settings-btn" class="round-btn" title="Réglages">⚙️</button>
+        <div class="seg" id="dim-seg" role="group" aria-label="Mode de vue">
+          <button data-dim="0" class="on" id="seg-2d"><span class="ico" data-icon="map"></span><span class="seg-txt">Plan 2D</span></button>
+          <button data-dim="1" id="seg-3d"><span class="ico" data-icon="orbit"></span><span class="seg-txt">Espace 3D</span></button>
+        </div>
+        <button id="time-chip" class="ctl" title="Vitesse du temps"><span class="ico" id="time-ico"></span><span id="time-txt">x1</span></button>
+        <button id="settings-btn" class="ctl square" title="Réglages" aria-label="Réglages"><span class="ico" data-icon="gear"></span></button>
       </div>
     </header>
 
     <!-- Réglages -->
-    <div id="settings" class="popover hidden">
-      <h3>Réglages</h3>
+    <div id="settings" class="popover module hidden">
+      <div class="mod-head"><span class="eyebrow">Réglages</span></div>
       <label class="switch"><input type="checkbox" id="opt-labels" checked /><span>Noms des astres</span></label>
       <label class="switch"><input type="checkbox" id="opt-orbits" checked /><span>Orbites</span></label>
       <label class="switch"><input type="checkbox" id="opt-voice" /><span>Narrateur (lecture à voix haute)</span></label>
       <label class="switch"><input type="checkbox" id="opt-sound" checked /><span>Bruitages</span></label>
       <label class="switch"><input type="checkbox" id="opt-music" /><span>Musique de l'espace</span></label>
-      <p class="note">⚠️ Pour que tout tienne à l'écran, les distances et les tailles ne sont pas à l'échelle (sauf dans l'activité « Tailles »).</p>
+      <p class="note">Pour que tout tienne à l'écran, les distances et les tailles ne sont pas à l'échelle, sauf dans l'activité « Tailles ».</p>
     </div>
 
-    <!-- Panneau de vitesse du temps -->
-    <div id="time-panel" class="popover hidden">
-      <h3>⏱️ La machine à remonter… le temps</h3>
+    <!-- Vitesse du temps -->
+    <div id="time-panel" class="popover module hidden">
+      <div class="mod-head"><span class="eyebrow">Vitesse du temps</span></div>
       <div class="speed-row" id="speed-row"></div>
       <p id="time-explain" class="note"></p>
-      <div class="years"><span>Années terrestres écoulées :</span> <b id="years-count">0</b></div>
+      <div class="readout"><span>Années terrestres écoulées</span><b id="years-count">0</b></div>
     </div>
 
-    <!-- Panneau d'activité -->
-    <section id="panel" class="panel hidden"></section>
+    <!-- Module d'activité -->
+    <section id="panel" class="panel module sheet hidden"></section>
 
     <!-- Fiche d'un astre -->
-    <aside id="info" class="info hidden">
-      <button class="close" id="info-close" aria-label="Fermer">✕</button>
-      <div class="info-head">
-        <div id="info-emoji" class="info-emoji"></div>
-        <div>
-          <div id="info-kind" class="info-kind"></div>
+    <aside id="info" class="info module sheet hidden">
+      <div class="grab" aria-hidden="true"></div>
+      <button class="close" id="info-close" aria-label="Fermer"><span class="ico" data-icon="close"></span></button>
+      <div class="info-hero">
+        <div class="info-img" id="info-img"></div>
+        <div class="info-title">
+          <div id="info-kind" class="eyebrow"></div>
           <h2 id="info-name"></h2>
         </div>
       </div>
       <div class="info-body">
         <p id="info-story" class="story"></p>
         <div id="info-compare" class="compare"></div>
-        <div id="info-facts" class="facts"></div>
-        <div class="wow"><span class="wow-t">💡 Le sais-tu ?</span><p id="info-wow"></p></div>
+        <dl id="info-facts" class="facts"></dl>
+        <div class="wow"><span class="wow-t">Le sais-tu ?</span><p id="info-wow"></p></div>
       </div>
       <div class="info-actions" id="info-actions"></div>
     </aside>
 
-    <!-- Mascotte -->
+    <!-- Cosmo, l'astronaute guide -->
     <div id="mascot" class="hidden">
-      <div class="bot" id="bot">
-        <div class="bot-head"><div class="bot-eye"></div><div class="bot-eye"></div></div>
-        <div class="bot-antenna"></div>
-      </div>
-      <div class="bubble" id="bubble"><span id="bubble-text"></span><button id="bubble-voice" class="mini" title="Écouter">🔊</button></div>
+      <button class="porthole" id="bot" aria-label="Cosmo, ton guide"><span id="bot-img"></span></button>
+      <div class="bubble" id="bubble"><span class="bubble-name">Cosmo</span><span id="bubble-text"></span><button id="bubble-voice" class="mini" title="Écouter" aria-label="Écouter"><span class="ico" data-icon="speaker"></span></button></div>
     </div>
 
-    <!-- Barre d'outils -->
-    <nav id="toolbar" class="hidden">
-      <button data-tool="explore" class="tool active"><span>🔍</span><b>Explorer</b></button>
-      <button data-tool="weight" class="tool"><span>⚖️</span><b>Mon poids</b></button>
-      <button data-tool="sizes" class="tool"><span>📏</span><b>Tailles</b></button>
-      <button data-tool="rocket" class="tool"><span>🚀</span><b>Fusée</b></button>
-      <button data-tool="daynight" class="tool"><span>🌗</span><b>Jour & nuit</b></button>
-      <button data-tool="crafts" class="tool"><span>🛰️</span><b>Vaisseaux</b></button>
-      <button data-tool="quiz" class="tool"><span>❓</span><b>Quiz</b></button>
+    <!-- Dock des outils -->
+    <nav id="toolbar" class="dock hidden" aria-label="Activités">
+      <button data-tool="explore" class="tool active"><span class="ico" data-icon="explore"></span><b>Explorer</b></button>
+      <button data-tool="weight" class="tool"><span class="ico" data-icon="weight"></span><b data-short="Poids">Mon poids</b></button>
+      <button data-tool="sizes" class="tool"><span class="ico" data-icon="sizes"></span><b>Tailles</b></button>
+      <button data-tool="rocket" class="tool"><span class="ico" data-icon="rocket"></span><b>Fusée</b></button>
+      <button data-tool="daynight" class="tool"><span class="ico" data-icon="daynight"></span><b data-short="Jour/nuit">Jour & nuit</b></button>
+      <button data-tool="crafts" class="tool"><span class="ico" data-icon="crafts"></span><b data-short="Engins">Vaisseaux</b></button>
+      <button data-tool="quiz" class="tool"><span class="ico" data-icon="quiz"></span><b>Quiz</b></button>
     </nav>
 
     <div id="toasts"></div>

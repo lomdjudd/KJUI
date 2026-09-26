@@ -15,6 +15,14 @@ npm run preview:solaire  # sert le build
 
 Le dossier `systeme-solaire/dist/` peut être mis en ligne tel quel sur n'importe quel hébergement statique (GitHub Pages, Netlify…). Il faut passer par un serveur web : ouvrir `index.html` en double-clic ne permet pas au navigateur de charger les textures et modèles 3D.
 
+## 🖥️ Interface
+
+L'interface imite une console de vaisseau : modules en métal sombre posés sur la texture réelle des panneaux de la navette Discovery, voyants ambre, télémétrie cyan. Elle s'adapte à chaque écran :
+
+- **Téléphone** : dock en bas, fiches en tiroir qui montent depuis le bas ; à l'horizontale, rail d'icônes à gauche et modules sur les côtés.
+- **Tablette** : dock flottant en bas, module d'activité à gauche, fiche à droite.
+- **PC et tablette à l'horizontale** : rail vertical à gauche, module d'activité à côté, fiche à droite ; la vue 3D se recentre dans l'espace resté libre.
+
 ## 🎮 Ce qu'on peut faire
 
 | Outil | Ce qu'on apprend |
@@ -29,7 +37,7 @@ Le dossier `systeme-solaire/dist/` peut être mis en ligne tel quel sur n'import
 | 🛰️ **Vaisseaux** | Hubble, un astronaute, le module lunaire Apollo posé sur la Lune, Perseverance posé sur Mars, les sondes Parker, Cassini et Voyager. |
 | ❓ **Quiz** | Les noms disparaissent, on répond en touchant le bon astre. Indices, étoiles, confettis. |
 
-Plus : **Cosmo**, le petit robot guide qui explique chaque étape, narrateur vocal (synthèse vocale du navigateur), bruitages et musique d'ambiance synthétisés, noms et orbites activables, commandes tactiles sur téléphone et tablette.
+Plus : **Cosmo**, l'astronaute guide (le modèle 3D de la NASA dans un hublot) qui explique chaque étape, narrateur vocal (synthèse vocale du navigateur), bruitages et musique d'ambiance synthétisés, noms et orbites activables, commandes tactiles sur téléphone et tablette.
 
 Raccourcis clavier : `2` / `3` pour passer du plan à la 3D, `Espace` pour mettre en pause, `Échap` pour revenir à l'exploration.
 
@@ -57,6 +65,8 @@ systeme-solaire/
 - Cartes de Vénus, Mars, Jupiter, Saturne, Neptune, Pluton, des lunes et du ciel (Hipparcos) : [NASA 3D Resources](https://github.com/nasa/NASA-3D-Resources), domaine public.
 - Modèles 3D Hubble, astronaute, module lunaire Apollo, Perseverance, Parker, Cassini, Voyager, Saturn V : [NASA 3D Resources](https://github.com/nasa/NASA-3D-Resources), domaine public. Ils ont été convertis (décompression Draco, quantification, textures WebP) pour se charger vite.
 - Textures de la Terre (jour, nuit, nuages, reflets) et de la Lune : exemples de [three.js](https://github.com/mrdoob/three.js) (licence MIT), d'après des images de la NASA.
+- Interface : photos NASA des panneaux du cockpit de la navette Discovery (STS-103) et de la Station spatiale, et de l'empreinte de Buzz Aldrin (Apollo 11), domaine public.
+- Icônes des planètes et des engins : rendues en 3D au démarrage à partir de ces mêmes textures et modèles.
 - Soleil, Uranus, anneaux, dessins du plan 2D : générés par le code.
 
 ⚠️ Pour que tout tienne à l'écran, les distances et les tailles ne sont pas à l'échelle, sauf dans l'activité « Tailles ».

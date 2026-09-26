@@ -9,6 +9,12 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { buildWorld, YEAR } from './world.js';
 import { loadCrafts } from './crafts.js';
 import { createActivities } from './activities.js';
+import { ICONS, icon } from './icons.js';
+import { THUMBS, renderBodyThumbs, renderCraftThumbs } from './thumbs.js';
+
+// Icônes de la console
+document.querySelectorAll('[data-icon]').forEach((el) => { el.innerHTML = ICONS[el.dataset.icon] || ''; });
+document.getElementById('bot-img').innerHTML = `<span class="ico">${ICONS.helmet}</span>`;
 import { $, settings, unlockAudio, sfx, say, initMascot, toast, hideInfo, setMusic, stopSpeaking, collapseBubble } from './ui.js';
 
 const params = new URLSearchParams(location.search);
@@ -199,17 +205,17 @@ function updateCamera(dt) {
 
 // ---------- Temps ----------
 const SPEEDS = [
-  { v: 0, ico: '⏸️', txt: 'Pause' },
-  { v: 0.25, ico: '🐢', txt: 'x¼' },
-  { v: 1, ico: '▶️', txt: 'x1' },
-  { v: 5, ico: '🐇', txt: 'x5' },
-  { v: 25, ico: '🚀', txt: 'x25' },
-  { v: 100, ico: '⚡', txt: 'x100' },
+  { v: 0, ico: 'pause', txt: 'Pause' },
+  { v: 0.25, ico: 'slow', txt: 'x¼' },
+  { v: 1, ico: 'play', txt: 'x1' },
+  { v: 5, ico: 'fast', txt: 'x5' },
+  { v: 25, ico: 'faster', txt: 'x25' },
+  { v: 100, ico: 'bolt', txt: 'x100' },
 ];
 function setTimeIndex(i) {
   app.timeIndex = i;
   app.timeScale = SPEEDS[i].v;
-  $('time-ico').textContent = SPEEDS[i].ico;
+  $('time-ico').innerHTML = ICONS[SPEEDS[i].ico];
   $('time-txt').textContent = SPEEDS[i].txt;
   document.querySelectorAll('#speed-row button').forEach((b, j) => b.classList.toggle('on', j === i));
   const daysPerSec = (365.25 / YEAR) * app.timeScale;
@@ -220,7 +226,7 @@ function setTimeIndex(i) {
 app.setTimeIndex = setTimeIndex;
 SPEEDS.forEach((s, i) => {
   const b = document.createElement('button');
-  b.innerHTML = `${s.ico}<small>${s.txt}</small>`;
+  b.innerHTML = `${icon(s.ico)}<small>${s.txt}</small>`;
   b.addEventListener('click', () => { sfx.click(); setTimeIndex(i); });
   $('speed-row').appendChild(b);
 });
@@ -265,14 +271,14 @@ canvas.addEventListener('pointermove', (e) => {
 
 // ---------- Boutons ----------
 function updateDimButton() {
-  const to3D = app.dimTo === 0;
-  $('dim-btn').querySelector('.dim-ico').textContent = to3D ? '✨' : '🗺️';
-  $('dim-btn').querySelector('.dim-txt').textContent = to3D ? 'Passer en 3D' : 'Plan 2D';
+  $('seg-2d').classList.toggle('on', app.dimTo === 0);
+  $('seg-3d').classList.toggle('on', app.dimTo === 1);
 }
-$('dim-btn').addEventListener('click', () => {
-  $('dim-btn').classList.remove('glow');
-  app.activities.switchDim(app.dimTo === 0 ? 1 : 0);
-});
+document.querySelectorAll('#dim-seg button').forEach((b) => b.addEventListener('click', () => {
+  $('dim-seg').classList.remove('glow');
+  const k = +b.dataset.dim;
+  if (k !== app.dimTo) app.activities.switchDim(k);
+}));
 function togglePop(id) {
   ['settings', 'time-panel'].forEach((p) => { if (p !== id) $(p).classList.add('hidden'); });
   $(id).classList.toggle('hidden');
@@ -311,7 +317,9 @@ addEventListener('resize', resize);
 // ---------- Chargement ----------
 const manager = new THREE.LoadingManager();
 manager.onProgress = (_url, loaded, total) => {
-  $('load-fill').style.width = `${Math.round((loaded / total) * 100)}%`;
+  const pct = Math.round((loaded / total) * 100);
+  $('load-fill').style.width = `${pct}%`;
+  $('load-pct').textContent = `${pct} %`;
 };
 const tl = new THREE.TextureLoader(manager);
 const T = {};
@@ -337,7 +345,8 @@ manager.onLoad = () => {
   app.dimTo = 0;
   finishDim();
   renderer.compile(scene, camera);
-  $('load-text').textContent = 'Tout est prêt !';
+  renderBodyThumbs(T);
+  $('load-text').textContent = 'Systèmes prêts. Lancement autorisé.';
   $('start-btn').classList.remove('hidden');
   if (params.has('auto')) start();
 };
@@ -348,12 +357,12 @@ function start() {
   sfx.pop();
   $('loader').classList.add('hidden');
   ['topbar', 'toolbar'].forEach((id) => $(id).classList.remove('hidden'));
-  $('dim-btn').classList.add('glow');
+  $('dim-seg').classList.add('glow');
   initMascot();
   setTimeIndex(2);
   app.activities.start('explore', { silent: true });
-  say('Salut, je suis Cosmo ! 👋 Voici le plan du système solaire, vu d\'en haut comme une carte. Au centre : le Soleil. Autour, 8 planètes tournent sur leur chemin, qu\'on appelle une orbite. Touche une planète pour la découvrir, ou appuie sur « Passer en 3D » !', { stay: 30000 });
-  $('hint').textContent = 'Clique sur un astre • Glisse pour te déplacer • Molette / pincer pour zoomer';
+  say('Salut, je suis Cosmo, ton astronaute guide ! Voici le plan du système solaire, vu d\'en haut comme une carte. Au centre : le Soleil. Autour, 8 planètes tournent sur leur chemin, qu\'on appelle une orbite. Touche une planète pour la découvrir, ou choisis « Espace 3D » en haut de l\'écran !', { stay: 30000 });
+  $('hint').textContent = 'Clique sur un astre · Glisse pour te déplacer · Molette ou pincement pour zoomer';
   $('hint').classList.remove('hidden');
   setTimeout(() => $('hint').classList.add('hidden'), 9000);
 
@@ -363,8 +372,10 @@ function start() {
   app.crafts = cs.crafts;
   cs.ready.then(({ rocketScene }) => {
     app.rocketScene = rocketScene;
+    renderCraftThumbs(app.crafts);
+    if (THUMBS.astronaut) $('bot-img').innerHTML = `<img src="${THUMBS.astronaut}" alt="">`;
     app.modelsReady = true;
-    if (app.dim > 0.5) toast('🛰️ Les vaisseaux de la NASA sont arrivés !');
+    if (app.dim > 0.5) toast('Les vaisseaux de la NASA sont arrivés');
   });
   if (params.has('d3')) setTimeout(() => app.activities.switchDim(1), 300);
 }
@@ -376,6 +387,26 @@ const FIXED_DT = params.has('simdt') ? +params.get('simdt') : 0; // pour les tes
 let elapsed = 0;
 const hoverPos = new THREE.Vector3();
 const viewOff = { x: 0, y: 0 };
+
+// Centre de la zone d'écran laissée libre par les modules ouverts (fiche, activité)
+function freeCenter() {
+  const b = document.body.classList;
+  if (!b.contains('info-open') && !b.contains('panel-open')) return null;
+  const W = innerWidth, H = innerHeight;
+  let l = 0, r = W, t = 0, bot = H;
+  ['panel', 'info'].forEach((id) => {
+    const el = $(id);
+    if (el.classList.contains('hidden') || getComputedStyle(el).display === 'none') return;
+    const R = el.getBoundingClientRect();
+    if (R.width < 1 || R.height < 1) return;
+    if (R.width > W * 0.7) { if (R.top > H * 0.25) bot = Math.min(bot, R.top); }
+    else if (R.left + R.width / 2 < W / 2) l = Math.max(l, R.right);
+    else r = Math.min(r, R.left);
+  });
+  if (r - l < 160) { l = 0; r = W; }
+  if (bot - t < 140) { t = 0; bot = H; }
+  return { fx: (l + r) / 2 / W, fy: (t + bot) / 2 / H };
+}
 
 function loop() {
   requestAnimationFrame(loop);
@@ -395,15 +426,15 @@ function loop() {
   controls.update();
 
   // Décale le centre de l'image quand la fiche d'un astre cache une partie de l'écran
-  const infoOpen = document.body.classList.contains('info-open');
-  const panelOpen = document.body.classList.contains('panel-open');
-  const narrow = innerWidth <= 760;
-  const wantX = infoOpen && !narrow && !panelOpen ? 0.36 : 0, wantY = infoOpen && narrow ? 0.62 : 0;
+  const fc = freeCenter();
+  const wantX = fc ? THREE.MathUtils.clamp(1 - 2 * fc.fx, -0.8, 0.8) : 0;
+  const wantY = fc ? THREE.MathUtils.clamp(1 - 2 * fc.fy, -0.8, 0.8) : 0;
   const ka = 1 - Math.exp(-dt * 4);
   viewOff.x += (wantX - viewOff.x) * ka;
   viewOff.y += (wantY - viewOff.y) * ka;
-  if (viewOff.x > 0.002 || viewOff.y > 0.002) {
-    camera.setViewOffset(innerWidth * (1 + viewOff.x), innerHeight * (1 + viewOff.y), innerWidth * viewOff.x, innerHeight * viewOff.y, innerWidth, innerHeight);
+  if (Math.abs(viewOff.x) > 0.002 || Math.abs(viewOff.y) > 0.002) {
+    const ax = Math.abs(viewOff.x), ay = Math.abs(viewOff.y);
+    camera.setViewOffset(innerWidth * (1 + ax), innerHeight * (1 + ay), viewOff.x > 0 ? innerWidth * ax : 0, viewOff.y > 0 ? innerHeight * ay : 0, innerWidth, innerHeight);
   } else if (camera.view && camera.view.enabled) {
     camera.clearViewOffset();
     camera.aspect = innerWidth / innerHeight;

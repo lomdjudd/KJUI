@@ -1,5 +1,7 @@
 // Interface : bruitages, voix, mascotte, notifications, confettis, fiche d'un astre.
 import { PLANETS } from './data.js';
+import { thumb } from './thumbs.js';
+import { icon } from './icons.js';
 
 export const $ = (id) => document.getElementById(id);
 
@@ -142,7 +144,9 @@ let sayAt = 0;
 export function collapseBubble() {
   if (performance.now() - sayAt > 2500) $('bubble').classList.add('gone');
 }
+const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\uFE0F\u200D]/gu;
 export function say(text, { speakIt = true, stay = 12000 } = {}) {
+  text = text.replace(EMOJI, '').replace(/\s{2,}/g, ' ').trim();
   lastSay = text;
   sayAt = performance.now();
   $('mascot').classList.remove('hidden');
@@ -180,7 +184,7 @@ export function confetti(n = 140) {
   const g = c.getContext('2d');
   const dpr = Math.min(devicePixelRatio, 2);
   c.width = innerWidth * dpr; c.height = innerHeight * dpr;
-  const colors = ['#ffc93c', '#ff6bb5', '#5ad1ff', '#4fe39a', '#b28dff', '#ff8a5c'];
+  const colors = ['#ffb341', '#6fe3ff', '#5fe39a', '#f3f0e6', '#ff6257', '#ffd98a'];
   for (let i = 0; i < n; i++) {
     conf.parts.push({
       x: innerWidth / 2 + (Math.random() - 0.5) * 200, y: innerHeight * 0.45,
@@ -196,7 +200,7 @@ export function confetti(n = 140) {
     conf.parts.forEach((p) => {
       p.vy += 0.45; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.life -= 0.006;
       g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.globalAlpha = Math.min(1, p.life * 2); g.fillStyle = p.c;
-      if (p.star) { g.font = `${p.r * 3}px serif`; g.fillText('⭐', -p.r, p.r); } else g.fillRect(-p.r, -p.r / 2, p.r * 2, p.r);
+      if (p.star) { const r = p.r * 1.4; g.beginPath(); for (let k = 0; k < 8; k++) { const a = (k * Math.PI) / 4, rr = k % 2 ? r * 0.35 : r; g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } g.closePath(); g.fill(); } else g.fillRect(-p.r, -p.r / 2, p.r * 2, p.r);
       g.restore();
     });
     if (conf.parts.length) conf.raf = requestAnimationFrame(step);
@@ -207,9 +211,10 @@ export function confetti(n = 140) {
 
 // ---------- Fiche d'un astre ----------
 const EARTH_D = 12742;
+const fmtRatio = (r) => (r >= 10 ? Math.round(r) : r.toFixed(1).replace('.', ','));
 export function showInfo(body, actions = []) {
   const d = body.data;
-  $('info-emoji').textContent = d.emoji;
+  $('info-img').innerHTML = thumb(d.id, d.color);
   $('info-kind').textContent = d.kind || 'Engin spatial';
   $('info-name').textContent = d.name;
   $('info-story').textContent = d.story;
@@ -217,47 +222,47 @@ export function showInfo(body, actions = []) {
 
   const facts = $('info-facts');
   facts.innerHTML = '';
-  Object.entries(d.facts || {}).forEach(([k, v]) => {
+  const rows = Object.entries(d.facts || {});
+  if (d.travel && d.id !== 'earth') rows.push(['Voyage depuis la Terre', d.travel]);
+  rows.forEach(([k, v]) => {
     const el = document.createElement('div');
     el.className = 'fact';
-    el.innerHTML = `<small></small><b></b>`;
-    el.querySelector('small').textContent = k;
-    el.querySelector('b').textContent = v;
+    el.innerHTML = '<dt></dt><dd></dd>';
+    el.querySelector('dt').textContent = k;
+    el.querySelector('dd').textContent = v;
     facts.appendChild(el);
   });
-  if (d.travel && d.id !== 'earth') {
-    const el = document.createElement('div');
-    el.className = 'fact';
-    el.innerHTML = '<small>🚀 Voyage depuis la Terre</small><b></b>';
-    el.querySelector('b').textContent = d.travel;
-    facts.appendChild(el);
-  }
+  facts.classList.toggle('hidden', rows.length === 0);
 
-  // Comparaison de taille avec la Terre
+  // Comparaison de taille avec la Terre, avec les vraies vignettes
   const cmp = $('info-compare');
   cmp.innerHTML = '';
   if (d.realDiameter && d.id !== 'earth') {
     const ratio = d.realDiameter / EARTH_D;
-    const maxPx = 110;
-    let e = 40, p = 40 * ratio;
-    if (p > maxPx) { e = Math.max(4, (maxPx / p) * 40); p = maxPx; }
-    const planetCol = d.color;
-    const txt = ratio >= 1 ? `${ratio >= 10 ? Math.round(ratio) : ratio.toFixed(1).replace('.', ',')} fois plus grand${d.id === 'sun' ? '' : 'e'} que la Terre` : `${Math.round(ratio * 100)} % de la taille de la Terre`;
+    const maxPx = 96;
+    let e = 34, p = 34 * ratio;
+    if (p > maxPx) { e = Math.max(5, (maxPx / p) * 34); p = maxPx; }
+    if (p < 6) { e *= 6 / p; p = 6; }
+    const txt = ratio >= 1
+      ? `${fmtRatio(ratio)} fois plus ${d.id === 'sun' ? 'large' : 'large'} que la Terre`
+      : `${Math.round(ratio * 100)} % de la taille de la Terre`;
     cmp.innerHTML = `
-      <div><i style="width:${e}px;height:${e}px;background:radial-gradient(circle at 35% 35%,#9fe0ff,#2f7bff)"></i>Terre</div>
-      <div><i style="width:${p}px;height:${p}px;background:radial-gradient(circle at 35% 35%,#fff8,${planetCol})"></i>${d.short || d.name}</div>`;
-    const cap = document.createElement('div');
-    cap.style.cssText = 'align-self:center;max-width:120px;color:#fff;font-size:13px';
-    cap.textContent = txt;
-    cmp.appendChild(cap);
+      <figure>${thumb('earth', '#4aa3ff', 'thumb')}Terre</figure>
+      <figure>${thumb(d.id, d.color, 'thumb')}${d.short || d.name}</figure>
+      <span class="cap"></span>`;
+    const [fe, fp] = cmp.querySelectorAll('.thumb');
+    fe.style.width = fe.style.height = `${e}px`;
+    fp.style.width = fp.style.height = `${p * (d.id === 'saturn' ? 2 : 1)}px`;
+    cmp.querySelector('.cap').textContent = txt;
   }
 
   const act = $('info-actions');
   act.innerHTML = '';
-  actions.forEach(({ label, onClick, primary }) => {
+  actions.forEach(({ label, onClick, primary, icon: ic }) => {
     const b = document.createElement('button');
     b.className = 'btn' + (primary ? ' primary' : '');
-    b.textContent = label;
+    b.innerHTML = (ic ? icon(ic) : '') + '<span></span>';
+    b.querySelector('span:last-child').textContent = label;
     b.addEventListener('click', onClick);
     act.appendChild(b);
   });

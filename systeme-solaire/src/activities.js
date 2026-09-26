@@ -7,6 +7,10 @@ import { $, sfx, say, speak, toast, confetti, showInfo, hideInfo, showPanel, hid
 import { normalizeModel } from './crafts.js';
 import { latLonToVec3 } from './world.js';
 import { pinTexture, glowTexture } from './textures.js';
+import { thumb } from './thumbs.js';
+import { icon } from './icons.js';
+
+const head = (eyebrow, title) => `<div class="mod-head"><div><div class="eyebrow">${eyebrow}</div><h3>${title}</h3></div></div>`;
 
 const fmt = (n, d = 0) => n.toLocaleString('fr-FR', { maximumFractionDigits: d, minimumFractionDigits: d });
 const nameOf = (b) => b.data.name;
@@ -27,15 +31,15 @@ export function createActivities(app) {
   }
 
   function infoActions(b) {
-    const acts = [{ label: '🔊 Écouter', onClick: () => speak(`${nameOf(b)}. ${b.data.story} Le sais-tu ? ${b.data.wow}`, true) }];
-    if (!b.isCraft && b.id !== 'earth' && b.id !== 'sun') acts.push({ label: '🚀 Y aller en fusée', primary: true, onClick: () => start('rocket', { dest: b.id }) });
+    const acts = [{ label: 'Écouter', icon: 'speaker', onClick: () => speak(`${nameOf(b)}. ${b.data.story} Le sais-tu ? ${b.data.wow}`, true) }];
+    if (!b.isCraft && b.id !== 'earth' && b.id !== 'sun') acts.push({ label: 'Y aller en fusée', icon: 'rocket', primary: true, onClick: () => start('rocket', { dest: b.id }) });
     if (!b.isCraft) {
       const c = CRAFTS.find((c) => c.host === b.id && app.crafts.get(c.id));
-      if (c) acts.push({ label: `${c.emoji} Voir : ${c.name}`, onClick: () => { start('crafts', { craft: c.id }); } });
-      acts.push({ label: '⚖️ Mon poids ici', onClick: () => start('weight', { focus: b.id }) });
+      if (c) acts.push({ label: `Voir : ${c.name}`, icon: 'crafts', onClick: () => { start('crafts', { craft: c.id }); } });
+      acts.push({ label: 'Mon poids ici', icon: 'weight', onClick: () => start('weight', { focus: b.id }) });
     } else {
       const host = B(b.data.host);
-      if (host) acts.push({ label: `🪐 Voir ${shortOf(host)}`, onClick: () => select(host) });
+      if (host) acts.push({ label: `Voir ${shortOf(host)}`, icon: 'target', onClick: () => select(host) });
     }
     return acts;
   }
@@ -53,7 +57,7 @@ export function createActivities(app) {
     }
     app.focusOn(b, dist, { dir });
     showInfo(b, infoActions(b));
-    if (speakIt) say(`${b.data.emoji} ${b.data.wow}`, { stay: 9000 });
+    if (speakIt) say(b.data.wow, { stay: 9000 });
   }
   api.selectBody = select;
 
@@ -63,7 +67,7 @@ export function createActivities(app) {
     api.selected = null;
     app.setDim(k);
     if (k === 1) {
-      say('Attache ta ceinture… On décolle vers l\'espace ! 🚀', { stay: 3000 });
+      say('Attache ta ceinture… On décolle vers l\'espace !', { stay: 3000 });
     } else {
       say('Retour au plan vu d\'en haut. C\'est comme une carte : on voit bien le chemin (l\'orbite) de chaque planète.', { stay: 7000 });
     }
@@ -71,8 +75,8 @@ export function createActivities(app) {
   app.onDimChanged = (d) => {
     if (d === 1 && !welcomed3D) {
       welcomed3D = true;
-      setTimeout(() => say('Waouh, nous voilà dans l\'espace ! 🌌 Les planètes sont maintenant de vraies boules, éclairées par le Soleil. Fais glisser pour tourner autour, zoome pour t\'approcher, et essaie les activités en bas de l\'écran !', { stay: 14000 }), 200);
-      if (app.modelsReady) setTimeout(() => toast('🛰️ Les vaisseaux de la NASA sont là : cherche-les !'), 2500);
+      setTimeout(() => say('Waouh, nous voilà dans l\'espace ! Les planètes sont maintenant de vraies boules, éclairées par le Soleil. Fais glisser pour tourner autour, zoome pour t\'approcher, et essaie les activités en bas de l\'écran !', { stay: 14000 }), 200);
+      if (app.modelsReady) setTimeout(() => toast('Les vaisseaux de la NASA sont là : cherche-les !'), 2500);
     }
   };
 
@@ -88,7 +92,7 @@ export function createActivities(app) {
     setTool(name);
     if (!opts.silent) sfx.click();
     if (next.needs3D && (app.dimTo !== 1 || app.dimT < 1)) {
-      say('Pour cette activité, on passe en 3D ! ✨', { stay: 3500 });
+      say('Pour cette activité, on passe en 3D !', { stay: 3500 });
       const token = (start.token = (start.token || 0) + 1);
       await app.whenDim(1);
       if (token !== start.token || current !== next) return;
@@ -126,7 +130,7 @@ export function createActivities(app) {
     enter(opts) {
       const list = [SUN, ...PLANETS.slice(0, 3), MOON, ...PLANETS.slice(3)];
       const p = showPanel(`
-        <h3>⚖️ Combien je pèse ailleurs ?</h3>
+        ${head('Module gravité', 'Combien je pèse ailleurs ?')}
         <p>Ton poids sur Terre :</p>
         <div class="row"><input type="range" id="w-kg" min="10" max="100" value="${this.kg}"><div class="kg" id="w-val">${this.kg} kg</div></div>
         <div class="wlist" id="w-list"></div>
@@ -135,7 +139,7 @@ export function createActivities(app) {
       this.rows = list.map((d) => {
         const r = document.createElement('div');
         r.className = 'wrow';
-        r.innerHTML = `<span>${d.emoji}</span><span>${d.short || d.name}</span><div class="wbar"><i style="background:${d.color}"></i></div><span class="wv"></span>`;
+        r.innerHTML = `${thumb(d.id, d.color)}<span>${d.short || d.name}</span><div class="wbar"><i style="background:${d.color}"></i></div><span class="wv"></span>`;
         r.addEventListener('click', () => this.onPick(B(d.id)));
         wl.appendChild(r);
         return { d, r };
@@ -187,9 +191,9 @@ export function createActivities(app) {
       else if (d.gravity > 1.5) msg += 'Tu te sentirais super lourd, comme si tu portais un copain sur ton dos !';
       else if (d.gravity > 1.02) msg += 'Un peu plus lourd que sur Terre : monter les escaliers serait fatigant !';
       else if (d.gravity >= 0.85) msg += 'Presque comme sur Terre !';
-      else msg += `Tu pourrais sauter ${fmt(1 / d.gravity, 0)} fois plus haut qu'à la maison ! 🦘`;
+      else msg += `Tu pourrais sauter ${fmt(1 / d.gravity, 0)} fois plus haut qu'à la maison !`;
       say(msg, { stay: 9000 });
-      this.rows.forEach(({ d: dd, r }) => r.style.background = dd.id === d.id ? 'rgba(255,201,60,0.18)' : '');
+      this.rows.forEach(({ d: dd, r }) => r.classList.toggle('on', dd.id === d.id));
     },
     exit() { this.tags.forEach(({ o }) => { o.removeFromParent(); o.element.remove(); }); this.tags = []; app.clearFocus(); },
   };
@@ -227,10 +231,10 @@ export function createActivities(app) {
       app.fly = { pos: new THREE.Vector3(cx, dist * 0.18, dist), target: new THREE.Vector3(cx, 0, 0) };
       sfx.whoosh();
       showPanel(`
-        <h3>📏 Les vraies tailles</h3>
+        ${head('Module échelle', 'Les vraies tailles')}
         <p>Voici les planètes rangées côte à côte, <b>à la bonne échelle</b>. Le bord géant à gauche, c'est le Soleil !</p>
         <p>Si la Terre était une <b>bille</b> de 1 cm, Jupiter serait un <b>pamplemousse</b>, et le Soleil un <b>ballon de plus d'1 mètre</b> !</p>
-        <div class="btn-row"><button class="btn" id="sz-dist">📐 Et les distances ?</button><button class="btn" id="sz-zoom">🔎 Zoomer sur la Terre</button></div>
+        <div class="btn-row"><button class="btn" id="sz-dist">${icon('ruler')}Et les distances ?</button><button class="btn" id="sz-zoom">${icon('zoom')}Zoomer sur la Terre</button></div>
         <p id="sz-extra" class="note"></p>`);
       $('sz-dist').addEventListener('click', () => {
         sfx.click();
@@ -325,26 +329,27 @@ export function createActivities(app) {
       this.state = 'menu';
       const dests = [MOON, ...PLANETS.filter((p) => p.id !== 'earth')];
       const p = showPanel(`
-        <h3>🚀 Voyage en fusée</h3>
+        ${head('Module propulsion', 'Voyage en fusée')}
         <p>Choisis ta destination, et décolle depuis la Terre à bord d'une fusée <b>Saturn V</b>, celle qui a emmené les astronautes sur la Lune !</p>
         <div class="dest-grid" id="dest-grid"></div>
         <div class="trip hidden" id="trip">
           <div class="row" style="justify-content:space-between"><b id="trip-to"></b><span class="trip-count" id="trip-count"></span></div>
           <div class="bar"><i id="trip-bar"></i></div>
-          <div class="btn-row"><button class="btn" id="trip-fast">⏩ Plus vite</button><button class="btn" id="trip-stop">✋ Annuler</button></div>
+          <div class="btn-row"><button class="btn" id="trip-fast">${icon('fast')}<span>Plus vite</span></button><button class="btn" id="trip-stop">${icon('stop')}Annuler</button></div>
         </div>`);
       const grid = p.querySelector('#dest-grid');
       dests.forEach((d) => {
         const b = document.createElement('button');
-        b.innerHTML = `<span>${d.emoji}</span>${d.short || d.name}`;
+        b.className = 'tile';
+        b.innerHTML = `${thumb(d.id, d.color)}<span>${d.short || d.name}</span>`;
         b.addEventListener('click', () => this.launch(d.id));
         grid.appendChild(b);
       });
-      p.querySelector('#trip-fast').addEventListener('click', () => { this.speed = this.speed === 1 ? 3 : 1; $('trip-fast').textContent = this.speed === 1 ? '⏩ Plus vite' : '▶️ Normal'; });
+      p.querySelector('#trip-fast').addEventListener('click', () => { this.speed = this.speed === 1 ? 3 : 1; $('trip-fast').querySelector('span:last-child').textContent = this.speed === 1 ? 'Plus vite' : 'Normal'; });
       p.querySelector('#trip-stop').addEventListener('click', () => this.abort());
       if (opts.dest) setTimeout(() => this.launch(opts.dest), 250);
       else {
-        say('Où veux-tu aller ? Choisis une destination ! 🚀', { stay: 6000 });
+        say('Où veux-tu aller ? Choisis une destination !', { stay: 6000 });
         app.focusOn(B('earth'), 7);
       }
     },
@@ -390,7 +395,7 @@ export function createActivities(app) {
       $('trip').classList.remove('hidden');
       $('trip-to').textContent = `Direction : ${nameOf(this.dest)}`;
       sfx.launch();
-      say('3… 2… 1… Décollage ! 🔥', { stay: 3000 });
+      say('3… 2… 1… Décollage !', { stay: 3000 });
       this.p0 = new THREE.Vector3();
     },
     abort() {
@@ -487,11 +492,11 @@ export function createActivities(app) {
       const dest = this.dest;
       const d = dest.data;
       this.cleanup();
-      $('trip-count').textContent = 'Arrivé ! 🎉';
+      $('trip-count').textContent = 'Arrivé !';
       $('trip-bar').style.width = '100%';
       const real = TRIP_DAYS[this.destId];
       const human = real > 700 ? `${fmt(real / 365, real % 365 ? 1 : 0)} ans` : real > 60 ? `${Math.round(real / 30)} mois` : `${real} jours`;
-      say(`Bravo, tu es arrivé ${this.destId === 'moon' ? 'sur la Lune' : `près de ${shortOf(dest)}`} ! 🎉 En vrai, ce voyage dure environ ${human}. ${d.wow}`, { stay: 12000 });
+      say(`Bravo, tu es arrivé ${this.destId === 'moon' ? 'sur la Lune' : `près de ${shortOf(dest)}`} ! En vrai, ce voyage dure environ ${human}. ${d.wow}`, { stay: 12000 });
       select(dest, { speakIt: false });
       setTimeout(() => {
         if (current !== rocket) return;
@@ -525,7 +530,7 @@ export function createActivities(app) {
       earth.mesh.add(this.pin);
       const el = document.createElement('div');
       el.className = 'label small';
-      el.textContent = '📍 France';
+      el.textContent = 'France';
       this.pinLabel = new CSS2DObject(el);
       this.pinLabel.position.copy(latLonToVec3(46.6, 2.4, 1.25));
       earth.mesh.add(this.pinLabel);
@@ -540,17 +545,17 @@ export function createActivities(app) {
       const side = new THREE.Vector3().crossVectors(toSun, up).normalize();
       app.focusOn(earth, 6.5, { dir: side.multiplyScalar(0.9).addScaledVector(toSun, 0.35).add(new THREE.Vector3(0, 0.35, 0)) });
       showPanel(`
-        <h3>🌗 Le jour et la nuit</h3>
-        <p>La Terre tourne sur elle-même comme une toupie, en <b>24 heures</b>. Le côté tourné vers le Soleil a le <b>jour</b> ☀️, l'autre côté a la <b>nuit</b> 🌙.</p>
-        <div class="here"><span class="big" id="dn-ico">☀️</span><span id="dn-txt"></span></div>
+        ${head('Module Terre', 'Le jour et la nuit')}
+        <p>La Terre tourne sur elle-même comme une toupie, en <b>24 heures</b>. Le côté tourné vers le Soleil a le <b>jour</b>, l'autre côté a la <b>nuit</b>.</p>
+        <div class="here" id="dn-here"><span class="ico" id="dn-ico"></span><span id="dn-txt"></span></div>
         <div class="phase"><canvas id="dn-moon" width="144" height="144"></canvas><div><small class="note">La Lune vue depuis la Terre :</small><br><b id="dn-phase"></b></div></div>
         <div class="btn-row">
-          <button class="btn primary" id="dn-spin">🔄 Faire tourner la Terre</button>
-          <button class="btn" id="dn-season">🍂 Et les saisons ?</button>
-          <button class="btn" id="dn-moonbtn">🌙 Suivre la Lune</button>
+          <button class="btn primary" id="dn-spin">${icon('spin')}<span>Faire tourner la Terre</span></button>
+          <button class="btn" id="dn-season">${icon('season')}Et les saisons ?</button>
+          <button class="btn" id="dn-moonbtn">${icon('moon')}Suivre la Lune</button>
         </div>
         <p class="note" id="dn-extra"></p>`);
-      $('dn-spin').addEventListener('click', () => { sfx.click(); this.spinBoost = this.spinBoost ? 0 : 2.4; $('dn-spin').textContent = this.spinBoost ? '⏸️ Arrêter' : '🔄 Faire tourner la Terre'; });
+      $('dn-spin').addEventListener('click', () => { sfx.click(); this.spinBoost = this.spinBoost ? 0 : 2.4; $('dn-spin').querySelector('span:last-child').textContent = this.spinBoost ? 'Arrêter' : 'Faire tourner la Terre'; });
       $('dn-season').addEventListener('click', () => {
         sfx.click();
         const t = 'La Terre est penchée (regarde son axe bleu). Pendant l\'année, c\'est parfois notre moitié qui penche vers le Soleil : il fait chaud, c\'est l\'été ! Six mois plus tard, elle penche de l\'autre côté : c\'est l\'hiver.';
@@ -581,8 +586,9 @@ export function createActivities(app) {
       const state = dot > 0.1 ? 'day' : dot > -0.1 ? 'dusk' : 'night';
       if (state !== this.lastState) {
         this.lastState = state;
-        $('dn-ico').textContent = state === 'day' ? '☀️' : state === 'dusk' ? '🌅' : '🌙';
-        $('dn-txt').textContent = state === 'day' ? 'En France, c\'est le jour !' : state === 'dusk' ? 'En France, le Soleil se lève ou se couche…' : 'En France, c\'est la nuit : dodo ! 😴';
+        $('dn-ico').innerHTML = icon(state === 'night' ? 'moon' : 'sun');
+        $('dn-here').classList.toggle('night', state === 'night');
+        $('dn-txt').textContent = state === 'day' ? 'En France, c\'est le jour !' : state === 'dusk' ? 'En France, le Soleil se lève ou se couche…' : 'En France, c\'est la nuit : dodo !';
       }
       // Phase de la Lune
       const moon = B('moon');
@@ -641,7 +647,7 @@ export function createActivities(app) {
     needs3D: true,
     enter(opts) {
       const p = showPanel(`
-        <h3>🛰️ Les vaisseaux de la NASA</h3>
+        ${head('Module engins', 'Les vaisseaux de la NASA')}
         <p>Ces modèles 3D sont les vrais plans des engins envoyés dans l'espace. Choisis-en un pour aller le voir de près !</p>
         <div class="craft-grid" id="craft-grid"></div>`);
       const grid = p.querySelector('#craft-grid');
@@ -650,7 +656,8 @@ export function createActivities(app) {
         CRAFTS.forEach((c) => {
           const b = document.createElement('button');
           const ok = app.crafts.get(c.id);
-          b.innerHTML = `<span>${c.emoji}</span>${c.name}${ok ? '' : '<small class="note">chargement…</small>'}`;
+          b.className = 'tile';
+          b.innerHTML = `${thumb(c.id, '#b7a3ff')}<span>${c.name}</span>${ok ? '' : '<small>chargement…</small>'}`;
           b.disabled = !ok;
           b.addEventListener('click', () => this.show(c.id));
           grid.appendChild(b);
@@ -681,24 +688,25 @@ export function createActivities(app) {
       this.qs = pool.sort(() => Math.random() - 0.5).slice(0, 8);
       this.i = 0;
       this.score = 0;
+      this.results = [];
       this.tries = 0;
       this.render();
-      say('C\'est l\'heure du quiz ! Les noms sont cachés… Réponds en touchant le bon astre. À toi de jouer ! 🧠', { stay: 7000 });
+      say('C\'est l\'heure du quiz ! Les noms sont cachés… Réponds en touchant le bon astre. À toi de jouer !', { stay: 7000 });
     },
     render() {
       const q = this.qs[this.i];
-      const stars = '⭐'.repeat(this.score) + '☆'.repeat(Math.max(0, this.i - this.score));
+      const pips = this.qs.map((_, j) => `<i class="${j < this.i ? (this.results[j] ? 'ok' : 'ko') : j === this.i ? 'now' : ''}"></i>`).join('');
       showPanel(`
-        <div class="quiz-top"><span>Question ${this.i + 1} / ${this.qs.length}</span><span class="stars">${stars}</span></div>
+        <div class="quiz-top"><span class="eyebrow">Quiz · question ${this.i + 1} sur ${this.qs.length}</span><span class="pips">${pips}</span></div>
         <div class="quiz-q">${q.q}</div>
-        <div class="quiz-fb" id="qz-fb">👆 Touche l'astre dans l'espace</div>
-        <div class="btn-row"><button class="btn" id="qz-skip">⏭️ Passer</button><button class="btn" id="qz-hint">💡 Indice</button></div>`);
+        <div class="quiz-fb" id="qz-fb">Touche l'astre dans l'espace.</div>
+        <div class="btn-row"><button class="btn" id="qz-skip">${icon('skip')}Passer</button><button class="btn" id="qz-hint">${icon('hint')}Indice</button></div>`);
       $('qz-skip').addEventListener('click', () => this.reveal(false));
       $('qz-hint').addEventListener('click', () => {
         const b = B(q.a);
         sfx.click();
         $('qz-fb').className = 'quiz-fb';
-        $('qz-fb').textContent = `💡 Son symbole : ${b.data.emoji}  —  ${b.data.kind}`;
+        $('qz-fb').innerHTML = `${thumb(b.id, b.data.color)}Indice : c'est une ${b.data.kind.toLowerCase()}, elle ressemble à ça.`;
         api.selected = null;
       });
       speak(q.q);
@@ -710,10 +718,11 @@ export function createActivities(app) {
       const fb = $('qz-fb');
       if (b.id === q.a) {
         this.score += this.tries === 0 ? 1 : 0;
+        this.results[this.i] = this.tries === 0;
         sfx.good();
         confetti(60);
         fb.className = 'quiz-fb good';
-        fb.textContent = `🎉 Bravo ! C'est bien ${nameOf(b)} !`;
+        fb.textContent = `Bravo ! C'est bien ${nameOf(b)} !`;
         say(`Bravo ! C'est bien ${nameOf(b)} ! ${b.data.wow}`, { stay: 5000 });
         api.selected = b;
         b.label.element.style.opacity = 1;
@@ -733,10 +742,11 @@ export function createActivities(app) {
     reveal() {
       const q = this.qs[this.i];
       const b = B(q.a);
+      this.results[this.i] = false;
       api.selected = b;
       b.label.element.style.opacity = 1;
       $('qz-fb').className = 'quiz-fb';
-      $('qz-fb').textContent = `👉 La réponse était : ${nameOf(b)}`;
+      $('qz-fb').textContent = `La réponse était : ${nameOf(b)}.`;
       say(`La réponse était ${nameOf(b)}. Regarde, elle est entourée !`, { stay: 4000 });
       this.next(b);
     },
@@ -757,15 +767,16 @@ export function createActivities(app) {
       const n = this.qs.length;
       const s = this.score;
       const stars = s >= n - 1 ? 3 : s >= n / 2 ? 2 : s > 0 ? 1 : 0;
-      const msg = stars === 3 ? 'Incroyable, tu es un vrai astronaute ! 🧑‍🚀' : stars === 2 ? 'Super ! Tu connais bien le système solaire !' : 'Pas mal ! Explore encore un peu et réessaie !';
+      const msg = stars === 3 ? 'Incroyable, tu es un vrai astronaute !' : stars === 2 ? 'Super ! Tu connais bien le système solaire !' : 'Pas mal ! Explore encore un peu et réessaie !';
       sfx.win();
       confetti(220);
       showPanel(`
-        <h3>🏆 Résultat</h3>
-        <div class="final-stars">${'⭐'.repeat(stars)}${'☆'.repeat(3 - stars)}</div>
-        <p style="text-align:center;font-size:20px"><b>${s} / ${n}</b> bonnes réponses du premier coup</p>
+        ${head('Fin de mission', 'Résultat du quiz')}
+        <div class="score">${s} / ${n}</div>
+        <p style="text-align:center;margin-top:0">bonnes réponses du premier coup</p>
+        <div class="medal">${[0, 1, 2].map((k) => `<i class="${k < stars ? 'on' : ''}"></i>`).join('')}</div>
         <p style="text-align:center">${msg}</p>
-        <div class="btn-row" style="justify-content:center"><button class="btn primary" id="qz-again">🔁 Rejouer</button><button class="btn" id="qz-out">🔍 Explorer</button></div>`);
+        <div class="btn-row" style="justify-content:center"><button class="btn primary" id="qz-again">${icon('replay')}Rejouer</button><button class="btn" id="qz-out">${icon('explore')}Explorer</button></div>`);
       say(msg, { stay: 8000 });
       $('qz-again').addEventListener('click', () => start('quiz'));
       $('qz-out').addEventListener('click', () => start('explore'));
