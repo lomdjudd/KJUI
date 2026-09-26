@@ -47,6 +47,8 @@ export function loadCrafts(world, onProgress) {
   const tick = () => { done++; onProgress && onProgress(done / total); };
 
   const load = (file) => new Promise((resolve) => {
+    // Certains hébergeurs ne servent pas les .glb : ils peuvent fournir une version glTF embarquée (.json)
+    if (window.__MODEL_EXT) file = file.replace(/\.glb$/, window.__MODEL_EXT);
     loader.load(BASE + file, (g) => resolve(g.scene), undefined, (err) => { console.warn('Modèle introuvable', file, err); resolve(null); });
   });
 
