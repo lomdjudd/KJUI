@@ -157,6 +157,13 @@ export class PhotoMode {
     };
     try {
       const url = c.toDataURL('image/png');
+      // Application Android : la WebView ne gère pas les téléchargements, on passe par la passerelle native
+      if (window.Android && window.Android.savePhoto) {
+        window.Android.savePhoto(url);
+        msg('📸 Photo enregistrée !');
+        g.stat('photos');
+        return;
+      }
       const a = document.createElement('a');
       a.href = url;
       a.download = `spiderman-photo-${Date.now()}.png`;

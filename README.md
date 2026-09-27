@@ -16,6 +16,8 @@ npm run dev      # serveur de dev avec rechargement à chaud
 npm run build    # régénère dist/index.html (fichier unique)
 ```
 
+**Sur Android :** télécharge [`dist/spiderman-monde-ouvert.apk`](dist/spiderman-monde-ouvert.apk) sur ton téléphone, ouvre-le et autorise l'installation depuis cette source quand Android le demande. Le jeu se lance en plein écran, en paysage, et fonctionne hors ligne (Android 7 ou plus récent). Le bouton Retour met le jeu en pause, et le mode photo enregistre les images dans *Images/Spider-Man*.
+
 Options d'URL utiles : `?q=low|medium|high` force la qualité graphique, `?god` rend Spider-Man invincible.
 
 ## 🎮 Contenu
@@ -79,6 +81,17 @@ Ennemis : voyous, tireurs (à esquiver ou désarmer à distance), costauds qui b
 
 Sur téléphone et tablette, des commandes tactiles apparaissent automatiquement : joystick à gauche, glisser à droite pour la caméra, boutons d'action à droite.
 
+## 📱 Reconstruire l'APK Android
+
+L'application est une simple WebView qui affiche `dist/index.html` (polices embarquées, aucun accès réseau). Sur Ubuntu/Debian :
+
+```bash
+sudo apt install aapt apksigner zipalign dalvik-exchange android-sdk-platform-23 default-jdk
+npm run apk      # régénère dist/index.html puis dist/spiderman-monde-ouvert.apk
+```
+
+Pour une nouvelle version installable par-dessus l'ancienne (sans perdre la sauvegarde), augmente le numéro : `VERSION_CODE=2 VERSION_NAME=1.1 npm run apk`. L'APK est signé avec `android/debug.keystore`, une clé de débogage volontairement publique (mot de passe `android`) : elle sert uniquement à pouvoir mettre à jour l'appli installée, pas à publier sur le Play Store. Les polices Bangers et Barlow Condensed sont sous licence SIL OFL (`android/fonts/`).
+
 ## 🧱 Organisation du code
 
 ```
@@ -93,4 +106,5 @@ src/
   missions/            missions d'histoire et activités secondaires
   fx/                  particules, fils de toile, projectiles, marqueurs
   ui/                  interface (barres, mini-carte, marqueurs), menus (costumes, compétences, trophées, options), mode photo
+android/               application Android (WebView plein écran), icônes, polices, script de construction de l'APK
 ```
