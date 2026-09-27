@@ -68,9 +68,9 @@ void main() {
 
 // Palettes selon l'élévation du soleil
 const PALETTES = [
-  { e: -0.35, zenith: '#050a1c', horizon: '#18264a', sun: '#000000', light: '#8fa6e8', li: 1.0, hemi: 0.75, fog: '#141e38', stars: 1, cloud: 0.1 },
-  { e: -0.05, zenith: '#1b2a55', horizon: '#c0563a', sun: '#ff6a2a', light: '#ff9a66', li: 1.0, hemi: 0.6, fog: '#6a4a52', stars: 0.25, cloud: 0.35 },
-  { e: 0.12, zenith: '#3a5d99', horizon: '#ffae6b', sun: '#ffb070', light: '#ffc28a', li: 2.2, hemi: 0.55, fog: '#d9a27f', stars: 0, cloud: 0.75 },
+  { e: -0.35, zenith: '#050a1c', horizon: '#1a2a52', sun: '#000000', light: '#9ab0f0', li: 1.1, hemi: 0.95, fog: '#16213d', stars: 1, cloud: 0.1 },
+  { e: -0.05, zenith: '#22325f', horizon: '#d0673f', sun: '#ff7a36', light: '#ffa36e', li: 1.2, hemi: 0.8, fog: '#7a5560', stars: 0.25, cloud: 0.4 },
+  { e: 0.12, zenith: '#3f64a0', horizon: '#ffb676', sun: '#ffb878', light: '#ffc996', li: 2.3, hemi: 0.7, fog: '#dcaa88', stars: 0, cloud: 0.8 },
   { e: 0.35, zenith: '#3b76c8', horizon: '#cfe0ee', sun: '#fff0d8', light: '#fff1dc', li: 2.5, hemi: 0.7, fog: '#b9cde0', stars: 0, cloud: 1 },
   { e: 1.0, zenith: '#2f6ccc', horizon: '#c4dcf2', sun: '#ffffff', light: '#fffaf0', li: 2.7, hemi: 0.75, fog: '#b3cbe3', stars: 0, cloud: 1 },
 ];
@@ -168,6 +168,7 @@ export class Environment {
     sc.far = 700;
     this.sun.shadow.bias = -0.0006;
     this.sun.shadow.normalBias = 0.6;
+    this.sun.shadow.radius = quality.shadowSize >= 2048 ? 3 : 2;
     scene.add(this.sun);
     scene.add(this.sun.target);
 
@@ -217,7 +218,7 @@ export class Environment {
       const old = this.envRT;
       this.envRT = this.pmrem.fromScene(this.envScene, 0, 0.1, 1000);
       this.scene.environment = this.envRT.texture;
-      this.scene.environmentIntensity = lerp(0.5, 0.9, 1 - this.night);
+      this.scene.environmentIntensity = lerp(0.6, 0.9, 1 - this.night);
       if (old) old.dispose();
     }
   }

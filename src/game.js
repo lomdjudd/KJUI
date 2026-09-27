@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { Input } from './engine/input.js';
 import { AudioSys } from './engine/audio.js';
 import { storage } from './engine/utils.js';
@@ -31,10 +32,32 @@ const SAVE_KEY = 'spiderman-monde-ouvert-v1';
 const $ = (id) => document.getElementById(id);
 const nextFrame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
 
+// Étalonnage final (espace sRGB) : contraste, saturation, tons chauds/froids, vignettage
+const GradeShader = {
+  uniforms: { tDiffuse: { value: null }, vignette: { value: 0.32 } },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    uniform float vignette;
+    varying vec2 vUv;
+    void main() {
+      vec3 c = texture2D(tDiffuse, vUv).rgb;
+      float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      c = mix(vec3(l), c, 1.1);
+      c = (c - 0.5) * 1.06 + 0.5;
+      c += mix(vec3(-0.012, -0.004, 0.018), vec3(0.018, 0.008, -0.014), smoothstep(0.15, 0.85, l));
+      vec2 d = vUv - 0.5;
+      c *= 1.0 - vignette * smoothstep(0.25, 0.85, dot(d, d) * 2.2);
+      gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+    }`,
+};
+
 const QUALITY = {
-  high: { pixelRatio: 2, shadows: true, shadowSize: 2048, bloom: true, fogFar: 1500, cars: 3, peds: 260, antialias: true },
-  medium: { pixelRatio: 1.5, shadows: true, shadowSize: 1024, bloom: false, fogFar: 1200, cars: 2, peds: 160, antialias: true },
-  low: { pixelRatio: 1, shadows: false, shadowSize: 512, bloom: false, fogFar: 850, cars: 1, peds: 70, antialias: false },
+  high: { pixelRatio: 2, shadows: true, shadowSize: 2048, bloom: true, fogFar: 1500, cars: 3, peds: 260, antialias: true, detail: true },
+  medium: { pixelRatio: 1.5, shadows: true, shadowSize: 1024, bloom: false, fogFar: 1200, cars: 2, peds: 160, antialias: true, detail: true },
+  low: { pixelRatio: 1, shadows: false, shadowSize: 512, bloom: false, fogFar: 850, cars: 1, peds: 70, antialias: false, detail: false },
 };
 
 function defaultSave() {
@@ -154,11 +177,15 @@ export class Game {
     await setLoad(80, 'Compilation des shaders…');
 
     if (this.quality.bloom) {
-      const composer = new EffectComposer(renderer);
+      // Cible multi-échantillonnée : l'anticrénelage du canvas ne s'applique pas au composer
+      const pr = renderer.getPixelRatio();
+      const rt = new THREE.WebGLRenderTarget(window.innerWidth * pr, window.innerHeight * pr, { type: THREE.HalfFloatType, samples: 4 });
+      const composer = new EffectComposer(renderer, rt);
       composer.addPass(new RenderPass(this.scene, this.camera));
-      this.bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.5, 0.45, 0.88);
+      this.bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.45, 0.5, 0.9);
       composer.addPass(this.bloom);
       composer.addPass(new OutputPass());
+      composer.addPass(new ShaderPass(GradeShader));
       this.composer = composer;
     }
     this.fx.setScale(window.innerHeight);
