@@ -258,6 +258,16 @@ export class AudioSys {
     this.intensity = x;
   }
 
+  setMusicVolume(v) {
+    this.musicVolume = v;
+    if (this.musicGain && this.musicOn) this.musicGain.gain.setTargetAtTime(v, this.t, 0.1);
+  }
+
+  setSfxVolume(v) {
+    this.sfxVolume = v;
+    if (this.sfx) this.sfx.gain.setTargetAtTime(v, this.t, 0.05);
+  }
+
   toggleMusic() {
     this.musicOn = !this.musicOn;
     if (this.musicGain) this.musicGain.gain.setTargetAtTime(this.musicOn ? this.musicVolume : 0, this.t, 0.3);

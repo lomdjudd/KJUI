@@ -3,11 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#0b1026" />
+    <meta name="theme-color" content="#07090f" />
     <title>Spider-Man : Monde Ouvert</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Barlow+Condensed:wght@500;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>
@@ -16,45 +13,41 @@
 
     <!-- ===== HUD ===== -->
     <div id="hud" class="hidden">
-      <div class="hud-tl">
-        <div class="lvl-row">
-          <div id="lvl" class="lvl">1</div>
-          <div id="sp-badge" class="sp-badge hidden"></div>
-          <div class="bars">
-            <div class="bar hp"><div id="hp-fill" class="fill"></div><div id="hp-lag" class="lag"></div></div>
-            <div class="bar focus">
-              <div id="focus-fill" class="fill"></div>
-              <div class="seg"></div>
-            </div>
-            <div class="bar xp"><div id="xp-fill" class="fill"></div></div>
-          </div>
+      <div class="hud-status">
+        <div class="lvl-badge">
+          <svg class="lvl-ring" viewBox="0 0 60 60"><circle class="lr-bg" cx="30" cy="30" r="26" /><circle id="xp-ring" class="lr-fg" cx="30" cy="30" r="26" /></svg>
+          <div class="lvl-in"><small>NIV</small><span id="lvl">1</span></div>
         </div>
+        <div class="status-bars">
+          <div class="hp-bar"><div id="hp-lag" class="lag"></div><div id="hp-fill" class="fill"></div><div class="ticks"></div></div>
+          <div class="focus-bar"><div id="focus-fill" class="fill"></div><div class="seg"></div></div>
+          <div class="xp-bar"><div id="xp-fill" class="fill"></div></div>
+        </div>
+        <div id="sp-badge" class="sp-badge hidden"></div>
       </div>
 
-      <div class="hud-tc">
+      <div class="hud-objective">
         <div id="mission-panel" class="mission-panel hidden">
-          <div id="mission-title" class="m-title"></div>
+          <div class="m-head"><i class="m-dot"></i><span id="mission-title" class="m-title"></span><span id="mission-timer" class="m-timer"></span></div>
           <div id="mission-obj" class="m-obj"></div>
-          <div id="mission-timer" class="m-timer"></div>
         </div>
-        <div id="toasts"></div>
       </div>
 
-      <div class="hud-tr">
-        <div class="minimap-wrap">
-          <canvas id="minimap" width="220" height="220"></canvas>
-        </div>
+      <div class="hud-map">
+        <div class="minimap-wrap"><canvas id="minimap" width="256" height="256"></canvas></div>
         <div id="clock" class="clock"></div>
       </div>
 
+      <div id="toasts" class="toasts"></div>
+
       <div class="hud-bl">
         <div class="style-box">
-          <div class="label">STYLE <span class="keys">[1-4]</span></div>
+          <div class="label">STYLE <span class="keys">1-4</span></div>
           <div id="style-name" class="style-name">Classique</div>
           <div id="style-dots" class="style-dots"></div>
         </div>
         <div class="gadget-box">
-          <div class="label">GADGET <span class="keys">[G] / [T]</span></div>
+          <div class="label">GADGET <span class="keys">G · T</span></div>
           <div class="gadget-row">
             <div id="gadget-icon" class="gadget-icon"><svg viewBox="0 0 36 36"><circle class="cd-bg" cx="18" cy="18" r="15" /><circle id="gadget-cd" class="cd" cx="18" cy="18" r="15" /></svg><span id="gadget-glyph">✺</span></div>
             <div id="gadget-name" class="gadget-name">Bombe de toile</div>
@@ -62,10 +55,10 @@
         </div>
       </div>
 
-      <div id="combo" class="combo hidden"><span id="combo-n">0</span><small>COMBO</small></div>
+      <div id="combo" class="combo hidden"><span id="combo-n">0</span><small>COMBO</small><i class="combo-bar"><b id="combo-t"></b></i></div>
       <div id="boss-bar" class="boss-bar hidden">
         <div id="boss-name" class="boss-name">LE BOUFFON VERT</div>
-        <div class="bar"><div id="boss-fill" class="fill"></div></div>
+        <div class="bar"><div id="boss-lag" class="lag"></div><div id="boss-fill" class="fill"></div></div>
       </div>
 
       <div id="prompt" class="prompt hidden"></div>
@@ -73,7 +66,7 @@
       <div id="markers-layer"></div>
       <div id="float-layer"></div>
       <div id="zip-reticle" class="zip-reticle hidden"></div>
-      <div id="target-reticle" class="target-reticle hidden"></div>
+      <div id="target-reticle" class="target-reticle hidden"><i></i><i></i><i></i><i></i></div>
       <div id="sense" class="sense"></div>
       <div id="hurt" class="hurt"></div>
       <div id="flash" class="flash"></div>
@@ -81,156 +74,109 @@
 
     <!-- ===== Écrans ===== -->
     <div id="loading" class="screen">
+      <div class="load-bg"></div>
       <div class="load-box">
-        <div class="load-logo">SPIDER-MAN</div>
-        <div id="load-text" class="load-text">Tissage de la ville…</div>
+        <div class="logo"><span class="logo-a">SPIDER</span><span class="logo-dash">-</span><span class="logo-b">MAN</span></div>
+        <div class="logo-sub">MONDE OUVERT</div>
         <div class="load-bar"><div id="load-fill"></div></div>
+        <div class="load-row"><span id="load-text" class="load-text">Tissage de la ville…</span><span id="load-pct" class="load-pct">0 %</span></div>
       </div>
+      <div id="load-tip" class="load-tip"></div>
     </div>
 
     <div id="title-screen" class="screen hidden">
-      <div class="title-web"></div>
-      <div class="title-box">
-        <div class="title-sub">MONDE OUVERT</div>
-        <h1 class="title-logo">SPIDER-MAN</h1>
-        <div class="title-tag">La ville ne dort jamais. Toi non plus.</div>
-        <div class="menu">
-          <button id="btn-play" class="btn primary">JOUER</button>
-          <button id="btn-new" class="btn">NOUVELLE PARTIE</button>
-          <button id="btn-controls" class="btn">COMMANDES</button>
-          <div class="opt-row">
-            <label>Graphismes</label>
-            <select id="opt-quality">
-              <option value="auto">Auto</option>
-              <option value="high">Élevés</option>
-              <option value="medium">Moyens</option>
-              <option value="low">Bas</option>
-            </select>
-          </div>
-        </div>
-        <div class="disclaimer">Fan-game non officiel, gratuit et sans but commercial. Spider-Man est une marque de Marvel.</div>
+      <div class="title-shade"></div>
+      <div class="title-left">
+        <div class="logo big"><span class="logo-a">SPIDER</span><span class="logo-dash">-</span><span class="logo-b">MAN</span></div>
+        <div class="logo-sub">MONDE OUVERT</div>
+        <nav class="main-nav">
+          <button id="btn-play" class="nav-btn primary"><span>JOUER</span><small id="play-sub">Commencer l’aventure</small></button>
+          <button id="btn-new" class="nav-btn"><span>NOUVELLE PARTIE</span><small>Effacer la progression</small></button>
+          <button id="btn-options-title" class="nav-btn"><span>OPTIONS</span><small>Graphismes, son, commandes</small></button>
+          <button id="btn-controls" class="nav-btn"><span>COMMANDES</span><small>Clavier, manette, tactile</small></button>
+        </nav>
+      </div>
+      <div class="title-foot">
+        <span class="disclaimer">Fan-game non officiel, gratuit et sans but commercial. Spider-Man est une marque de Marvel.</span>
+        <span class="version">v2.0</span>
       </div>
     </div>
 
-    <div id="pause-screen" class="screen hidden">
-      <div class="panel">
-        <h2>PAUSE</h2>
-        <div id="pause-stats" class="stats"></div>
-        <div class="menu">
-          <button id="btn-resume" class="btn primary">REPRENDRE</button>
-          <div class="menu-grid">
-            <button id="btn-suits" class="btn">COSTUMES</button>
-            <button id="btn-skills" class="btn">COMPÉTENCES</button>
-            <button id="btn-trophies" class="btn">TROPHÉES</button>
-            <button id="btn-options" class="btn">OPTIONS</button>
-          </div>
-          <button id="btn-photo" class="btn">📸 MODE PHOTO</button>
-          <button id="btn-abandon" class="btn hidden">ABANDONNER LA MISSION</button>
-          <button id="btn-controls2" class="btn">COMMANDES</button>
-          <div class="opt-row">
-            <label>Sensibilité</label>
-            <input id="opt-sens" type="range" min="0.3" max="2.5" step="0.1" value="1" />
-          </div>
-          <div class="opt-row">
-            <label>Musique</label>
-            <button id="btn-music" class="btn small">OUI</button>
-          </div>
-          <button id="btn-quit" class="btn">MENU PRINCIPAL</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="controls-screen" class="screen hidden">
-      <div class="panel wide">
-        <h2>COMMANDES</h2>
-        <div class="controls-grid">
-          <div>
-            <h3>Déplacements</h3>
-            <p><b>ZQSD / WASD</b> se déplacer</p>
-            <p><b>Souris / flèches</b> caméra</p>
-            <p><b>Espace</b> sauter · en l'air : propulsion-toile</p>
-            <p><b>Maj (maintenir)</b> sprint · <b>balancement</b> en l'air · course sur les murs</p>
-            <p><b>E</b> point de lancement (vers le cercle blanc)</p>
-            <p><b>Maintenir Espace à l'arrêt</b> super-saut chargé</p>
-            <p><b>Clic droit / C en l'air</b> (hors combat) plongeon</p>
-            <p>Fonce contre un mur pour <b>grimper</b>, Espace pour s'en éjecter</p>
-          </div>
-          <div>
-            <h3>Combat</h3>
-            <p><b>Clic gauche / J</b> attaquer · <b>maintenir</b> : projection en l'air</p>
-            <p><b>Clic droit / C</b> esquive (parfaite quand le sens d'araignée s'allume)</p>
-            <p><b>R</b> tir de toile · <b>maintenir R</b> : lancer un ennemi sur un autre</p>
-            <p><b>F</b> frappe-toile (fonce sur l'ennemi)</p>
-            <p><b>1 2 3 4</b> styles : Classique, Acrobate, Brute, Tisseur</p>
-            <p><b>G</b> gadget · <b>T / molette</b> changer de gadget</p>
-            <p><b>H</b> soin · <b>V</b> coup de grâce (1 barre de concentration)</p>
-          </div>
-          <div>
-            <h3>Divers</h3>
-            <p><b>F / Entrée</b> lancer une mission (dans le faisceau jaune)</p>
-            <p><b>Tab</b> grande carte (voyage rapide en métro) · <b>Échap / P</b> pause · <b>N</b> musique · <b>O</b> mode photo</p>
-            <p><b>Pause</b> : costumes, compétences, trophées et options (météo, heure)</p>
-            <p><b>Manette</b> : RT balancement, A saut, X attaque, B esquive, Y frappe-toile, LB toile, RB gadget, LT zip</p>
-            <p><b>Tactile</b> : joystick à gauche, glisser à droite pour la caméra</p>
-          </div>
-        </div>
-        <button id="btn-controls-back" class="btn primary">RETOUR</button>
-      </div>
-    </div>
-
-    <div id="menu-screen" class="screen hidden">
-      <div class="panel wide menu-panel">
-        <div class="tabs">
-          <button class="tab" data-tab="costumes">COSTUMES</button>
-          <button class="tab" data-tab="competences">COMPÉTENCES</button>
-          <button class="tab" data-tab="trophees">TROPHÉES</button>
-          <button class="tab" data-tab="options">OPTIONS</button>
-        </div>
+    <div id="pause-screen" class="screen menu-screen hidden">
+      <div class="menu-shade"></div>
+      <aside class="side-nav">
+        <div class="side-head"><div class="logo small"><span class="logo-a">SPIDER</span><span class="logo-dash">-</span><span class="logo-b">MAN</span></div><div class="side-title">PAUSE</div></div>
+        <button class="side-btn" data-tab="resume">REPRENDRE</button>
+        <button class="side-btn" data-tab="stats">PROGRESSION</button>
+        <button class="side-btn" data-tab="costumes">COSTUMES</button>
+        <button class="side-btn" data-tab="competences">COMPÉTENCES <b id="skill-badge" class="nav-badge hidden"></b></button>
+        <button class="side-btn" data-tab="trophees">TROPHÉES</button>
+        <button class="side-btn" data-tab="options">OPTIONS</button>
+        <button class="side-btn" data-tab="commandes">COMMANDES</button>
+        <button class="side-btn" data-tab="photo">MODE PHOTO</button>
+        <button id="btn-abandon" class="side-btn danger hidden" data-tab="abandon">ABANDONNER LA MISSION</button>
+        <button class="side-btn" data-tab="quit">MENU PRINCIPAL</button>
+      </aside>
+      <section class="menu-content">
+        <div id="menu-head" class="menu-head"></div>
         <div id="menu-body" class="menu-body"></div>
-        <button id="btn-menu-back" class="btn primary">RETOUR</button>
-      </div>
+      </section>
     </div>
 
     <div id="photo-ui" class="hidden">
       <div id="photo-drag"></div>
-      <div class="ph-top">MODE PHOTO — glisse pour tourner, molette ou +/- pour zoomer · Échap pour quitter <span id="ph-msg"></span></div>
+      <div class="ph-top">MODE PHOTO <span>glisse pour tourner · molette ou ± pour zoomer</span> <b id="ph-msg"></b></div>
       <div class="ph-bar">
-        <div class="ph-group"><button id="ph-filter-prev" class="btn small">◀</button><span id="ph-filter" class="ph-val">Normal</span><button id="ph-filter-next" class="btn small">▶</button></div>
-        <div class="ph-group"><button id="ph-pose-prev" class="btn small">◀</button><span id="ph-pose" class="ph-val">Libre</span><button id="ph-pose-next" class="btn small">▶</button></div>
-        <div class="ph-group"><button id="ph-zoom-in" class="btn small">＋</button><button id="ph-zoom-out" class="btn small">－</button></div>
-        <button id="ph-shot" class="btn primary">📸 PHOTO</button>
-        <button id="ph-close" class="btn">QUITTER</button>
+        <div class="ph-group"><label>FILTRE</label><button id="ph-filter-prev" class="ph-arrow">‹</button><span id="ph-filter" class="ph-val">Normal</span><button id="ph-filter-next" class="ph-arrow">›</button></div>
+        <div class="ph-group"><label>POSE</label><button id="ph-pose-prev" class="ph-arrow">‹</button><span id="ph-pose" class="ph-val">Libre</span><button id="ph-pose-next" class="ph-arrow">›</button></div>
+        <div class="ph-group"><label>ZOOM</label><button id="ph-zoom-in" class="ph-arrow">+</button><button id="ph-zoom-out" class="ph-arrow">−</button></div>
+        <button id="ph-shot" class="ph-shot" aria-label="Prendre la photo"><i></i></button>
+        <button id="ph-close" class="ph-close">QUITTER</button>
       </div>
     </div>
 
     <div id="intro-banner" class="intro-banner hidden">
       <div class="ib-kicker">NOUVELLE MISSION</div>
       <div id="intro-title" class="ib-title"></div>
+      <div class="ib-line"></div>
       <div id="intro-text" class="ib-text"></div>
     </div>
 
     <div id="result-screen" class="screen hidden">
-      <div class="panel">
+      <div class="result-card">
         <div id="result-kicker" class="kicker">MISSION RÉUSSIE</div>
         <h2 id="result-title"></h2>
-        <div id="result-text" class="stats"></div>
-        <div class="menu">
-          <button id="btn-result-ok" class="btn primary">CONTINUER</button>
-          <button id="btn-retry" class="btn hidden">RÉESSAYER</button>
+        <div id="result-text" class="result-text"></div>
+        <div class="result-actions">
+          <button id="btn-result-ok" class="nav-btn primary compact"><span>CONTINUER</span></button>
+          <button id="btn-retry" class="nav-btn compact hidden"><span>RÉESSAYER</span></button>
         </div>
       </div>
     </div>
 
     <div id="map-screen" class="screen hidden">
-      <canvas id="bigmap" width="900" height="900"></canvas>
-      <div class="map-legend">
-        <span><i style="background: #ffd23f"></i>Mission</span>
-        <span><i style="background: #ff3030"></i>Crime</span>
-        <span><i style="background: #ffe14a"></i>Défi</span>
-        <span><i style="background: #cfcfcf"></i>Sac à dos</span>
-        <span><i style="background: #b04dff"></i>Base</span>
-        <span><i style="background: #3dff7a"></i>Métro</span>
-        <span>[Tab] fermer</span>
+      <div class="map-frame">
+        <div class="map-head"><span class="map-title">CARTE DE LA VILLE</span><span id="map-stats" class="map-stats"></span><button id="btn-map-close" class="icon-btn" aria-label="Fermer">✕</button></div>
+        <canvas id="bigmap" width="1024" height="1024"></canvas>
+        <div class="map-legend">
+          <span><i style="background: #ffd23f"></i>Mission</span>
+          <span><i style="background: #ff3030"></i>Crime</span>
+          <span><i style="background: #ffe14a"></i>Défi</span>
+          <span><i style="background: #cfcfcf"></i>Sac à dos</span>
+          <span><i style="background: #b04dff"></i>Base</span>
+          <span><i style="background: #3dff7a"></i>Métro (toucher pour voyager)</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="dialog" class="screen dialog hidden">
+      <div class="dialog-card">
+        <div id="dialog-title" class="dialog-title"></div>
+        <div id="dialog-text" class="dialog-text"></div>
+        <div class="result-actions">
+          <button id="dialog-yes" class="nav-btn primary compact"><span>OUI</span></button>
+          <button id="dialog-no" class="nav-btn compact"><span>ANNULER</span></button>
+        </div>
       </div>
     </div>
 
@@ -243,8 +189,10 @@
       <div class="stick"><div class="knob"></div></div>
       <div class="look-zone"></div>
       <div class="touch-buttons"></div>
-      <div class="tbtn-pause">II</div>
-      <div class="tbtn-map">CARTE</div>
+      <div class="touch-top">
+        <button class="tbtn-map" aria-label="Carte"><svg viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zm0 2.2 6 2v11.6l-6-2V6.2z" /></svg></button>
+        <button class="tbtn-pause" aria-label="Pause"><svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg></button>
+      </div>
     </div>
 
     <script type="module" src="./src/main.js"></script>

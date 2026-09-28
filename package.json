@@ -11,6 +11,9 @@
     "apk": "vite build && bash android/build-apk.sh"
   },
   "dependencies": {
+    "@fontsource/barlow": "^5.3.0",
+    "@fontsource/barlow-condensed": "^5.3.0",
+    "@fontsource/bebas-neue": "^5.3.0",
     "three": "^0.186.1"
   },
   "devDependencies": {

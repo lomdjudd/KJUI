@@ -330,6 +330,7 @@ export class Player {
       this.game.fx.dust(this.pos, 12);
       this.game.cam.shake(Math.min(0.5, impact / 120));
       this.game.audio.play('land', 1);
+      this.game.vibrate(22);
       // conserve un peu d'élan (roulade)
       this.vel.x *= 0.6;
       this.vel.z *= 0.6;
@@ -804,6 +805,7 @@ export class Player {
     this.lastCombat = this.time;
     this.game.combat.onPlayerHurt();
     this.game.audio.play('hurt');
+    this.game.vibrate(kind === 'heavy' || kind === 'explosion' ? 70 : 32);
     this.game.cam.shake(0.35);
     this.game.hud.hurtFlash();
     this.game.fx.sparks(this.chestPos, 10, '#ff6060', 6);
@@ -893,6 +895,26 @@ export class Player {
       armTarget = this.zipTarget ? _v3.subVectors(this.zipTarget, this.pos).normalize().clone() : null;
     }
     rig.apply(pose, dt, speed);
+    // Inclinaison dans les virages et regard qui suit la caméra (animation secondaire)
+    if (dt > 0) {
+      let df = this.facing - (this._lastFacing === undefined ? this.facing : this._lastFacing);
+      df -= Math.round(df / (Math.PI * 2)) * Math.PI * 2;
+      this._lastFacing = this.facing;
+      const rate = clamp(df / dt, -6, 6);
+      this._turn = (this._turn || 0) + (rate - (this._turn || 0)) * Math.min(1, dt * 8);
+      const leanK = this.state === 'ground' ? 0.018 : this.state === 'air' ? 0.012 : 0;
+      const lean = clamp(-this._turn * hs * leanK, -0.38, 0.38);
+      this._lean = (this._lean || 0) + (lean - (this._lean || 0)) * Math.min(1, dt * 6);
+      rig.pivot.rotation.z += this._lean;
+      if (this.state === 'ground' && !this.game.combat.inCombat && !(a && a.pose)) {
+        let look = this.game.cam.yaw + Math.PI - this.facing;
+        look -= Math.round(look / (Math.PI * 2)) * Math.PI * 2;
+        const want = clamp(look, -0.9, 0.9) * (Math.abs(look) < 2.4 ? 0.7 : 0);
+        this._headLook = (this._headLook || 0) + (want - (this._headLook || 0)) * Math.min(1, dt * 5);
+        rig.j.head.rotation.y += this._headLook * 0.65;
+        rig.j.neck.rotation.y += this._headLook * 0.35;
+      } else this._headLook = (this._headLook || 0) * Math.max(0, 1 - dt * 5);
+    }
     if (this.aim && this.aim.t > 0) {
       this.aim.t -= dt;
       rig.pointArm('r', this.aim.dir, 1);

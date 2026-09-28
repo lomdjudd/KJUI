@@ -74,7 +74,8 @@ const HEAD_AXES = [0.9, 1.12, 1];
 function headGeometry(s, hero) {
   const g = new THREE.SphereGeometry(HEAD_R, 32, 24);
   // Pôle de la sphère sur le visage (un peu sous les yeux) : la texture forme une toile radiale
-  g.rotateX(Math.PI / 2 + (hero ? 0.18 : 0));
+  // (visages texturés des autres personnages : sphère standard, u = 0,25 face avant)
+  if (hero) g.rotateX(Math.PI / 2 + 0.18);
   g.scale(HEAD_AXES[0] * s, HEAD_AXES[1] * s, HEAD_AXES[2] * s);
   if (hero) {
     // Menton plus fin, arrière du crâne légèrement aplati
@@ -523,7 +524,7 @@ export class Rig {
     });
     this.meshes.torso = add(torsoGeo, m.torso, chest);
     const neck = J('neck', chest, 0, 0.3, 0);
-    add(sculpt(P.neck, { seg: 14, sz: 1.05, r: b > 1 ? 1 + (b - 1) * 0.6 : 1 }), m.head, neck, false);
+    add(sculpt(P.neck, { seg: 14, sz: 1.05, r: b > 1 ? 1 + (b - 1) * 0.6 : 1 }), m.neck || m.head, neck, false);
     const head = J('head', neck, 0, 0.07, 0);
     const headScale = hero ? 0.94 : 1;
     const headMesh = add(headGeometry(headScale, hero), m.head, head);

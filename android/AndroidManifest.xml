@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="fr.kjui.spiderman">
 
+    <!-- Retour haptique (coups, chocs, atterrissages) -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <application
         android:label="Spider-Man"
         android:icon="@mipmap/ic_launcher"

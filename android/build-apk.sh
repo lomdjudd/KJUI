@@ -5,26 +5,18 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 ANDROID_JAR=${ANDROID_JAR:-/usr/lib/android-sdk/platforms/android-23/android.jar}
-VERSION_CODE=${VERSION_CODE:-1}
-VERSION_NAME=${VERSION_NAME:-1.0}
+VERSION_CODE=${VERSION_CODE:-2}
+VERSION_NAME=${VERSION_NAME:-2.0}
 OUT=../dist/spiderman-monde-ouvert.apk
 B=build
 
 rm -rf "$B"
-mkdir -p "$B/assets/fonts" "$B/classes"
+mkdir -p "$B/assets/licenses" "$B/classes"
 
-# Page du jeu avec les polices embarquées à la place de Google Fonts : jouable hors ligne
-cp fonts/*.woff2 fonts/OFL-*.txt "$B/assets/fonts/"
-node -e '
-const fs = require("fs");
-let html = fs.readFileSync("../dist/index.html", "utf8");
-const face = (family, weight, file) => `@font-face{font-family:"${family}";font-style:normal;font-weight:${weight};font-display:swap;src:url(fonts/${file}) format("woff2")}`;
-const css = `<style>${face("Bangers", 400, "bangers-400.woff2")}${face("Barlow Condensed", 500, "barlow-condensed-500.woff2")}${face("Barlow Condensed", 700, "barlow-condensed-700.woff2")}</style>`;
-const links = /<link[^>]*fonts\.(googleapis|gstatic)\.com[^>]*>\s*/g;
-if (!links.test(html)) throw new Error("liens Google Fonts introuvables dans dist/index.html");
-html = html.replace(links, "").replace("</head>", `${css}\n</head>`);
-fs.writeFileSync(process.argv[1], html);
-' "$B/assets/index.html"
+# Page du jeu (polices déjà intégrées : jouable hors ligne) et licences des polices
+grep -q "fonts.googleapis" ../dist/index.html && { echo "dist/index.html charge encore des polices en ligne" >&2; exit 1; }
+cp ../dist/index.html "$B/assets/index.html"
+cp ../licenses/*.txt "$B/assets/licenses/"
 
 # Code Java -> bytecode Java 8 -> dex
 javac -source 8 -target 8 -bootclasspath "$ANDROID_JAR" -Xlint:-options -encoding UTF-8 -d "$B/classes" src/fr/kjui/spiderman/*.java

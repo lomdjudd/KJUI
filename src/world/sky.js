@@ -1,6 +1,48 @@
 import * as THREE from 'three';
 import { clamp, lerp, smooth } from '../engine/utils.js';
 
+// Brume réaliste : brouillard de distance + brouillard de hauteur (plus dense au ras du sol),
+// appliqué à tous les matériaux standard de la scène.
+THREE.ShaderChunk.fog_pars_vertex = `#ifdef USE_FOG
+varying float vFogDepth;
+varying vec3 vFogWorld;
+#endif`;
+THREE.ShaderChunk.fog_vertex = `#ifdef USE_FOG
+vFogDepth = - mvPosition.z;
+vFogWorld = (vec4(mvPosition.xyz - viewMatrix[3].xyz, 0.0) * viewMatrix).xyz;
+#endif`;
+THREE.ShaderChunk.fog_pars_fragment = `#ifdef USE_FOG
+uniform vec3 fogColor;
+varying float vFogDepth;
+varying vec3 vFogWorld;
+#ifdef FOG_EXP2
+uniform float fogDensity;
+#else
+uniform float fogNear;
+uniform float fogFar;
+#endif
+#endif`;
+THREE.ShaderChunk.fog_fragment = `#ifdef USE_FOG
+#ifdef FOG_EXP2
+float fogFactor = 1.0 - exp( - fogDensity * fogDensity * vFogDepth * vFogDepth );
+#else
+float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
+#endif
+{
+  vec3 fcam = cameraPosition;
+  vec3 fp = vFogWorld;
+  float fd = length( fp - fcam );
+  float fdh = fp.y - fcam.y;
+  const float FA = 0.00115;
+  const float FB = 0.0105;
+  float fe0 = exp( - FB * max( fcam.y, 0.0 ) );
+  float fi = abs( fdh ) < 0.05 ? FA * fd * fe0 : FA * fd * ( fe0 - exp( - FB * max( fp.y, 0.0 ) ) ) / ( FB * fdh );
+  float hf = 1.0 - exp( - max( fi, 0.0 ) );
+  fogFactor = 1.0 - ( 1.0 - fogFactor ) * ( 1.0 - min( 1.0, hf * ( 260.0 / max( fogNear, 1.0 ) ) ) );
+}
+gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, clamp( fogFactor, 0.0, 1.0 ) );
+#endif`;
+
 const skyVert = /* glsl */ `
 varying vec3 vDir;
 void main() {
@@ -20,6 +62,7 @@ uniform float time;
 uniform float cloudLight;
 uniform float cover;
 uniform float flash;
+uniform vec3 fogCol;
 varying vec3 vDir;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -49,16 +92,30 @@ void main() {
     col += vec3(st) * stars * clamp(h * 3.0, 0.0, 1.0);
   }
 
-  // Nuages
+  // Pollution lumineuse de la ville la nuit
+  col += vec3(0.32, 0.17, 0.07) * stars * exp(-max(h, 0.0) * 9.0) * 0.55;
+
+  // Nuages : fbm déformé, éclairage approché (échantillon décalé vers le soleil)
   if (h > 0.0) {
     vec2 uv = d.xz / (h + 0.12) * 1.3 + vec2(time * 0.004, time * 0.0015);
-    float c = fbm(uv);
-    c = smoothstep(0.5 - cover * 0.42, 0.85 - cover * 0.2, c) * clamp(h * 6.0, 0.0, 1.0);
-    vec3 cl = mix(horizon * 0.9 + 0.08, vec3(1.0), cloudLight) * (1.0 - cover * 0.55);
-    cl += sunColor * pow(s, 8.0) * 0.6;
-    col = mix(col, cl, c * (0.85 + cover * 0.15));
+    vec2 warp = vec2(fbm(uv * 0.5 + 3.1), fbm(uv * 0.5 - 1.7)) - 0.5;
+    vec2 cuv = uv + warp * 0.8;
+    float c = fbm(cuv);
+    float dens = smoothstep(0.5 - cover * 0.42, 0.86 - cover * 0.2, c) * clamp(h * 6.0, 0.0, 1.0);
+    vec2 toSun = normalize(sunDir.xz + vec2(1e-4)) * 0.22;
+    float c2 = fbm(cuv + toSun);
+    float lit = clamp(0.62 + (c - c2) * 3.2, 0.25, 1.15);
+    vec3 dark = mix(horizon * 0.55 + zenith * 0.15, vec3(0.42, 0.45, 0.52), cloudLight);
+    vec3 bright = mix(horizon * 0.9 + 0.1, vec3(1.02, 1.0, 0.97), cloudLight);
+    vec3 cl = mix(dark, bright, lit) * (1.0 - cover * 0.55);
+    cl += sunColor * pow(s, 6.0) * 0.7 * lit;
+    // liseré lumineux au bord des nuages face au soleil
+    cl += sunColor * pow(s, 18.0) * (1.0 - dens) * 1.2;
+    col = mix(col, cl, dens * (0.88 + cover * 0.12));
   }
 
+  // Brume de l'horizon identique au brouillard de la scène
+  col = mix(col, fogCol, (1.0 - smoothstep(-0.02, 0.16, h)) * 0.85);
   col = mix(col, col * 0.55 + vec3(0.08, 0.09, 0.1), cover * 0.6);
   col += vec3(0.8, 0.85, 1.0) * flash * 0.9;
   gl_FragColor = vec4(col, 1.0);
@@ -131,6 +188,7 @@ export class Environment {
       cloudLight: { value: 1 },
       cover: { value: 0 },
       flash: { value: 0 },
+      fogCol: { value: new THREE.Color() },
     };
     const skyMat = new THREE.ShaderMaterial({
       uniforms: this.uniforms,
@@ -175,7 +233,9 @@ export class Environment {
     this.hemi = new THREE.HemisphereLight(0xbfd6ff, 0x4a4036, 0.6);
     scene.add(this.hemi);
 
-    scene.fog = new THREE.Fog(0xbfd0e0, 150, quality.fogFar);
+    scene.fog = new THREE.Fog(0xbfd0e0, 260, quality.fogFar * 1.25);
+    this.camera = null;
+    this._fwd = new THREE.Vector3();
     this.fogFar = quality.fogFar;
     this.update(0, new THREE.Vector3());
   }
@@ -208,8 +268,15 @@ export class Environment {
     this.hemi.color.copy(p.horizon).lerp(p.zenith, 0.5).lerp(_nightSky, this.night * 0.75);
     this.hemi.groundColor.copy(_dayGround).lerp(_nightGround, this.night);
     this.scene.fog.color.copy(p.fog).lerp(_rainFog, this.rain * 0.6);
-    this.scene.fog.far = this.fogFar * (1 - this.rain * 0.45);
-    this.scene.fog.near = 150 * (1 - this.rain * 0.6);
+    // Brume plus lumineuse quand on regarde vers le soleil (diffusion de Mie)
+    if (this.camera && elev > -0.1) {
+      this.camera.getWorldDirection(this._fwd);
+      const k = Math.pow(Math.max(0, this._fwd.dot(this.sunDir)), 3) * (1 - this.rain) * clamp((elev + 0.1) * 4, 0, 1);
+      this.scene.fog.color.lerp(p.sun, k * 0.35);
+    }
+    this.scene.fog.far = this.fogFar * 1.25 * (1 - this.rain * 0.45);
+    this.scene.fog.near = 260 * (1 - this.rain * 0.6);
+    this.uniforms.fogCol.value.copy(this.scene.fog.color);
     this.sky.position.copy(focus);
 
     if (Math.abs(this.time - this.lastEnvTime) > 0.25 || Math.abs(this.rain - (this.lastEnvRain || 0)) > 0.15 || !this.envRT) {

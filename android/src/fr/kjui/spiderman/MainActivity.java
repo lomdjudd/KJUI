@@ -26,14 +26,7 @@ import java.io.OutputStream;
 // Le jeu (dist/index.html, copié dans les assets) tourne en plein écran dans une WebView.
 public class MainActivity extends Activity {
     // Retour : ferme l'écran ouvert ou met le jeu en pause ; quitte seulement depuis l'écran titre
-    private static final String BACK_JS = "(function(){var g=window.__game;if(!g)return 'exit';"
-            + "var c=document.getElementById('controls-screen');"
-            + "if(c&&!c.classList.contains('hidden')){document.getElementById('btn-controls-back').click();return 'ok';}"
-            + "if(g.photo&&g.photo.active){g.photo.close();return 'ok';}"
-            + "if(g._resultOpen){g._closeResult();return 'ok';}"
-            + "if(g._mapOpen){g.toggleMap();return 'ok';}"
-            + "if(g.mode==='play'){g.setPaused(!g.paused);return 'ok';}"
-            + "return 'exit';})()";
+    private static final String BACK_JS = "(function(){var g=window.__game;return g&&g.handleBack?g.handleBack():'exit';})()";
 
     private WebView web;
 

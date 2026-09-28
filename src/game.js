@@ -6,10 +6,11 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { Input } from './engine/input.js';
 import { AudioSys } from './engine/audio.js';
-import { storage } from './engine/utils.js';
+import { storage, mulberry32 } from './engine/utils.js';
 import { City } from './world/city.js';
 import { Environment } from './world/sky.js';
 import { Traffic } from './world/traffic.js';
+import { StreetProps } from './world/props.js';
 import { Player } from './player/player.js';
 import { Combat } from './player/combat.js';
 import { EnemyManager } from './npc/enemies.js';
@@ -55,9 +56,9 @@ const GradeShader = {
 };
 
 const QUALITY = {
-  high: { pixelRatio: 2, shadows: true, shadowSize: 2048, bloom: true, fogFar: 1500, cars: 3, peds: 260, antialias: true, detail: true },
-  medium: { pixelRatio: 1.5, shadows: true, shadowSize: 1024, bloom: false, fogFar: 1200, cars: 2, peds: 160, antialias: true, detail: true },
-  low: { pixelRatio: 1, shadows: false, shadowSize: 512, bloom: false, fogFar: 850, cars: 1, peds: 70, antialias: false, detail: false },
+  high: { pixelRatio: 2, shadows: true, shadowSize: 2048, bloom: true, fogFar: 1500, cars: 300, peds: 320, antialias: true, detail: true },
+  medium: { pixelRatio: 1.5, shadows: true, shadowSize: 1024, bloom: false, fogFar: 1200, cars: 190, peds: 200, antialias: true, detail: true },
+  low: { pixelRatio: 1, shadows: false, shadowSize: 512, bloom: false, fogFar: 850, cars: 110, peds: 110, antialias: false, detail: false },
 };
 
 function defaultSave() {
@@ -76,7 +77,24 @@ function defaultSave() {
     bases: [],
     stations: [],
     gold: [],
-    settings: { quality: 'auto', sens: 1, music: true, daynight: true, weather: 'auto', timeMode: 'auto', autoCam: true, shake: true },
+    settings: {
+      quality: 'auto',
+      sens: 1,
+      music: true,
+      daynight: true,
+      weather: 'auto',
+      timeMode: 'auto',
+      autoCam: true,
+      shake: true,
+      renderScale: 1,
+      showFps: false,
+      musicVol: 0.6,
+      sfxVol: 0.85,
+      invertY: false,
+      tbScale: 1,
+      tbAlpha: 0.9,
+      haptics: true,
+    },
   };
 }
 
@@ -115,12 +133,34 @@ export class Game {
 
   async init() {
     const qs = new URLSearchParams(location.search);
+    const tips = [
+      'Maintiens le bouton TOILE en l’air pour te balancer, relâche au sommet pour gagner de la vitesse.',
+      'Esquive au moment où le sens d’araignée s’allume : l’esquive parfaite ralentit le temps.',
+      'Les passants t’acclament et te prennent en photo quand tu te poses près d’eux.',
+      'Les feux tricolores règlent vraiment la circulation : les voitures s’arrêtent au rouge.',
+      'Change de style de combat pour changer de costume en mode Auto.',
+      'Les stations de métro découvertes permettent de voyager rapidement depuis la carte.',
+      'Réduis la résolution dans les options si le jeu saccade sur ton téléphone.',
+    ];
+    const tipEl = $('load-tip');
+    if (tipEl) tipEl.innerHTML = `<b>ASTUCE</b>${tips[Math.floor(Math.random() * tips.length)]}`;
     const setLoad = async (pct, text) => {
       $('load-fill').style.width = `${pct}%`;
+      const pe = $('load-pct');
+      if (pe) pe.textContent = `${Math.round(pct)} %`;
       if (text) $('load-text').textContent = text;
       await nextFrame();
     };
     await setLoad(5, 'Préparation du rendu…');
+    // Polices embarquées chargées avant de dessiner les enseignes et la carte
+    try {
+      await Promise.race([
+        Promise.all(['400 64px "Bebas Neue"', '600 20px "Barlow Condensed"', '700 20px "Barlow Condensed"', '400 16px "Barlow"', '600 16px "Barlow"'].map((f) => document.fonts.load(f))),
+        new Promise((r) => setTimeout(r, 2500)),
+      ]);
+    } catch {
+      /* polices de secours */
+    }
     const probe = document.createElement('canvas').getContext('webgl2');
     if (!probe) throw new Error('WebGL 2 n’est pas disponible sur cet appareil ou ce navigateur. Essaie avec Chrome, Edge, Firefox ou Safari à jour.');
     const canvas = $('game');
@@ -129,7 +169,7 @@ export class Game {
       this.showError(new Error('Le téléphone a manqué de mémoire graphique. Recharge la page et choisis « Graphismes : Bas ».'));
     });
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: this.quality.antialias, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(qs.has('pr') ? this.quality.pixelRatio : Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio));
+    renderer.setPixelRatio(qs.has('pr') ? this.quality.pixelRatio : Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio) * (this.save.settings.renderScale || 1));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
@@ -141,16 +181,33 @@ export class Game {
     this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 4000);
     this.input = new Input(canvas);
     this.input.sensitivity = this.save.settings.sens;
+    this.input.invertY = this.save.settings.invertY;
+    this.input.haptic = () => this.vibrate(8);
     this.audio = new AudioSys();
     this.audio.musicOn = this.save.settings.music;
+    this.audio.musicVolume = 0.55 * this.save.settings.musicVol;
+    this.audio.sfxVolume = this.save.settings.sfxVol;
+    this._applyTouchLayout();
 
     await setLoad(12, 'Tissage de la ville…');
     this.city = new City(this.scene, this.quality);
     this.city.generate();
+    this.props = new StreetProps(this.city, this.quality);
+    this.scene.add(this.props.group);
+    {
+      const t = this.city.treeAssets(true);
+      this.props.buildTrees(t.trunkG, t.leafG, t.trunkMat, t.leafMat, mulberry32(31));
+    }
     await setLoad(45, 'Allumage du ciel…');
     this.env = new Environment(this.scene, renderer, this.quality);
+    this.env.camera = this.camera;
     await setLoad(55, 'Mise en circulation…');
     this.traffic = new Traffic(this.scene, this.city, this.quality);
+    this.traffic.camera = this.camera;
+    this.traffic.onHorn = (car) => {
+      const d = Math.hypot(car.x - this.camera.position.x, car.z - this.camera.position.z);
+      if (d < 60) this.audio.play('horn', 0.6 * (1 - d / 60));
+    };
     await setLoad(65, 'Enfilage du costume…');
     this.fx = new Particles(this.scene);
     this.webs = new WebLines(this.scene);
@@ -202,10 +259,8 @@ export class Game {
 
     this.fixedPR = qs.has('pr');
     this.basePR = renderer.getPixelRatio();
-    if (qs.has('fps')) {
-      this.fpsEl = $('fps');
-      this.fpsEl.classList.remove('hidden');
-    }
+    this.fpsEl = $('fps');
+    this.fpsEl.classList.toggle('hidden', !(qs.has('fps') || this.save.settings.showFps));
     window.addEventListener('resize', () => this._resize());
     this._resize();
     this._bindUI();
@@ -230,66 +285,26 @@ export class Game {
     const click = (id, fn) =>
       $(id).addEventListener('click', (e) => {
         e.preventDefault();
+        this.audio.init();
+        this.audio.play('ui');
         try {
           fn();
         } catch (err) {
           this.showError(err);
         }
-        this.audio.init();
-        this.audio.play('ui');
       });
     click('btn-play', () => this.startPlay());
     click('btn-new', () => {
-      if (confirm('Effacer la progression et recommencer ?')) {
+      this.confirm('NOUVELLE PARTIE ?', 'Toute la progression sera effacée.').then((ok) => {
+        if (!ok) return;
         const settings = this.save.settings;
         storage.set(SAVE_KEY, { ...defaultSave(), settings });
         location.reload();
-      }
+      });
     });
-    click('btn-controls', () => this._showControls('title-screen'));
-    click('btn-controls2', () => this._showControls('pause-screen'));
-    click('btn-controls-back', () => {
-      $('controls-screen').classList.add('hidden');
-      $(this._controlsBack).classList.remove('hidden');
-    });
-    click('btn-resume', () => this.setPaused(false));
-    click('btn-abandon', () => {
-      this.missions.abandon();
-      this.setPaused(false);
-    });
-    click('btn-quit', () => {
-      this.setPaused(false, true);
-      this.missions.abandon();
-      this.showTitle();
-    });
-    click('btn-music', () => {
-      const on = this.audio.toggleMusic();
-      this.save.settings.music = on;
-      $('btn-music').textContent = on ? 'OUI' : 'NON';
-      this.saveGame();
-    });
-    $('btn-music').textContent = this.save.settings.music ? 'OUI' : 'NON';
-    $('opt-sens').value = this.save.settings.sens;
-    $('opt-sens').addEventListener('input', (e) => {
-      this.input.sensitivity = parseFloat(e.target.value);
-      this.save.settings.sens = this.input.sensitivity;
-      this.saveGame();
-    });
-    const qsel = $('opt-quality');
-    qsel.value = this.save.settings.quality;
-    qsel.addEventListener('change', () => {
-      this.save.settings.quality = qsel.value;
-      this.saveGame();
-      location.reload();
-    });
-    click('btn-suits', () => this.menus.open('costumes'));
-    click('btn-skills', () => this.menus.open('competences'));
-    click('btn-trophies', () => this.menus.open('trophees'));
-    click('btn-options', () => this.menus.open('options'));
-    click('btn-photo', () => {
-      this.setPaused(false, true);
-      this.photo.open();
-    });
+    click('btn-options-title', () => this.menus.openFromTitle('options'));
+    click('btn-controls', () => this.menus.openFromTitle('commandes'));
+    click('btn-map-close', () => this._mapOpen && this.toggleMap());
     // Voyage rapide : clic sur une station de métro découverte dans la grande carte
     $('bigmap').addEventListener('click', (e) => {
       const st = this.hud.stationAt(e);
@@ -301,8 +316,10 @@ export class Game {
       this.player.health = this.player.maxHealth;
       this.missions.retry();
     });
+    click('dialog-yes', () => this._dialogAnswer(true));
+    click('dialog-no', () => this._dialogAnswer(false));
     document.addEventListener('pointerlockchange', () => {
-      if (!document.pointerLockElement && this.mode === 'play' && !this.paused && !this.input.isTouch && !this._resultOpen && !this._mapOpen) {
+      if (!document.pointerLockElement && this.mode === 'play' && !this.paused && !this.input.isTouch && !this._resultOpen && !this._mapOpen && !this.photo.active) {
         this.setPaused(true);
       }
     });
@@ -311,10 +328,63 @@ export class Game {
     });
   }
 
-  _showControls(back) {
-    this._controlsBack = back;
-    $(back).classList.add('hidden');
-    $('controls-screen').classList.remove('hidden');
+  // Boîte de dialogue maison (remplace confirm(), illisible sur téléphone)
+  confirm(title, text) {
+    $('dialog-title').textContent = title;
+    $('dialog-text').textContent = text;
+    $('dialog').classList.remove('hidden');
+    return new Promise((res) => (this._dialogRes = res));
+  }
+
+  _dialogAnswer(v) {
+    $('dialog').classList.add('hidden');
+    const r = this._dialogRes;
+    this._dialogRes = null;
+    if (r) r(v);
+  }
+
+  // Bouton retour Android / Échap dans les menus
+  handleBack() {
+    if (!$('dialog').classList.contains('hidden')) {
+      this._dialogAnswer(false);
+      return 'ok';
+    }
+    if (this.menus && this.menus.fromTitle) {
+      this.menus.close();
+      return 'ok';
+    }
+    if (this.photo && this.photo.active) {
+      this.photo.close();
+      return 'ok';
+    }
+    if (this._resultOpen) {
+      this._closeResult();
+      return 'ok';
+    }
+    if (this._mapOpen) {
+      this.toggleMap();
+      return 'ok';
+    }
+    if (this.mode === 'play') {
+      this.setPaused(!this.paused);
+      return 'ok';
+    }
+    return 'exit';
+  }
+
+  vibrate(ms) {
+    if (!this.save.settings.haptics || !this.input.isTouch) return;
+    try {
+      if (navigator.vibrate) navigator.vibrate(ms);
+    } catch {
+      /* vibration indisponible */
+    }
+  }
+
+  _applyTouchLayout() {
+    const st = this.save.settings;
+    document.documentElement.style.setProperty('--tb-scale', st.tbScale);
+    document.documentElement.style.setProperty('--tb-alpha', st.tbAlpha);
   }
 
   showTitle() {
@@ -322,7 +392,9 @@ export class Game {
     this.hud.show(false);
     $('title-screen').classList.remove('hidden');
     $('touch-ui').classList.add('off');
-    $('btn-play').textContent = this.save.completed.length || this.save.xp ? 'CONTINUER' : 'JOUER';
+    const started = this.save.completed.length || this.save.xp;
+    $('btn-play').querySelector('span').textContent = started ? 'CONTINUER' : 'JOUER';
+    $('play-sub').textContent = started ? `Niveau ${this.save.level} · ${this.save.completed.length} mission${this.save.completed.length > 1 ? 's' : ''} terminée${this.save.completed.length > 1 ? 's' : ''}` : 'Commencer l’aventure';
     this.input.exitPointerLock();
   }
 
@@ -347,7 +419,7 @@ export class Game {
       this._welcomed = true;
       const next = this.missions.nextStory;
       if (next && next.id === 'tuto') {
-        this.hud.hint('Bienvenue à New York ! Suis le faisceau jaune pour ta première mission. Maintiens MAJ en l’air pour te balancer.', 9);
+        this.hud.hint('Bienvenue à New York ! Suis le faisceau jaune pour ta première mission. Maintiens TOILE en l’air pour te balancer.', 9);
       } else this.hud.toast('De retour en ville !');
       if (this.input.isTouch && window.innerHeight > window.innerWidth) {
         setTimeout(() => this.hud.toast('Astuce : tourne ton téléphone en paysage pour mieux jouer'), 1500);
@@ -358,12 +430,10 @@ export class Game {
   setPaused(p, silent = false) {
     this.paused = p;
     this.input.reset();
-    $('pause-screen').classList.toggle('hidden', !p || silent);
-    $('btn-abandon').classList.toggle('hidden', !this.missions.active);
-    if (!p && this.menus) $('menu-screen').classList.add('hidden');
+    if (p && !silent) this.menus.open('stats');
+    else this.menus.close();
     if (p) {
       this.input.exitPointerLock();
-      this.refreshPauseStats();
       this.audio.setWind(0);
     } else if (this.mode === 'play' && !this.input.isTouch && !silent) {
       try {
@@ -376,10 +446,7 @@ export class Game {
   }
 
   refreshPauseStats() {
-    const s = this.save;
-    $('pause-stats').innerHTML = `Niveau ${s.level} · Missions ${s.completed.length}/${STORY.length} · Sacs à dos ${s.bags.length}/${this.missions.totalBags} · Crimes arrêtés ${s.crimes || 0}<br>Bases ${s.bases.length}/3 · Trophées ${s.achievements.length} · Meilleur combo : ${Math.max(this.combat.bestCombo, s.counters.maxCombo || 0)}`;
-    const pts = s.skillPoints;
-    $('btn-skills').innerHTML = pts > 0 ? `COMPÉTENCES <span class="badge">${pts}</span>` : 'COMPÉTENCES';
+    if (this.menus && this.menus.isOpen) this.menus.refreshBadge();
   }
 
   // ---------- Costumes, compétences, options ----------
@@ -417,7 +484,24 @@ export class Game {
     this.save.settings[key] = val;
     if (key === 'weather') this.weather.setMode(val);
     if (key === 'timeMode') this._applyTimeMode();
+    if (key === 'music') {
+      this.audio.musicOn = !val;
+      this.audio.toggleMusic();
+    }
+    if (key === 'musicVol') this.audio.setMusicVolume(0.55 * val);
+    if (key === 'sfxVol') this.audio.setSfxVolume(val);
+    if (key === 'sens') this.input.sensitivity = val;
+    if (key === 'invertY') this.input.invertY = val;
+    if (key === 'tbScale' || key === 'tbAlpha') this._applyTouchLayout();
+    if (key === 'showFps') this.fpsEl.classList.toggle('hidden', !val);
+    if (key === 'renderScale' && !this.fixedPR) {
+      this.basePR = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio) * val;
+      this.renderer.setPixelRatio(this.basePR);
+      if (this.composer) this.composer.setPixelRatio(this.basePR);
+      this._resize();
+    }
     this.saveGame();
+    if (key === 'quality') location.reload();
   }
 
   _applyTimeMode() {
@@ -473,7 +557,11 @@ export class Game {
   toggleMap() {
     this._mapOpen = !this._mapOpen;
     $('map-screen').classList.toggle('hidden', !this._mapOpen);
-    if (this._mapOpen) this.hud.drawBigMap();
+    if (this._mapOpen) {
+      this.hud.drawBigMap();
+      this.input.exitPointerLock();
+      this.input.reset();
+    }
   }
 
   // ---------- Progression ----------
@@ -672,11 +760,14 @@ export class Game {
     input.update(realDt);
 
     if (this.mode === 'title') {
+      if (input.wasPressed('pause')) this.handleBack();
       this._titleCam(realDt);
       this.helis.update(realDt, this.env.night, performance.now() / 1000);
       this.env.update(realDt, this.player.pos);
       this.city.update(realDt, this.env.night, this.env.uniforms.time.value);
+      this.traffic.night = this.env.night;
       this.traffic.update(realDt, this.player.pos, null);
+      this.props.update(this.traffic.clock, this.camera);
       input.endFrame();
       return;
     }
@@ -684,7 +775,7 @@ export class Game {
     if (input.wasPressed('music')) {
       const on = this.audio.toggleMusic();
       this.save.settings.music = on;
-      $('btn-music').textContent = on ? 'OUI' : 'NON';
+      this.saveGame();
       this.hud.toast(on ? 'Musique activée' : 'Musique coupée');
     }
     if (this.photo.active) {
@@ -700,9 +791,10 @@ export class Game {
     }
     if (input.wasPressed('map') && !this.paused) this.toggleMap();
     if (input.wasPressed('pause')) {
-      if (this._mapOpen) this.toggleMap();
+      if (!$('dialog').classList.contains('hidden')) this._dialogAnswer(false);
+      else if (this._mapOpen) this.toggleMap();
       else if (this._resultOpen) this._closeResult();
-      else if ($('controls-screen').classList.contains('hidden')) this.setPaused(!this.paused);
+      else this.setPaused(!this.paused);
     }
     if (this.paused || this._mapOpen) {
       input.endFrame();
@@ -745,7 +837,9 @@ export class Game {
     obs.push(p.pos);
     for (const e of this.enemies.enemies) if (e.alive) obs.push(e.pos);
     if (this.boss && this.boss.alive) obs.push(this.boss.pos);
+    this.traffic.night = this.env.night;
     this.traffic.update(dt, p.pos, this.combat.inCombat ? p.pos : null);
+    this.props.update(this.traffic.clock, this.camera);
     this.weather.update(dt, this.camera.position);
     this.env.update(dt, p.pos);
     this.helis.update(dt, this.env.night, this.time);
@@ -778,6 +872,7 @@ export class Game {
   }
 
   render() {
+    if (this.traffic) this.traffic.render();
     if (this.composer) this.composer.render();
     else this.renderer.render(this.scene, this.camera);
   }

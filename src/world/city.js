@@ -12,6 +12,7 @@ import {
   makeSignTexture,
   makeStorefrontTextures,
   makeTrimTexture,
+  makeFireEscapeTexture,
   FACADE_TILE_W,
   FACADE_TILE_H,
   FACADE_COUNT,
@@ -48,13 +49,14 @@ class GeoBuilder {
     this.col = [];
     this.idx = [];
   }
-  quad(p, n, uvs, c) {
+  quad(p, n, uvs, c, cTop = c) {
     const base = this.pos.length / 3;
     for (let k = 0; k < 4; k++) {
       this.pos.push(p[k * 3], p[k * 3 + 1], p[k * 3 + 2]);
       this.nor.push(n[0], n[1], n[2]);
       this.uv.push(uvs[k * 2], uvs[k * 2 + 1]);
-      this.col.push(c.r, c.g, c.b);
+      const cc = k < 2 ? c : cTop;
+      this.col.push(cc.r, cc.g, cc.b);
     }
     this.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
   }
@@ -230,6 +232,8 @@ export class City {
     this._chunkOf = chunkOf;
 
     this.roofProps = { waterTowers: [], ac: [], antennas: [] };
+    this.fireGB = new GeoBuilder();
+    this.awningGB = new GeoBuilder();
 
     for (let j = 0; j < N; j++) {
       for (let i = 0; i < N; i++) {
@@ -341,6 +345,7 @@ export class City {
       }
     }
 
+    this._buildFacadeDecor();
     this._buildRoofProps();
     this._buildGround();
     this._buildPark();
@@ -403,14 +408,30 @@ export class City {
     const v1 = maxY / FACADE_TILE_H + vOff;
     const sv0 = store / STORE_VARIANTS;
     const sv1 = (store + 1) / STORE_VARIANTS;
+    // Occlusion ambiante des rues : le bas des façades est plus sombre, le haut plus exposé au ciel
+    const AO_H = 34;
+    const aoAt = (y) => {
+      const t = Math.min(1, Math.max(0, y / AO_H));
+      return 0.6 + 0.4 * t * (2 - t);
+    };
+    const yMid = Math.min(maxY, AO_H);
+    const cB = tint.clone().multiplyScalar(aoAt(fy0));
+    const cM = tint.clone().multiplyScalar(aoAt(yMid));
+    const vMid = yMid / FACADE_TILE_H + vOff;
     const wall = (ax, az, bx, bz, nx, nz) => {
       const len = Math.hypot(bx - ax, bz - az) / FACADE_TILE_W;
-      gb.quad(
-        [ax, fy0, az, bx, fy0, bz, bx, maxY, bz, ax, maxY, az],
-        [nx, 0, nz],
-        [uOff, v0, uOff + len, v0, uOff + len, v1, uOff, v1],
-        tint,
-      );
+      if (minY === 0 && yMid > fy0 + 0.5 && yMid < maxY - 0.5) {
+        gb.quad([ax, fy0, az, bx, fy0, bz, bx, yMid, bz, ax, yMid, az], [nx, 0, nz], [uOff, v0, uOff + len, v0, uOff + len, vMid, uOff, vMid], cB, cM);
+        gb.quad([ax, yMid, az, bx, yMid, bz, bx, maxY, bz, ax, maxY, az], [nx, 0, nz], [uOff, vMid, uOff + len, vMid, uOff + len, v1, uOff, v1], cM, tint);
+      } else {
+        gb.quad(
+          [ax, fy0, az, bx, fy0, bz, bx, maxY, bz, ax, maxY, az],
+          [nx, 0, nz],
+          [uOff, v0, uOff + len, v0, uOff + len, v1, uOff, v1],
+          minY === 0 ? cB : tint,
+          minY === 0 ? tint.clone().multiplyScalar(aoAt(maxY)) : tint,
+        );
+      }
       if (store >= 0) {
         b.store.quad([ax, 0, az, bx, 0, bz, bx, STORE_H, bz, ax, STORE_H, az], [nx, 0, nz], [uOff, sv0, uOff + len, sv0, uOff + len, sv1, uOff, sv1], _white);
       }
@@ -507,6 +528,7 @@ export class City {
       const i1 = 2.5 + rng() * 3;
       const i2 = i1 + 2.5 + rng() * 3;
       this._box(x0, x1, 0, h1, z0, z1, style, tint, chunkOf, outer);
+      this._facadeDecor(x0, x1, z0, z1, h1, style, drng, outer.store, chunkOf, role);
       this._box(x0 + i1, x1 - i1, 0, h2, z0 + i1, z1 - i1, style, tint, chunkOf, deco);
       this._box(x0 + i2, x1 - i2, 0, h, z0 + i2, z1 - i2, style, tint, chunkOf, deco);
       top = { x0: x0 + i2, x1: x1 - i2, z0: z0 + i2, z1: z1 - i2 };
@@ -515,10 +537,12 @@ export class City {
       const h1 = h * (0.6 + rng() * 0.15);
       const i1 = 3 + rng() * 3;
       this._box(x0, x1, 0, h1, z0, z1, style, tint, chunkOf, outer);
+      this._facadeDecor(x0, x1, z0, z1, h1, style, drng, outer.store, chunkOf, role);
       this._box(x0 + i1, x1 - i1, 0, h, z0 + i1, z1 - i1, style, tint, chunkOf, deco);
       top = { x0: x0 + i1, x1: x1 - i1, z0: z0 + i1, z1: z1 - i1 };
     } else {
       this._box(x0, x1, 0, h, z0, z1, style, tint, chunkOf, outer);
+      this._facadeDecor(x0, x1, z0, z1, h, style, drng, outer.store, chunkOf, role);
     }
     const tw = top.x1 - top.x0;
     const td = top.z1 - top.z0;
@@ -539,6 +563,27 @@ export class City {
       const z = top.z0 + 4 + rng() * (td - 8);
       this.roofProps.waterTowers.push({ x, z, y: roofY });
       this.boxes.push({ minX: x - 2.3, maxX: x + 2.3, minY: roofY, maxY: roofY + 7.6, minZ: z - 2.3, maxZ: z + 2.3, type: 'prop' });
+    }
+    // Édicule d'escalier et ventilations (graine décorative : la disposition ne change pas)
+    if (this.detail && tw > 10 && td > 10 && h < 120 && drng() < 0.7) {
+      const bw = 2.6 + drng() * 1.2;
+      const bd = 2.6 + drng() * 1.6;
+      const bx = top.x0 + 1.5 + drng() * (tw - bw - 3);
+      const bz = top.z0 + 1.5 + drng() * (td - bd - 3);
+      const tb = chunkOf(bx, bz).trim;
+      const bh = 2.7 + drng() * 0.6;
+      this._solid(tb, bx, bx + bw, roofY, roofY + bh, bz, bz + bd, deco.trimTint.clone().multiplyScalar(0.8));
+      this._solid(tb, bx - 0.12, bx + bw + 0.12, roofY + bh, roofY + bh + 0.18, bz - 0.12, bz + bd + 0.12, new THREE.Color(0.35, 0.35, 0.36));
+      this._solid(tb, bx + bw * 0.3, bx + bw * 0.3 + 0.95, roofY, roofY + 2.1, bz - 0.04, bz, new THREE.Color(0.22, 0.2, 0.18));
+      this.boxes.push({ minX: bx, maxX: bx + bw, minY: roofY, maxY: roofY + bh + 0.18, minZ: bz, maxZ: bz + bd, type: 'prop' });
+      for (let k = 0; k < 3; k++) {
+        const vx = top.x0 + 1 + drng() * (tw - 2);
+        const vz = top.z0 + 1 + drng() * (td - 2);
+        if (vx > bx - 0.5 && vx < bx + bw + 0.5 && vz > bz - 0.5 && vz < bz + bd + 0.5) continue;
+        const vh = 0.6 + drng() * 1.2;
+        this._solid(tb, vx - 0.18, vx + 0.18, roofY, roofY + vh, vz - 0.18, vz + 0.18, new THREE.Color(0.55, 0.56, 0.57));
+        this._solid(tb, vx - 0.28, vx + 0.28, roofY + vh, roofY + vh + 0.12, vz - 0.28, vz + 0.28, new THREE.Color(0.4, 0.41, 0.42));
+      }
     }
     const nAc = Math.floor(rng() * 3);
     for (let k = 0; k < nAc && tw > 8 && td > 8; k++) {
@@ -563,6 +608,117 @@ export class City {
     this.buildings.push(b);
     if (role) this.landmarks[role] = b;
     return b;
+  }
+
+  // Détails de façade : auvents, climatiseurs de fenêtre, escalier de secours
+  _facadeDecor(minX, maxX, minZ, maxZ, maxY, style, drng, store, chunkOf, role) {
+    if (!this.detail || maxY < 10) return;
+    const glass = style === 2 || style === 3;
+    const hasStore = store >= 0;
+    const fy0 = hasStore ? STORE_H : 0;
+    const cell = FACADE_TILE_W / 8;
+    const floorH = FACADE_TILE_H / 8;
+    const trim = chunkOf((minX + maxX) / 2, (minZ + maxZ) / 2).trim;
+    const fireWall = !glass && !role && maxY < 80 && drng() < 0.6 ? Math.floor(drng() * 4) : -1;
+    const walls = [
+      [minX, maxZ, maxX, maxZ, 0, 1],
+      [maxX, maxZ, maxX, minZ, 1, 0],
+      [maxX, minZ, minX, minZ, 0, -1],
+      [minX, minZ, minX, maxZ, -1, 0],
+    ];
+    const winBottom = [0.22, 0.18, 0.04, 0.1, 0.25][style] * floorH;
+    const AWN = ['#8a1d1d', '#1d4a2a', '#1b2b55', '#2a2a2a', '#7a4a18', '#5a1d4a', '#b89a2a', '#6a6f75'].map((c) => new THREE.Color(c));
+    walls.forEach(([ax, az, bx, bz, nx, nz], wi) => {
+      const len = Math.hypot(bx - ax, bz - az);
+      const dx = (bx - ax) / len;
+      const dz = (bz - az) / len;
+      const P = (t, o, y) => [ax + dx * t + nx * o, y, az + dz * t + nz * o];
+      const nCols = Math.floor(len / cell);
+      const nFloors = Math.floor((maxY - fy0 - 1.2) / floorH);
+      // Auvents de magasins
+      if (hasStore && !glass && len > 8) {
+        const gb = this.awningGB;
+        for (let t = 2 + drng() * 3; t < len - 4; t += 6 + drng() * 5) {
+          if (drng() < 0.35) continue;
+          const w = 2.6 + drng() * 2.2;
+          const t0 = t;
+          const t1 = Math.min(len - 1, t + w);
+          const c = AWN[Math.floor(drng() * AWN.length)];
+          const yT = STORE_H - 0.25;
+          const yB = STORE_H - 1.05;
+          const out = 1.3;
+          const cDark = c.clone().multiplyScalar(0.7);
+          const q = (a, b, cc, dd, col) => gb.quad([...a, ...b, ...cc, ...dd], [nx, 0.7, nz], [0, 0, 1, 0, 1, 1, 0, 1], col);
+          q(P(t0, out, yB), P(t1, out, yB), P(t1, 0.02, yT), P(t0, 0.02, yT), c);
+          q(P(t0, out, yB - 0.3), P(t1, out, yB - 0.3), P(t1, out, yB), P(t0, out, yB), cDark);
+          q(P(t0, 0.02, yB - 0.1), P(t0, out, yB - 0.3), P(t0, out, yB), P(t0, 0.02, yT), cDark);
+          q(P(t1, out, yB - 0.3), P(t1, 0.02, yB - 0.1), P(t1, 0.02, yT), P(t1, out, yB), cDark);
+          t = t1;
+        }
+      }
+      // Climatiseurs aux fenêtres (immeubles d'habitation)
+      if (!glass) {
+        const acC = new THREE.Color(0.78, 0.77, 0.72);
+        for (let k = 0; k < nCols; k++) {
+          for (let f = 0; f < Math.min(nFloors, 12); f++) {
+            if (drng() > 0.05) continue;
+            const t = (k + 0.5) * cell;
+            const y = fy0 + f * floorH + winBottom;
+            const [x0, , z0] = P(t - 0.33, 0, y);
+            const [x1, , z1] = P(t + 0.33, 0.5, y);
+            this._solid(trim, Math.min(x0, x1), Math.max(x0, x1), y - 0.02, y + 0.42, Math.min(z0, z1), Math.max(z0, z1), acC);
+          }
+        }
+      }
+      // Escalier de secours sur une façade
+      if (wi === fireWall && nCols >= 3 && nFloors >= 2) {
+        const gb = this.fireGB;
+        const k0 = Math.floor(drng() * (nCols - 2));
+        const t0 = k0 * cell + 0.35;
+        const t1 = (k0 + 2) * cell - 0.35;
+        const D = 1.15;
+        const dark = new THREE.Color(1, 1, 1);
+        const nrm = [nx, 0, nz];
+        for (let f = 1; f <= nFloors; f++) {
+          const y = fy0 + f * floorH - floorH + winBottom - 0.18;
+          if (y > maxY - 2) break;
+          // plancher en caillebotis
+          gb.quad([...P(t0, 0.05, y), ...P(t1, 0.05, y), ...P(t1, D, y), ...P(t0, D, y)], [0, 1, 0], [0.1, 0.975, 0.4, 0.975, 0.4, 0.995, 0.1, 0.995], dark);
+          // garde-corps avant et côtés
+          gb.quad([...P(t0, D, y), ...P(t1, D, y), ...P(t1, D, y + 1.0), ...P(t0, D, y + 1.0)], nrm, [0, 0, 0.5, 0, 0.5, 1, 0, 1], dark);
+          gb.quad([...P(t0, 0.05, y), ...P(t0, D, y), ...P(t0, D, y + 1.0), ...P(t0, 0.05, y + 1.0)], [-dx, 0, -dz], [0, 0, 0.12, 0, 0.12, 1, 0, 1], dark);
+          gb.quad([...P(t1, D, y), ...P(t1, 0.05, y), ...P(t1, 0.05, y + 1.0), ...P(t1, D, y + 1.0)], [dx, 0, dz], [0, 0, 0.12, 0, 0.12, 1, 0, 1], dark);
+          // volée de marches vers l'étage inférieur (ou échelle au premier niveau)
+          if (f > 1) {
+            const ya = y;
+            const yb = y - floorH;
+            gb.quad([...P(t1 - 0.4, 0.3, yb), ...P(t1 - 0.4, 0.95, yb), ...P(t0 + 1.6, 0.95, ya), ...P(t0 + 1.6, 0.3, ya)], [0, 1, 0], [0.5, 0, 1, 0, 1, 1, 0.5, 1], dark);
+            gb.quad([...P(t1 - 0.4, 0.97, yb), ...P(t0 + 1.6, 0.97, ya), ...P(t0 + 1.6, 0.97, ya + 0.9), ...P(t1 - 0.4, 0.97, yb + 0.9)], nrm, [0, 0, 0.5, 0, 0.5, 1, 0, 1], dark);
+          } else {
+            gb.quad([...P(t1 - 0.9, D - 0.02, y - 2.2), ...P(t1 - 0.4, D - 0.02, y - 2.2), ...P(t1 - 0.4, D - 0.02, y), ...P(t1 - 0.9, D - 0.02, y)], nrm, [0.5, 0, 1, 0, 1, 1, 0.5, 1], dark);
+          }
+        }
+      }
+    });
+  }
+
+  _buildFacadeDecor() {
+    const fire = this.fireGB.build();
+    if (fire) {
+      const mat = new THREE.MeshStandardMaterial({ map: makeFireEscapeTexture(), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.7, metalness: 0.4, vertexColors: true });
+      const m = new THREE.Mesh(fire, mat);
+      m.receiveShadow = true;
+      this.group.add(m);
+    }
+    const awn = this.awningGB.build();
+    if (awn) {
+      const m = new THREE.Mesh(awn, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, side: THREE.DoubleSide }));
+      m.castShadow = true;
+      m.receiveShadow = true;
+      this.group.add(m);
+    }
+    this.fireGB = null;
+    this.awningGB = null;
   }
 
   _buildOscorp(bx0, bz0, bx1, bz1, chunkOf) {
@@ -782,11 +938,25 @@ export class City {
     this._trees(trees, rng);
   }
 
-  _trees(trees, rng) {
-    const trunkG = new THREE.CylinderGeometry(0.2, 0.38, 4.6, 8);
-    trunkG.translate(0, 2.3, 0);
+  // Géométries et matériaux d'arbre partagés (réutilisés par les arbres d'alignement)
+  treeAssets(slim = false) {
+    const trunkG = slim ? new THREE.CylinderGeometry(0.14, 0.24, 7.2, 6) : new THREE.CylinderGeometry(0.2, 0.38, 4.6, 8);
+    trunkG.translate(0, slim ? 3.6 : 2.3, 0);
+    const leafG = makeFoliage(this.detail ? 1 : 0);
+    if (slim) leafG.scale(0.85, 0.9, 0.85).translate(0, 2.1, 0);
+    if (!this._trunkMat) {
+      this._trunkMat = new THREE.MeshStandardMaterial({ color: 0x5b4636, roughness: 0.95 });
+      this._leafMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, vertexColors: true });
+    }
+    return { trunkG, leafG, trunkMat: this._trunkMat, leafMat: this._leafMat };
+  }
+
+  _trees(trees, rng, slim = false) {
+    const trunkG = slim ? new THREE.CylinderGeometry(0.14, 0.24, 7.2, 7) : new THREE.CylinderGeometry(0.2, 0.38, 4.6, 8);
+    trunkG.translate(0, slim ? 3.6 : 2.3, 0);
     const trunk = new THREE.InstancedMesh(trunkG, new THREE.MeshStandardMaterial({ color: 0x5b4636, roughness: 0.95 }), trees.length);
     const leafG = makeFoliage(this.detail ? 1 : 0);
+    if (slim) leafG.scale(0.85, 0.9, 0.85).translate(0, 2.1, 0);
     const leafMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, vertexColors: true });
     const leaves = new THREE.InstancedMesh(leafG, leafMat, trees.length);
     const m4 = new THREE.Matrix4();

@@ -16,7 +16,7 @@ function tex(canvas, { repeat = true, srgb = true, aniso = 8 } = {}) {
 }
 
 // Bruit fin pixel par pixel (grain) : plus doux que les petits rectangles
-function grain(ctx, w, h, rng, amount = 10) {
+export function grain(ctx, w, h, rng, amount = 10) {
   const img = ctx.getImageData(0, 0, w, h);
   const d = img.data;
   for (let i = 0; i < d.length; i += 4) {
@@ -29,7 +29,7 @@ function grain(ctx, w, h, rng, amount = 10) {
 }
 
 // Carte de normales à partir d'une carte de hauteur en niveaux de gris (bouclée)
-function normalFromHeight(hc, strength) {
+export function normalFromHeight(hc, strength) {
   const w = hc.width;
   const h = hc.height;
   const src = hc.getContext('2d').getImageData(0, 0, w, h).data;
@@ -629,12 +629,24 @@ export function makeBeamTexture() {
   return tex(c, { repeat: false });
 }
 
+// Police d'affichage (embarquée) ajustée pour que le texte tienne dans la largeur
+function fitFont(ctx, text, maxW, maxSize) {
+  let size = maxSize;
+  ctx.font = `400 ${size}px "Bebas Neue", "Arial Black", Impact, sans-serif`;
+  const w = ctx.measureText(text).width;
+  if (w > maxW) {
+    size = Math.floor((size * maxW) / w);
+    ctx.font = `400 ${size}px "Bebas Neue", "Arial Black", Impact, sans-serif`;
+  }
+  return size;
+}
+
 export function makeSignTexture(text, color = '#e8f4ff', bg = 'rgba(0,0,0,0)') {
   const c = makeCanvas(1024, 256);
   const ctx = c.getContext('2d');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, 1024, 256);
-  ctx.font = 'bold 170px Arial Black, Impact, sans-serif';
+  fitFont(ctx, text, 960, 210);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = color;
@@ -664,17 +676,47 @@ export function makeBillboardTexture(text, fg, bg, seed = 0) {
   ctx.strokeStyle = fg;
   ctx.lineWidth = 8;
   ctx.strokeRect(10, 10, 492, 236);
-  ctx.font = `bold ${text.length > 10 ? 64 : 92}px Arial Black, Impact, sans-serif`;
+  fitFont(ctx, text, 440, 130);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.shadowColor = fg;
   ctx.shadowBlur = 24;
   ctx.fillStyle = fg;
-  ctx.fillText(text, 256, 132);
+  ctx.fillText(text, 256, 138);
   ctx.shadowBlur = 0;
   ctx.fillStyle = '#ffffff';
   ctx.globalAlpha = 0.85;
-  ctx.fillText(text, 256, 132);
+  ctx.fillText(text, 256, 138);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+
+// Escalier de secours : garde-corps (moitié gauche) et marches (moitié droite), avec transparence
+export function makeFireEscapeTexture() {
+  const S = 256;
+  const c = makeCanvas(S, S);
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, S, S);
+  const metal = '#2a2d2f';
+  const rust = 'rgba(110,60,30,0.35)';
+  ctx.fillStyle = metal;
+  // Garde-corps : lisses haute/milieu/basse et barreaux
+  const H = S / 2;
+  ctx.fillRect(0, 0, H, 10);
+  ctx.fillRect(0, S * 0.5 - 4, H, 6);
+  ctx.fillRect(0, S - 10, H, 10);
+  for (let x = 2; x < H; x += 10) ctx.fillRect(x, 0, 3, S);
+  // Marches : limons sur les bords, marches horizontales
+  ctx.fillRect(H, 0, 12, S);
+  ctx.fillRect(S - 12, 0, 12, S);
+  for (let y = 4; y < S; y += 20) ctx.fillRect(H, y, H, 7);
+  // Rouille légère
+  const rng = mulberry32(3);
+  ctx.fillStyle = rust;
+  for (let i = 0; i < 300; i++) ctx.fillRect(rng() * S, rng() * S, 2 + rng() * 4, 2 + rng() * 4);
+  // Zone pleine (plancher) : coin en haut à gauche, 10 px
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;

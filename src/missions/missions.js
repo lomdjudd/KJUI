@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { makeEnemyOutfit, addHeadwear } from '../npc/outfits.js';
 import { Boss } from '../npc/boss.js';
 import { Rhino } from '../npc/rhino.js';
 import { mulberry32, formatTime, pick } from '../engine/utils.js';
@@ -174,10 +175,8 @@ class CarChase extends BaseMission {
     this.stage = 'chase';
     this.escapeT = 0;
     // voiture
-    const geo = game.traffic.mesh.geometry;
-    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, color: 0x222222, roughness: 0.3, metalness: 0.6 });
-    this.car = new THREE.Mesh(geo, mat);
-    this.car.castShadow = true;
+    this.vehicle = game.traffic.createVehicle('sedan', '#16181c');
+    this.car = this.vehicle.mesh;
     game.scene.add(this.car);
     this.items.push({ mesh: this.car, kind: 'mesh' });
     this.nextNode = { i: this.ci + 1, j: this.cj };
@@ -252,12 +251,18 @@ class CarChase extends BaseMission {
       }
       // voie de droite
       const lane = new THREE.Vector3(-this.dir.z, 0, this.dir.x).multiplyScalar(-3.4);
-      this.car.position.copy(this.path).add(lane);
-      this.pos.copy(this.car.position);
-      this.car.rotation.y = Math.atan2(this.dir.x, this.dir.z);
-      this.chest.copy(this.car.position).setY(1.2);
+      const veh = this.vehicle;
+      veh.position.copy(this.path).add(lane);
+      this.pos.copy(veh.position);
+      // braquage progressif dans les virages
+      const want = Math.atan2(this.dir.x, this.dir.z);
+      let dy = want - veh.yaw;
+      dy -= Math.round(dy / (Math.PI * 2)) * Math.PI * 2;
+      veh.yaw += dy * Math.min(1, dt * 8);
+      veh.update(dt, this.speed);
+      this.chest.copy(veh.position).setY(1.2);
       // le joueur sur le toit frappe la voiture
-      if (Math.random() < dt * 3) game.fx.smoke(this.car.position.clone().add(v(0, 0.5, 0)), '#666', 1, 0.8, 1);
+      if (Math.random() < dt * 3) game.fx.smoke(veh.position.clone().add(v(0, 0.5, 0)), '#666', 1, 0.8, 1);
       this.objective = `Arrête la voiture ! Frappe-la ou tire-lui dessus (R) — ${Math.max(0, Math.ceil(this.hp))}%`;
       if (dist > 320) {
         this.escapeT += dt;
@@ -267,12 +272,12 @@ class CarChase extends BaseMission {
         }
         this.objective = `Ils s'échappent ! Rattrape-les (${Math.ceil(6 - this.escapeT)} s)`;
       } else this.escapeT = 0;
-      this.markers = [{ pos: this.car.position, color: '#ff4040', label: 'Voiture' }];
+      this.markers = [{ pos: this.vehicle.position, color: '#ff4040', label: 'Voiture' }];
       if (Math.random() < dt * 0.4) game.audio.play('horn', 0.5);
       return 'running';
     }
     // combat après l'accident
-    if (Math.random() < dt * 4) game.fx.smoke(this.car.position.clone().add(v(0, 1, 1.5)), '#333', 2.5, 2.5, 3);
+    if (Math.random() < dt * 4) game.fx.smoke(this.vehicle.position.clone().add(v(0, 1, 1.5)), '#333', 2.5, 2.5, 3);
     const n = this.aliveCount();
     this.objective = `Neutralise les braqueurs (${n} restant${n > 1 ? 's' : ''})`;
     this.markers = this.enemies.filter((e) => e.alive).map((e) => ({ pos: e.pos, color: '#ff4040', small: true }));
@@ -304,18 +309,9 @@ class FallingCivilians extends BaseMission {
     this.fireT = 0;
   }
   _civ() {
-    const m = {
-      head: new THREE.MeshStandardMaterial({ color: '#e8b894' }),
-      torso: new THREE.MeshStandardMaterial({ color: pick(['#d94f4f', '#4f7dd9', '#e0c040', '#6fcf6f']) }),
-      pelvis: new THREE.MeshStandardMaterial({ color: '#333a55' }),
-      upperArm: new THREE.MeshStandardMaterial({ color: '#e8b894' }),
-      foreArm: new THREE.MeshStandardMaterial({ color: '#e8b894' }),
-      hand: new THREE.MeshStandardMaterial({ color: '#e8b894' }),
-      thigh: new THREE.MeshStandardMaterial({ color: '#333a55' }),
-      shin: new THREE.MeshStandardMaterial({ color: '#333a55' }),
-      foot: new THREE.MeshStandardMaterial({ color: '#222' }),
-    };
-    const rig = new Rig({ materials: m, kind: 'civ' });
+    const outfit = makeEnemyOutfit('civil');
+    const rig = new Rig({ materials: outfit.materials, kind: 'civ' });
+    addHeadwear(rig.j.head, outfit);
     this.game.scene.add(rig.group);
     return rig;
   }
