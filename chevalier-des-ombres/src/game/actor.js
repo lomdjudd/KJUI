@@ -56,6 +56,7 @@ export class Actor {
     this.game.scene.remove(this.mesh);
     this.mesh.traverse((o) => {
       if (o.geometry) o.geometry.dispose();
+      if (o.isSkinnedMesh) o.skeleton.dispose();
     });
     if (this.mat && this.mat.dispose) this.mat.dispose();
     this.mesh = null;

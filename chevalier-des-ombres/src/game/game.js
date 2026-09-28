@@ -204,16 +204,16 @@ export class Game {
     this.enemies = [];
     for (const a of this.allies) a.removeModel();
     this.allies = [];
-    for (const n of this.npcs) this.scene.remove(n.mesh);
+    for (const n of this.npcs) this._disposeMesh(n.mesh, true);
     this.npcs = [];
-    for (const c of this.chests) this.scene.remove(c.mesh);
+    for (const c of this.chests) this._disposeMesh(c.mesh);
     this.chests = [];
     if (this.pageMesh) {
-      this.scene.remove(this.pageMesh);
+      this._disposeMesh(this.pageMesh);
       this.pageMesh = null;
     }
     if (this.portalFx) {
-      this.scene.remove(this.portalFx);
+      this._disposeMesh(this.portalFx);
       this.portalFx = null;
     }
     this._endBossFight(false);
@@ -224,6 +224,16 @@ export class Game {
     this.particles.clear();
     this.particlesAlpha.clear();
     this.powers.channels = [];
+  }
+
+  // Retire un objet de la scène et libère ses géométries (et ses matériaux propres)
+  _disposeMesh(root, ownMaterials = false) {
+    this.scene.remove(root);
+    root.traverse((o) => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.isSkinnedMesh) o.skeleton.dispose();
+      if (ownMaterials && o.material && o.material.dispose) o.material.dispose();
+    });
   }
 
   _spawnCamps() {

@@ -350,3 +350,9 @@ body.touch .notif.item { border-color: #7affd0; }
 body.touch #shards { top: calc(92px + var(--safe-t)); bottom: auto; left: calc(18px + var(--safe-l)); right: auto; font-size: 16px; }
 body.touch #powers { display: none; }
 body.touch #flasks .key, body.touch .pslot .key { display: none; }
+
+/* Écrans tactiles étroits : la mini-carte suffit (boussole et nom de zone laissent la place aux boutons) */
+body.touch #zone-name { display: none; }
+@media (max-width: 960px) {
+  body.touch #compass { display: none; }
+}

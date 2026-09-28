@@ -248,13 +248,6 @@ export class Touch {
     this.zoneR.style.left = left ? '0' : '';
     this.hint.style.left = left ? '' : `calc(70px + var(--safe-l))`;
     this.hint.style.right = left ? `calc(70px + var(--safe-r))` : '';
-    const top = (b, i) => {
-      b.style.width = b.style.height = 42 * s + 'px';
-      b.style.top = `calc(${176 * 1 + i * 52 * s}px + var(--safe-t))`;
-      b.style[other] = '';
-      b.style[side] = `calc(${24}px + var(--safe-${left ? 'l' : 'r'}))`;
-    };
-    // Pause/vue/carte : colonne sous la mini-carte
     // Pause / vue / carte : rangée en haut, à gauche de la mini-carte
     const mm = document.getElementById('minimap');
     const mmW = (mm && mm.offsetWidth) || 110;
@@ -264,7 +257,6 @@ export class Touch {
       b.style.left = '';
       b.style.right = `calc(${mmW + 30 + i * 48 * s}px + var(--safe-r))`;
     });
-    void top;
     this.refresh();
   }
 

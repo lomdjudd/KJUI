@@ -51,6 +51,7 @@ export class World {
     this.group.traverse((o) => {
       if (o.geometry) o.geometry.dispose();
     });
+    if (this.terrain) this.terrain.mesh.material.dispose();
     this.group.clear();
     this.colliders.clear();
     this.lights = [];

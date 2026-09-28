@@ -247,7 +247,7 @@ export class Hud {
     }
     if (this._prompt === text) return;
     this._prompt = text;
-    const key = this.game.input.isTouch ? '✋' : this.game.input.lastDevice === 'gamepad' ? 'Y' : 'E';
+    const key = this.game.input.isTouch ? '✋' : this.game.input.lastDevice === 'gamepad' ? 'A' : 'E';
     p.innerHTML = `<span class="k">${key}</span>${escapeHtml(text)}`;
     p.classList.add('show');
     p.onclick = () => this.game.input.tap('interact');

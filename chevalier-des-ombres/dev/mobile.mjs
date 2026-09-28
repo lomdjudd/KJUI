@@ -28,5 +28,12 @@ const moved = await page.evaluate(() => ({ z: window.__game.player.pos.z, x: win
 await page.screenshot({ path: `${outDir}/mob3_move.png` });
 await touch('touchEnd', 0, 0);
 logs.push('position après joystick ' + JSON.stringify(moved));
+// Menus en tactile : pause (équipement) et paramètres
+await page.tap('.tbtn[data-fixed=pause]');
+await page.waitForTimeout(600);
+await page.screenshot({ path: `${outDir}/mob4_pause.png` });
+await page.evaluate(() => window.__game.menus.openPause('settings'));
+await page.waitForTimeout(600);
+await page.screenshot({ path: `${outDir}/mob5_settings.png` });
 console.log(logs.join('\n'));
 await browser.close();

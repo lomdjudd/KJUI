@@ -1,5 +1,7 @@
 # 🕷️ Spider-Man : Monde Ouvert
 
+> 🆕 **Nouveau : [Chevalier des Ombres](chevalier-des-ombres/README.md)** — action-RPG dark fantasy en 3D (chevalier jouable à la 1ʳᵉ ou 3ᵉ personne, 47 types d'ennemis, 25 boss, quêtes, compétences, pouvoirs, tenues). **APK Android prêt à installer : [`chevalier-des-ombres/release/ChevalierDesOmbres.apk`](chevalier-des-ombres/release/ChevalierDesOmbres.apk)**.
+
 Un jeu Spider-Man en 3D, **en monde ouvert**, jouable directement dans le navigateur. Il s'inspire des jeux Spider-Man classiques : tu te balances entre les gratte-ciel d'un Manhattan procédural, tu arrêtes des criminels avec plusieurs styles de combat, tu enchaînes les missions jusqu'au duel final contre le Bouffon Vert.
 
 > Fan-game non officiel, gratuit et sans but commercial. Spider-Man, le Bouffon Vert, Oscorp et le Daily Bugle sont des marques de Marvel. Tous les graphismes et sons du jeu sont générés par le code (aucun élément extrait des jeux officiels).

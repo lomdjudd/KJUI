@@ -1,7 +1,14 @@
 // Ciel nocturne : dégradé, étoiles scintillantes, nébuleuses violettes/vertes et lune.
 // Silhouettes de montagnes et de tours à l'horizon pour la profondeur.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { makeRng } from '../core/utils.js';
+
+function mergeAndDispose(geos) {
+  const g = mergeGeometries(geos, false);
+  for (const x of geos) x.dispose();
+  return g;
+}
 
 const SKY_VS = /* glsl */ `
 varying vec3 vDir;
@@ -99,8 +106,14 @@ export class Sky {
 
   // Silhouettes lointaines (montagnes + tours gothiques)
   buildHorizon(zoneSize, palette, seed, withCastle = false) {
+    // Libère les silhouettes de la zone précédente
+    for (const m of this.horizonGroup.children) {
+      m.geometry.dispose();
+      m.material.dispose();
+    }
     this.horizonGroup.clear();
     const rng = makeRng(seed);
+    // Montagnes : une seule géométrie fusionnée (1 draw call)
     const geos = [];
     const R = 165;
     const n = 42;
@@ -113,35 +126,28 @@ export class Sky {
       geos.push(g);
     }
     const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(palette.fog).multiplyScalar(0.55), fog: false });
-    for (const g of geos) {
-      const m = new THREE.Mesh(g, mat);
-      this.horizonGroup.add(m);
-    }
+    this.horizonGroup.add(new THREE.Mesh(mergeAndDispose(geos), mat));
     if (withCastle) {
-      // Silhouette du château vert de Nocthar au loin (cf. image de référence)
-      const castle = new THREE.Group();
-      const dark = new THREE.MeshBasicMaterial({ color: 0x08100c, fog: false });
-      const glow = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x39ff6a).multiplyScalar(2.5), fog: false });
+      // Silhouette du château vert de Nocthar au loin (cf. image de référence) : 2 draw calls
+      const dark = [];
+      const lit = [];
       const towers = [[0, 60, 7], [-14, 42, 5], [14, 46, 5], [-26, 30, 4], [26, 32, 4], [-7, 50, 4], [7, 54, 4]];
       for (const [x, h, r] of towers) {
-        const t = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.1, h, 8), dark);
-        t.position.set(x, h / 2, 0);
-        castle.add(t);
-        const roof = new THREE.Mesh(new THREE.ConeGeometry(r * 1.3, h * 0.45, 8), dark);
-        roof.position.set(x, h + h * 0.22, 0);
-        castle.add(roof);
+        dark.push(new THREE.CylinderGeometry(r, r * 1.1, h, 8).translate(x, h / 2, 0));
+        dark.push(new THREE.ConeGeometry(r * 1.3, h * 0.45, 8).translate(x, h + h * 0.22, 0));
         for (let k = 0; k < 5; k++) {
-          const wdw = new THREE.Mesh(new THREE.PlaneGeometry(r * 0.35, r * 0.7), glow);
-          wdw.position.set(x + (rng() - 0.5) * r, h * (0.3 + rng() * 0.6), r + 0.05);
-          castle.add(wdw);
+          lit.push(new THREE.PlaneGeometry(r * 0.35, r * 0.7).translate(x + (rng() - 0.5) * r, h * (0.3 + rng() * 0.6), r + 0.05));
         }
       }
-      const wall = new THREE.Mesh(new THREE.BoxGeometry(60, 18, 6), dark);
-      wall.position.set(0, 9, 3);
-      castle.add(wall);
-      castle.position.set(0, -6, -178);
-      castle.scale.setScalar(1.3);
-      this.horizonGroup.add(castle);
+      dark.push(new THREE.BoxGeometry(60, 18, 6).translate(0, 9, 3));
+      const darkMat = new THREE.MeshBasicMaterial({ color: 0x08100c, fog: false });
+      const glowMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x39ff6a).multiplyScalar(2.5), fog: false });
+      for (const [list, m] of [[dark, darkMat], [lit, glowMat]]) {
+        const mesh = new THREE.Mesh(mergeAndDispose(list), m);
+        mesh.position.set(0, -6, -178);
+        mesh.scale.setScalar(1.3);
+        this.horizonGroup.add(mesh);
+      }
     }
   }
 

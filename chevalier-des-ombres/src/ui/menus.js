@@ -56,6 +56,9 @@ export class Menus {
     this.stack = [];
     this.root.className = '';
     this.root.innerHTML = '';
+    // La touche qui a fermé le menu ne doit pas agir aussi en jeu (ex. rouvrir un dialogue)
+    this.game.input.reset();
+    this.game.input.endFrame();
     if (this.game.touch) this.game.touch.setVisible(this.game.state === 'playing');
     this.game.hud.refreshAll();
   }
@@ -398,7 +401,7 @@ export class Menus {
       ['Sauter', 'Espace'], ['Sprinter', 'Maj'], ['Verrouiller la cible', 'T / clic molette'], ['Pouvoirs', '1 2 3 4 · molette = sélection'], ['Fiole de Braise', 'R'], ['Fiole d’Éther', 'X'],
       ['Interagir', 'E / F'], ['Vue 1re / 3e personne', 'V'], ['Carte', 'Tab / M'], ['Inventaire / Journal', 'I / L'], ['Pause', 'Échap / P'],
     ])}</div><div><h3>Manette</h3>${rows([
-      ['Attaque légère / lourde', 'X / Y · RT'], ['Garde', 'LB / LT'], ['Roulade', 'B'], ['Sauter', 'A'], ['Pouvoir sélectionné', 'RB'], ['Changer de pouvoir', 'Croix ← →'],
+      ['Attaque légère / lourde', 'X / Y · RT'], ['Garde', 'LB / LT'], ['Roulade', 'B'], ['Sauter / interagir', 'A'], ['Pouvoir sélectionné', 'RB'], ['Changer de pouvoir', 'Croix ← →'],
       ['Fioles', 'Croix ↑ (braise) · ↓ (éther)'], ['Verrouiller', 'R3'], ['Sprint', 'L3'], ['Carte / Pause', 'Select / Start'],
     ])}<h3>Tactile</h3>${rows([['Déplacement', 'Joystick à gauche (poussé à fond = sprint)'], ['Caméra', 'Glisser à droite'], ['Actions', 'Boutons à droite'], ['Vue', 'Icône œil']])}</div></div>`;
   }

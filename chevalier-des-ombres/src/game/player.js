@@ -390,7 +390,8 @@ export class Player extends Actor {
       }
     }
     // Saut
-    if (input.wasPressed('jump') && free && this.grounded && !this.blocking && this.stamina > 5) {
+    const interacting = g.interactTarget && input.wasPressed('interact');
+    if (input.wasPressed('jump') && !interacting && free && this.grounded && !this.blocking && this.stamina > 5) {
       this.vy = 8;
       this.grounded = false;
       this.stamina -= 8;

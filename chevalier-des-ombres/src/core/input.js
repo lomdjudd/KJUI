@@ -33,7 +33,7 @@ const KEYMAP = {
 
 // Mapping standard des manettes (Xbox)
 const PADMAP = {
-  0: 'jump', // A
+  0: 'jump', // A (interagit aussi à proximité d'un PNJ/objet)
   1: 'dodge', // B
   2: 'attack', // X
   3: 'heavy', // Y
@@ -200,9 +200,12 @@ export class Input {
       if (is !== was) {
         const act = PADMAP[i];
         if (act) {
-          const a = act === 'blockAlt' ? 'block' : act;
-          if (is) this._press(a);
-          else this._release(a);
+          // A : saut, ou interaction quand un objet/PNJ est à portée (le joueur choisit)
+          const acts = act === 'blockAlt' ? ['block'] : act === 'jump' ? ['jump', 'interact'] : [act];
+          for (const a of acts) {
+            if (is) this._press(a);
+            else this._release(a);
+          }
         }
         this.padPrev[i] = is;
         if (is) this.lastDevice = 'gamepad';

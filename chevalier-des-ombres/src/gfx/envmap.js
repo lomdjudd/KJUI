@@ -42,8 +42,10 @@ export function makeEnvironment(renderer, pal) {
   const pmrem = new THREE.PMREMGenerator(renderer);
   const rt = pmrem.fromScene(scene, 0.02);
   pmrem.dispose();
-  sky.geometry.dispose();
-  sky.material.dispose();
+  scene.traverse((o) => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) o.material.dispose();
+  });
   if (current) current.dispose();
   current = rt;
   return rt.texture;
