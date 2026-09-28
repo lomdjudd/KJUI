@@ -2,7 +2,7 @@
 // ressources, moteurs, aérodynamique, échauffement, contact avec le sol.
 
 import { PART_BY_ID, GLOBAL_RES } from '../parts/catalog.js';
-import { Craft, fuelGroups, ispAt, localBox, fairingContents } from '../craft/craft.js';
+import { Craft, fuelGroups, ispAt, localBox, fairingContents, initialRes } from '../craft/craft.js';
 import { legFoot } from '../parts/legs.js';
 import { Orbit } from '../core/orbit.js';
 import { G0, wrapPi, clamp } from '../core/math.js';
@@ -382,6 +382,9 @@ export class Vessel {
   deployFairing(p) {
     if (p.fairingDeployed) return;
     p.fairingDeployed = true;
+    // une coiffe larguée automatiquement disparaît des étages à venir
+    for (let i = this.stageIdx; i < this.stages.length; i++) this.stages[i] = this.stages[i].filter((u) => u !== p.uid);
+    this.stages = this.stages.filter((st, i) => i < this.stageIdx || st.length);
     this.events.push({ type: 'fairing', part: p });
     this.structureChanged();
   }
@@ -963,11 +966,14 @@ export class Vessel {
           this.events.push({ type: 'chute', part: p });
         }
       } else if (p.chute === 'semi') {
-        p.chuteOpen = Math.min(1, (p.chuteOpen || 0) + dt * 0.8);
+        // ouverture « rifée » : la voilure ne s'ouvre que si la décélération reste supportable
+        const o2 = Math.min(1, (p.chuteOpen || 0) + dt * 0.8);
+        if (o2 < 0.03 || (this.q * d.chute.cda * 0.06 * o2) / this.mass < 4.5 * 9.81) p.chuteOpen = o2;
         const talt = this.terrainAlt ?? alt;
-        if (talt < 1500 || (rho > 0.3 && vs < 60)) { p.chute = 'full'; p.chuteOpen = 0; this.events.push({ type: 'chuteFull', part: p }); }
+        if (talt < 1000) { p.chute = 'full'; p.chuteOpen = 0; this.events.push({ type: 'chuteFull', part: p }); }
       } else if (p.chute === 'full') {
-        p.chuteOpen = Math.min(1, (p.chuteOpen || 0) + dt * 0.5);
+        const o2 = Math.min(1, (p.chuteOpen || 0) + dt * 0.5);
+        if (o2 < 0.05 || (this.q * d.chute.cda * o2) / this.mass < 5 * 9.81) p.chuteOpen = o2;
         const load = this.q * d.chute.cda * (p.chuteOpen || 0);
         if (load > this.mass * 9.81 * 9 + 60000 && vs > d.chute.maxSpeed * 0.9) {
           p.chute = 'torn';
@@ -999,8 +1005,11 @@ export class Vessel {
 
     // Statistiques
     this.stats.maxAlt = Math.max(this.stats.maxAlt, alt);
-    this.gforce = (this.nonGravAccel || 0) / G0;
-    if (this.launched) this.stats.maxG = Math.max(this.stats.maxG, this.gforce);
+    // accéléromètre lissé (≈ 0,25 s) : les chocs brefs au contact du sol ne
+    // comptent pas comme une accélération soutenue
+    const gRaw = (this.nonGravAccel || 0) / G0;
+    this.gforce += (gRaw - this.gforce) * Math.min(1, dt / 0.25);
+    if (this.launched && !this.inContact) this.stats.maxG = Math.max(this.stats.maxG, this.gforce);
     if (this.pendingCrash) {
       const pc = this.pendingCrash;
       this.pendingCrash = null;
@@ -1221,7 +1230,10 @@ export class Vessel {
 export function makePart(p) {
   const def = PART_BY_ID[p.id];
   const res = {}, cap = {};
-  if (def.res) for (const k in def.res) { res[k] = def.res[k]; cap[k] = def.res[k]; }
+  if (def.res) {
+    const init = p.res0 || initialRes(p);
+    for (const k in def.res) { res[k] = init[k] ?? def.res[k]; cap[k] = def.res[k]; }
+  }
   return {
     uid: p.uid, id: p.id, def,
     pos: { x: p.pos.x, y: p.pos.y, z: p.pos.z }, yaw: p.yaw || 0, flip: !!p.flip, paint: p.paint || null,

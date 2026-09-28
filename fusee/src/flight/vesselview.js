@@ -119,6 +119,7 @@ export class VesselView {
     // parachutes
     const sv = v.surfaceVelocity();
     const sl = Math.hypot(sv[0], sv[1]) || 1;
+    this.chuteExtent = 0;
     for (const p of v.parts) {
       if (!p.def.chute) continue;
       const open = p.chute === 'semi' || p.chute === 'full';
@@ -156,6 +157,7 @@ export class VesselView {
         const k = p.chute === 'semi' ? 0.22 : 0.22 + 0.78 * (p.chuteOpen || 0);
         const breath = 1 + Math.sin(time * 3 + p.uid) * 0.015;
         c.scale.set(k * breath, Math.max(0.3, k), k * breath);
+        this.chuteExtent = Math.max(this.chuteExtent, c.userData.r * (2.4 * Math.max(0.3, k) + 0.6 * k));
       }
     }
     // plasma de rentrée

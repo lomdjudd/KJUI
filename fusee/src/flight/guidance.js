@@ -208,7 +208,7 @@ export class Autopilot {
     const active = v.parts.filter((p) => p.def.engine && p.engOn && !p.def.engine.escape);
     const burning = active.filter((p) => v.fuelFor(p) > 0);
     // propulseurs vides à larguer
-    const empties = active.filter((p) => v.fuelFor(p) <= 0);
+    const empties = v.parts.filter((p) => p.def.engine && !p.def.engine.escape && (p.engOn || p.flameout) && v.fuelFor(p) <= 0);
     const next = v.stages[v.stageIdx] || [];
     const nextHasChute = next.some((u) => v.byUid.get(u)?.def.chute);
     if (nextHasChute) return;
@@ -371,26 +371,64 @@ export class Autopilot {
     if (dir[0] * up[0] + dir[1] * up[1] < 0.05) {
       dir = [dir[0] + up[0] * 0.2, dir[1] + up[1] * 0.2];
     }
-    const targetRot = rotFor(dir[0], dir[1]);
+    let targetRot = rotFor(dir[0], dir[1]);
     // distance d'arrêt
-    const aNet = Math.max(0.1, acc * 0.92 - g);
+    const cosT = Math.max(0.5, dir[0] * up[0] + dir[1] * up[1]);
+    const aNet = Math.max(0.1, acc * 0.85 * cosT - g);
     const vDown = Math.max(0, -vv);
     const stopDist = (vDown * vDown) / (2 * aNet);
+    // cible au sol (balise du défi, zone d'atterrissage) : guidage de précision
+    let tgtDist = null;
+    const site = this.f.markerSite;
+    if (site && site.body === b.id) {
+      const lonV = Math.atan2(v.y, v.x) - b.rotationAt(sim.ut);
+      const d = wrapPi(site.lon - lonV) * b.radius; // > 0 : la cible est à l'est
+      if (Math.abs(d) < 600000) tgtDist = d;
+    }
+    const ex = -up[1], ey = up[0];
+    const vhE = sv[0] * ex + sv[1] * ey;
     let throttle = 0;
     if (this.phase === 'init') this.phase = 'wait';
     if (this.phase === 'wait') {
-      this.status = `Descente · allumage à ${(stopDist * 1.08 + 30).toFixed(0)} m (alt. ${talt.toFixed(0)} m)`;
-      if (hs > 30 && talt > 3000 && b.atmosphere == null) { throttle = 0.6; this.status = 'Annulation de la vitesse horizontale'; }
-      if (talt < stopDist * 1.08 + 30 + vDown * 0.5) this.phase = 'burn';
+      this.status = `Descente · allumage à ${(stopDist * 1.2 + 40).toFixed(0)} m (alt. ${talt.toFixed(0)} m)`;
+      if (hs > 30 && talt > 3000 && b.atmosphere == null) {
+        // sans cible : on annule tout de suite la vitesse horizontale ;
+        // avec cible : on attend que la distance de freinage l'atteigne
+        const aBr = Math.max(0.2, acc * 0.6);
+        const sStop = (hs * hs) / (2 * aBr) + hs * 3;
+        if (tgtDist != null && Math.sign(tgtDist) === Math.sign(vhE) && Math.abs(tgtDist) > sStop) {
+          this.status = `Approche de la cible · freinage dans ${((Math.abs(tgtDist) - sStop) / 1000).toFixed(1)} km`;
+          if (sim.warpIdx > 0 && (Math.abs(tgtDist) - sStop) / hs < 60) sim.setWarp(0);
+        } else { throttle = tgtDist != null ? 1 : 0.6; this.status = 'Annulation de la vitesse horizontale'; }
+      }
+      if (talt < stopDist * 1.2 + 40 + vDown * 0.6) this.phase = 'burn';
       if (sim.warpIdx > 0 && talt < stopDist * 3 + 2000) sim.setWarp(0);
     }
     if (this.phase === 'burn') {
       // vitesse verticale visée selon l'altitude
-      const targetV = -Math.max(1.2, Math.sqrt(2 * aNet * 0.65 * Math.max(0, talt - 1.5)));
+      const h = Math.max(0, talt - 1.5);
+      const targetV = -Math.max(1.2, Math.min(Math.sqrt(2 * aNet * 0.6 * h), 1.5 + h * 0.4));
       const err = targetV - vv; // > 0 : on tombe trop vite
-      const need = (g + err * 1.6) / Math.max(0.1, acc) / Math.max(0.3, dir[0] * up[0] + dir[1] * up[1]);
+      let need = (g + err * 2.4) / Math.max(0.1, acc) / Math.max(0.3, dir[0] * up[0] + dir[1] * up[1]);
+      if (tgtDist != null && Math.abs(tgtDist) < 3000 + talt) {
+        // accélération voulue = verticale (profil) + horizontale (vers la cible)
+        const tgo = (2 * talt) / Math.max(3, -vv) + 1;
+        const vCap = clamp(talt * 0.12, 1.5, 70);
+        const vDes = clamp(tgtDist / tgo, -vCap, vCap);
+        const aV = Math.max(0.2, g + err * 2.4);
+        const hl = aV * (talt < 30 ? 0.4 : 0.7);
+        const aH = clamp((vDes - vhE) * 1.5, -hl, hl);
+        const l = Math.hypot(aV, aH);
+        dir = [(up[0] * aV + ex * aH) / l, (up[1] * aV + ey * aH) / l];
+        need = l / Math.max(0.1, acc);
+        targetRot = rotFor(dir[0], dir[1]);
+      }
       throttle = clamp(need, 0, 1);
-      this.status = `Atterrissage · ${(-vv).toFixed(1)} m/s · ${talt.toFixed(0)} m`;
+      // moteurs à poussée minimale élevée : on coupe plutôt que de remonter
+      let minThr = 0;
+      for (const p of v.parts) if (p.engOn && p.def.engine && !p.def.engine.solid) minThr = Math.max(minThr, p.def.engine.minThrottle || 0);
+      if (throttle < minThr * 0.5) throttle = 0;
+      this.status = `Atterrissage · ${(-vv).toFixed(1)} m/s · ${talt.toFixed(0)} m` + (tgtDist != null ? ` · cible ${Math.abs(tgtDist).toFixed(0)} m` : '');
     }
     v.throttle = throttle;
     return { rot: steerTo(v, targetRot, dt) };

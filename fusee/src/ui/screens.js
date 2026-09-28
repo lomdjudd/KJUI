@@ -93,11 +93,11 @@ export class HubScreen {
     el.appendChild(h('div', { class: 'hub-top' },
       h('div', { class: 'hub-title' }, h('small', {}, g.mode === 'career' ? 'Carrière' : 'Bac à sable'), 'Centre spatial'),
       chips));
-    const card = (ic, title, text, fn, badge) => h('button', { class: 'hub-card', onclick: () => { app.audio.click(); fn(); } },
+    const card = (ic, title, text, fn, badge, primary) => h('button', { class: 'hub-card' + (primary ? ' primary' : ''), onclick: () => { app.audio.click(); fn(); } },
       h('div', { class: 'ic', html: icon(ICONS[ic]) }), h('b', {}, title), h('span', {}, text), badge ? h('span', { class: 'badge' }, badge) : null);
     const cards = [];
     cards.push(card('wrench', 'Hall d\'assemblage', 'Concevez vos fusées : 127 pièces, symétrie, étages.', () => app.goBuilder()));
-    if (g.lastCraft) cards.push(card('rocket', 'Pas de tir', `Lancer « ${g.lastCraft.name} ».`, () => app.launchCraft(g.lastCraft)));
+    if (g.lastCraft) cards.push(card('rocket', 'Pas de tir', `Relancer « ${g.lastCraft.name} » depuis le pas de tir.`, () => app.launchCraft(g.lastCraft), '', true));
     cards.push(card('radar', 'Centre de suivi', 'Reprenez le contrôle des vaisseaux en service.', () => this.openTracking(), g.vessels.length ? `${g.vessels.length} en service` : ''));
     if (g.mode === 'career') {
       const avail = TECHS.filter((t) => !g.techs.has(t.id) && t.req.every((r) => g.techs.has(r)) && t.cost <= g.science).length;
@@ -108,6 +108,11 @@ export class HubScreen {
     cards.push(card('gear', 'Options', 'Graphismes, son, commandes.', () => app.openSettings()));
     cards.push(card('home', 'Menu principal', 'Quitter vers l\'écran titre.', () => app.goMenu()));
     el.appendChild(h('div', { class: 'hub-grid' }, ...cards));
+    const st = g.stats;
+    el.appendChild(h('div', { class: 'hub-craft' },
+      h('small', {}, g.lastCraft ? 'Sur le pas de tir' : 'Pas de tir 39-F'),
+      h('b', {}, g.lastCraft ? g.lastCraft.name : 'Artémis lunaire'),
+      h('span', {}, `${st.launches} lancement${st.launches > 1 ? 's' : ''} · ${st.landings} atterrissage${st.landings > 1 ? 's' : ''} · ${g.vessels.length} en service`)));
     this.el = el;
     app.showcase.start('pad', g.ut, g.lastCraft);
   }

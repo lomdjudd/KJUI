@@ -3,6 +3,7 @@
 
 import * as THREE from 'three';
 import { EARTH_SITES } from '../core/terrain.js';
+import { mulberry32 } from '../core/noise.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 function canvasTex(w, h, draw) {
@@ -50,6 +51,22 @@ function mats() {
   M.glass = new THREE.MeshStandardMaterial({ color: '#10141c', roughness: 0.1, metalness: 0.5, emissive: new THREE.Color('#ffd89a'), emissiveIntensity: 0 });
   M.lamp = new THREE.MeshStandardMaterial({ color: '#fff', emissive: new THREE.Color('#fff1d6'), emissiveIntensity: 0 });
   M.redLamp = new THREE.MeshStandardMaterial({ color: '#300', emissive: new THREE.Color('#ff2020'), emissiveIntensity: 3 });
+  M.asphalt = new THREE.MeshStandardMaterial({
+    map: canvasTex(256, 256, (ctx, w, h) => {
+      ctx.fillStyle = '#34363a';
+      ctx.fillRect(0, 0, w, h);
+      for (let i = 0; i < 3000; i++) {
+        const v = 40 + Math.random() * 40;
+        ctx.fillStyle = `rgba(${v},${v},${v + 3},0.5)`;
+        ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+      }
+    }),
+    roughness: 0.95,
+  });
+  M.asphalt.map.wrapS = M.asphalt.map.wrapT = THREE.RepeatWrapping;
+  M.paintLine = new THREE.MeshStandardMaterial({ color: '#e9e6d8', roughness: 0.8 });
+  M.trunk = new THREE.MeshStandardMaterial({ color: '#4a3526', roughness: 0.95 });
+  M.leaves = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9, flatShading: true });
   M.lz = new THREE.MeshStandardMaterial({
     map: canvasTex(1024, 1024, (ctx, w, h) => {
       ctx.fillStyle = '#6f6e6a';
@@ -135,9 +152,79 @@ export class LaunchSite {
     this.arms = [];
     this.lampMats = [];
     this.lights = [];
+    this.env = new THREE.Group();
+    this.group.add(this.env);
     mats();
     this.buildPad(40);
     this.buildLZ();
+    this.buildEnv();
+  }
+
+  // Routes et forêt tropicale autour du complexe (construit une fois)
+  buildEnv() {
+    const g = this.env;
+    const parts = [];
+    const road = (x0, z0, x1, z1, w) => {
+      const L = Math.hypot(x1 - x0, z1 - z0);
+      const geo = new THREE.BoxGeometry(w, 0.45, L);
+      const uv = geo.attributes.uv;
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w / 12, uv.getY(i) * L / 12);
+      geo.rotateY(Math.atan2(x1 - x0, z1 - z0));
+      geo.translate((x0 + x1) / 2, -0.07, (z0 + z1) / 2);
+      parts.push([geo, M.asphalt]);
+    };
+    road(0, -45, 0, -200, 16); // voie des chenilles vers le hall d'assemblage
+    road(-150, -88, 150, -88, 9);
+    road(95, -88, 95, -72, 9);
+    road(-110, -88, -110, -50, 9);
+    road(-85, -88, -85, 48, 7); // accès aux sphères d'ergols
+    road(70, -88, 70, 10, 7);
+    for (let z = -60; z > -196; z -= 12) box(0.35, 0.46, 5, M.paintLine, 0, -0.06, z, parts);
+    g.add(mergeParts(parts));
+    // forêt : troncs et houppiers instanciés, couleurs variées
+    const rnd = mulberry32(7);
+    const spots = [];
+    const blocked = (x, z) => (Math.abs(x) < 70 && Math.abs(z) < 70) || (Math.abs(x) < 20 && z < 0 && z > -330) || (Math.abs(z + 88) < 12 && Math.abs(x) < 170)
+      || (x > 50 && x < 140 && z < -40 && z > -100) || (x < -60 && x > -140 && z > -100 && z < 95) || (Math.abs(x) < 110 && z < -180 && z > -340);
+    let tries = 0;
+    while (spots.length < 2600 && tries++ < 40000) {
+      const a = rnd() * Math.PI * 2;
+      const r = 150 + Math.pow(rnd(), 0.7) * 1150;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      if (blocked(x, z)) continue;
+      // lisière de forêt : clairières et bosquets denses
+      const clump = Math.sin(x * 0.009) * Math.cos(z * 0.011) + 0.6 * Math.sin((x - z) * 0.0045) + (r - 260) / 300;
+      if (clump < 0 && rnd() < 0.92) continue;
+      spots.push([x, z]);
+    }
+    const trunkG = new THREE.CylinderGeometry(0.22, 0.38, 1, 5);
+    trunkG.translate(0, 0.5, 0);
+    const crownG = new THREE.IcosahedronGeometry(1, 1);
+    const pos = crownG.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      const n = 1 + 0.18 * Math.sin(x * 5.1 + z * 3.3) * Math.cos(y * 4.2);
+      pos.setXYZ(i, x * n, y * n * 0.72, z * n);
+    }
+    crownG.computeVertexNormals();
+    const trunks = new THREE.InstancedMesh(trunkG, M.trunk, spots.length);
+    const crowns = new THREE.InstancedMesh(crownG, M.leaves, spots.length);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), p = new THREE.Vector3();
+    const col = new THREE.Color();
+    spots.forEach(([x, z], i) => {
+      const hgt = 7 + rnd() * 13;
+      const cw = 3.5 + rnd() * 4.5;
+      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * 6.28);
+      m4.compose(p.set(x, -0.4, z), q, sc.set(1 + cw * 0.1, hgt, 1 + cw * 0.1));
+      trunks.setMatrixAt(i, m4);
+      m4.compose(p.set(x, hgt, z), q, sc.set(cw, cw * (0.7 + rnd() * 0.4), cw * (0.85 + rnd() * 0.3)));
+      crowns.setMatrixAt(i, m4);
+      col.setHSL(0.22 + rnd() * 0.12, 0.38 + rnd() * 0.22, 0.1 + rnd() * 0.09);
+      crowns.setColorAt(i, col);
+    });
+    trunks.frustumCulled = crowns.frustumCulled = false;
+    crowns.castShadow = true;
+    g.add(trunks, crowns);
   }
 
   buildPad(rocketH, rocketR = 1.5) {
@@ -266,6 +353,7 @@ export class LaunchSite {
     this.group.visible = vis;
     if (!vis) return;
     this.placeAt(this.pad, EARTH_SITES.pad.lon, EARTH_SITES.pad.h, ut, bodyRel);
+    this.placeAt(this.env, EARTH_SITES.pad.lon, EARTH_SITES.pad.h, ut, bodyRel);
     this.placeAt(this.lz, EARTH_SITES.lz.lon, EARTH_SITES.lz.h, ut, bodyRel);
     // bras rétractés après le décollage
     const t = liftoffT == null ? 0 : Math.min(1, liftoffT / 2.5);

@@ -126,7 +126,7 @@ export class FlightHUD {
     };
     root.appendChild(h('div', { class: 'touch t-rot' }, rotBtn(-1, '⟲'), rotBtn(1, '⟳')));
     this.stageBtn = h('button', { class: 'stage-btn', onclick: () => f.stage() }, 'ÉTAGE');
-    root.appendChild(h('div', { class: 'touch', style: { position: 'absolute', right: 'calc(214px + var(--safe-r))', bottom: 'calc(14px + var(--safe-b))', pointerEvents: 'auto' } }, this.stageBtn));
+    root.appendChild(h('div', { class: 'touch stage-btn-wrap' }, this.stageBtn));
 
     document.getElementById('ui').appendChild(root);
     this.el = root;
@@ -240,15 +240,15 @@ export class FlightHUD {
     const hs = Math.sqrt(Math.max(0, sv[0] * sv[0] + sv[1] * sv[1] - vv * vv));
     const pred = f.sim.prediction && f.sim.prediction[0];
     const o = pred ? pred.orbit : null;
-    const rows = (list) => list.map(([k, val, cls]) => h('div', { class: 't-row' + (cls ? ' ' + cls : '') }, h('span', {}, k), h('b', {}, val)));
+    const rows = (list) => list.map(([k, val, cls, short]) => h('div', { class: 't-row' + (cls ? ' ' + cls : '') }, h('span', { class: short ? 'lf' : '' }, k), short ? h('span', { class: 'ls' }, short) : null, h('b', {}, val)));
     this.tapeL.innerHTML = '';
     rows([
       ['Altitude', fmtDist(v.altitude), 'big'],
       ['Sol', b.hasSurface ? fmtDist(Math.max(0, talt)) : '—'],
-      ['Vit. verticale', fmtSpeed(vv)],
-      ['Vit. horizontale', fmtSpeed(hs)],
-      ['Accél.', fmt1(v.gforce || 0) + ' g'],
-      ['Mach', b.atmosphere && v.rho > 0 ? fmt1(v.mach || 0) : '—'],
+      ['Vit. verticale', fmtSpeed(vv), '', 'V. vert.'],
+      ['Vit. horizontale', fmtSpeed(hs), '', 'V. horiz.'],
+      ['Accél.', fmt1(v.gforce || 0) + ' g', 'minor'],
+      ['Mach', b.atmosphere && v.rho > 0 ? fmt1(v.mach || 0) : '—', 'minor'],
     ]).forEach((e) => this.tapeL.appendChild(e));
     this.tapeR.innerHTML = '';
     const speed = mode === 'surface' ? Math.hypot(sv[0], sv[1]) : Math.hypot(v.vx, v.vy);
@@ -256,12 +256,12 @@ export class FlightHUD {
     const peA = o ? o.periapsis - b.radius : NaN;
     const dvs = v.stageDeltaV(v.pressureNow || 0);
     rows([
-      [mode === 'surface' ? 'Vitesse sol' : 'Vitesse orb.', fmtSpeed(speed), 'big'],
-      ['Apoapside', o ? (isFinite(apA) ? fmtDist(apA) : 'Évasion') : '—'],
-      ['Périapside', o ? fmtDist(peA) : '—'],
-      [o && isFinite(o.period) ? 'Vers Ap' : 'Période', o ? (isFinite(o.period) ? fmtTime(o.timeToApoapsis(ut)) : '∞') : '—'],
-      ['Δv étage', fmtInt(dvs) + ' m/s'],
-      ['Échauffement', (v.maxTempFrac || 0) < 0.35 ? 'normal' : Math.round((v.maxTempFrac || 0) * 100) + ' %', v.maxTempFrac > 0.8 ? 'red' : ''],
+      [mode === 'surface' ? 'Vitesse sol' : 'Vitesse orb.', fmtSpeed(speed), 'big', mode === 'surface' ? 'V. sol' : 'V. orb.'],
+      ['Apoapside', o ? (isFinite(apA) ? fmtDist(apA) : 'Évasion') : '—', '', 'Ap'],
+      ['Périapside', o ? fmtDist(peA) : '—', '', 'Pe'],
+      [o && isFinite(o.period) ? 'Vers Ap' : 'Période', o ? (isFinite(o.period) ? fmtTime(o.timeToApoapsis(ut)) : '∞') : '—', 'minor'],
+      ['Δv étage', fmtInt(dvs) + ' m/s', '', 'Δv'],
+      ['Échauffement', (v.maxTempFrac || 0) < 0.35 ? 'normal' : Math.round((v.maxTempFrac || 0) * 100) + ' %', v.maxTempFrac > 0.8 ? 'red' : 'minor', 'Chaleur'],
     ]).forEach((e) => this.tapeR.appendChild(e));
     // SAS
     for (const btn of this.sasEl.children) {
@@ -307,6 +307,7 @@ export class FlightHUD {
         for (const { p, n: cnt } of groups.values()) ul.appendChild(h('li', {}, h('i', { style: { background: col(p.def) } }), (cnt > 1 ? cnt + '× ' : '') + p.def.name));
         el.appendChild(h('div', { class: 'hstage' + (i === v.stageIdx ? ' next' : '') }, h('div', { class: 'hstage-h' }, h('span', { style: { color: 'inherit', fontFamily: 'inherit', fontSize: '12px' } }, i === v.stageIdx ? 'Prochain étage' : `Étage ${i + 1}`)), ul));
       }
+      if (n - v.stageIdx > 1) el.appendChild(h('div', { class: 'hstage-more' }, `+ ${n - v.stageIdx - 1} étage${n - v.stageIdx - 1 > 1 ? 's' : ''} ensuite`));
     }
   }
 

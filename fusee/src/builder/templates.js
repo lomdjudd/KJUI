@@ -55,6 +55,7 @@ export const TEMPLATES = [
       const cap = c.addRoot('cap_alpha');
       above(c, cap, ['chute_s']);
       const [, srb] = below(c, cap, ['dec_s', 'srb_s']);
+      srb.fill = 0.5; // demi-charge : vol suborbital d'environ 200 km
       radial(c, srb, 'fin_basic', 3, -2.2, Math.PI / 2);
       radial(c, cap, 'sci_thermo', 1, 0, -Math.PI / 2);
       return c;
@@ -83,7 +84,7 @@ export const TEMPLATES = [
       above(c, cap, ['chute_m']);
       const s = below(c, cap, ['shield_m', 'dec_m', 'tank_k_m2', 'eng_aigle_v', 'inter_m', 'probe_nexus_m', 'tank_k_m8', 'tank_k_m4', 'eng_aquila']);
       radial(c, s[6], 'fin_grid', 4, 3.2, Math.PI / 4);
-      radial(c, s[7], 'legs_m', 4, -0.4, Math.PI / 4);
+      radial(c, s[7], 'legs_m', 4, -1.6, Math.PI / 4);
       radial(c, s[3], 'rcs_quad', 4, 1.4, 0);
       return c;
     },
@@ -99,7 +100,7 @@ export const TEMPLATES = [
       radial(c, sv[2], 'solar_wing', 4, 0.8, Math.PI / 4);
       radial(c, sv[2], 'rcs_quad', 4, -1.2, 0);
       const ld = below(c, sv[3], ['dec_m', 'lander_cab', 'tank_k_m2', 'eng_colibri']);
-      radial(c, ld[2], 'legs_s', 4, 0, Math.PI / 4);
+      radial(c, ld[2], 'legs_s', 4, -0.5, Math.PI / 4);
       const st2 = below(c, ld[3], ['dec_m', 'fairing_m', 'tank_h_m12', 'eng_hydra', 'inter_m', 'tank_k_m16', 'tank_k_m16', 'eng_titan']);
       boosters(c, st2[6], 'dec_radial_l', 2, 0, ['srb_m', '^nose_m']);
       radial(c, st2[6], 'fin_delta', 4, -6, Math.PI / 4);
@@ -115,7 +116,7 @@ export const TEMPLATES = [
       above(c, probe, ['chute_m']);
       radial(c, probe, 'ant_dish', 1, 0, -Math.PI / 2);
       const l = below(c, probe, ['battery_s', 'tank_k_s1', 'eng_colibri', 'shield_m']);
-      radial(c, l[1], 'legs_s', 3, 0, Math.PI / 6);
+      radial(c, l[1], 'legs_s', 3, -0.45, Math.PI / 6);
       radial(c, l[1], 'sci_spectro', 1, 0, Math.PI);
       radial(c, probe, 'solar_fixed', 4, 0, Math.PI / 4);
       const up = below(c, l[3], ['dec_m', 'tank_h_m6', 'eng_vega', 'inter_m', 'tank_k_m16', 'eng_aquila']);

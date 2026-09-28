@@ -5,6 +5,16 @@
 import * as THREE from 'three';
 import { detailNoiseTexture } from '../parts/textures.js';
 import { EARTH_SITES } from '../core/terrain.js';
+import { mulberry32, hashStr } from '../core/noise.js';
+
+// Rochers : densité et taille selon le type de sol
+const ROCKS = {
+  moon: { n: 3000, max: 3.2, color: 0.85 }, cratered: { n: 3000, max: 3.5, color: 0.8 }, ceres: { n: 2000, max: 2.8, color: 0.8 },
+  mars: { n: 2800, max: 2.8, color: 0.7 }, potato: { n: 2400, max: 4, color: 0.85 }, io: { n: 1100, max: 2.2, color: 0.75 },
+  ganymede: { n: 1500, max: 2.6, color: 0.85 }, volcanic: { n: 2000, max: 2.4, color: 0.7 }, pluto: { n: 1300, max: 2.4, color: 0.9 },
+  triton: { n: 900, max: 2, color: 0.9 }, nyx: { n: 2000, max: 3, color: 0.8 }, europa: { n: 500, max: 1.8, color: 0.95 },
+  enceladus: { n: 500, max: 1.8, color: 0.95 }, titan: { n: 1000, max: 1.6, color: 0.8 },
+};
 
 const s2l = (c) => Math.pow(c, 2.2);
 
@@ -34,11 +44,27 @@ export class LocalTerrain {
     this.mesh.frustumCulled = false;
     this.group.add(this.mesh);
     // eau (Terre, lacs de Titan)
-    this.waterMat = new THREE.MeshStandardMaterial({ color: '#0a2c4c', roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.93, envMapIntensity: 1.2 });
+    this.waterMat = new THREE.MeshStandardMaterial({ color: '#0d3550', roughness: 0.12, metalness: 0.05, transparent: true, opacity: 0.93, envMapIntensity: 0.7 });
     this.water = new THREE.Mesh(new THREE.BufferGeometry(), this.waterMat);
     this.water.frustumCulled = false;
     this.water.receiveShadow = true;
     this.group.add(this.water);
+    // rochers instanciés près du centre de la grille
+    const rg = new THREE.IcosahedronGeometry(1, 1);
+    const rp = rg.attributes.position;
+    for (let i = 0; i < rp.count; i++) {
+      const x = rp.getX(i), y = rp.getY(i), z = rp.getZ(i);
+      const n = 1 + 0.22 * Math.sin(x * 4.1 + y * 2.3) * Math.cos(z * 3.7 - x) + 0.12 * Math.sin(y * 9.0 + z * 5.0);
+      rp.setXYZ(i, x * n, y * n * 0.62, z * n);
+    }
+    rg.computeVertexNormals();
+    this.rockMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.96, metalness: 0, flatShading: true, envMapIntensity: 0.3 });
+    this.rocks = new THREE.InstancedMesh(rg, this.rockMat, 3000);
+    this.rocks.count = 0;
+    this.rocks.castShadow = true;
+    this.rocks.receiveShadow = true;
+    this.rocks.frustumCulled = false;
+    this.group.add(this.rocks);
     this.body = null;
     this.centerLon = 0;
     this.W = 0;
@@ -117,7 +143,23 @@ export class LocalTerrain {
         let cr = c[0], cg = c[1], cb = c[2];
         if (body.id === 'terre') {
           // teintes plus naturelles vues de près
-          if (wet) { cr = 0.18; cg = 0.22; cb = 0.2; } else { cr = cr * 0.9 + 0.02; cg = cg * 0.92 + 0.02; cb = cb * 0.85; }
+          if (wet) { cr = 0.18; cg = 0.22; cb = 0.2; } else {
+            cr = cr * 0.9 + 0.02; cg = cg * 0.92 + 0.02; cb = cb * 0.85;
+            // mosaïque de végétation : forêts sombres, savanes sèches
+            const n1 = G.D.fbm(px / 900, py / 900, pz / 900, 3);
+            const n2 = G.D.noise(px / 160 + 17, py / 160, pz / 160);
+            const m = 0.8 + n1 * 0.4 + n2 * 0.12;
+            cr *= m; cg *= m; cb *= m;
+            const dry = Math.min(1, Math.max(0, (n1 + n2 * 0.3 - 0.2) * 2.5)) * 0.55;
+            cr += (0.44 - cr) * dry; cg += (0.4 - cg) * dry; cb += (0.25 - cb) * dry;
+            // pelouse entretenue autour des installations
+            const lonV = Math.atan2(dy, dx);
+            for (const k in EARTH_SITES) {
+              const dd = Math.hypot((lonV - EARTH_SITES[k].lon) * R, dz * R);
+              const lawn = Math.min(1, Math.max(0, (420 - dd) / 160)) * 0.75;
+              if (lawn > 0) { cr += (0.3 - cr) * lawn; cg += (0.4 - cg) * lawn; cb += (0.17 - cb) * lawn; }
+            }
+          }
         }
         col[k * 3] = s2l(cr); col[k * 3 + 1] = s2l(cg); col[k * 3 + 2] = s2l(cb);
       }
@@ -173,6 +215,56 @@ export class LocalTerrain {
     }
     this.holeCos = Math.cos((W * 0.97) / R);
     this.holeDir = new THREE.Vector3(ux, uy, 0);
+    this.buildRocks(body, ux, uy, ex, ey, Cx, Cy, Cz, lonC);
+  }
+
+  buildRocks(body, ux, uy, ex, ey, Cx, Cy, Cz, lonC) {
+    const cfg = ROCKS[body.ground.kind];
+    const G = body.ground;
+    const R = body.radius;
+    if (!cfg || body.id === 'terre') { this.rocks.count = 0; return; }
+    // rochers fixés au sol : cellules de 400 m le long de l'équateur, chacune
+    // avec sa propre graine (les mêmes rochers reviennent au même endroit)
+    const CELL = 400;
+    const cell = Math.round((lonC * R) / CELL);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), p = new THREE.Vector3();
+    const col = new THREE.Color();
+    const up = new THREE.Vector3(), yAxis = new THREE.Vector3(0, 1, 0), xAxis = new THREE.Vector3(1, 0, 0);
+    const qa = new THREE.Quaternion();
+    const per = Math.floor(cfg.n / 5);
+    let n = 0;
+    for (let ci = cell - 2; ci <= cell + 2; ci++) {
+      const rnd = mulberry32((hashStr(body.id) ^ Math.imul(ci, 2654435761)) >>> 0);
+      for (let i = 0; i < per && n < this.rocks.instanceMatrix.count; i++) {
+        const se = ci * CELL + (rnd() - 0.5) * CELL - lonC * R;
+        const sn = (rnd() * 2 - 1) * 420;
+        const size = 0.12 + Math.pow(rnd(), 4.5) * cfg.max;
+        const yaw = rnd() * 6.28, tilt = (rnd() - 0.5) * 0.5;
+        const s1 = 0.8 + rnd() * 0.5, s2 = 0.7 + rnd() * 0.6, s3 = 0.8 + rnd() * 0.5, kc = 0.75 + rnd() * 0.35;
+        // pas de gros blocs juste sous le vaisseau (ils ne sont que décoratifs)
+        if (size > 0.6 && Math.hypot(se, sn) < 30) continue;
+        let dx = ux * R + ex * se, dy = uy * R + ey * se, dz = sn;
+        const l = Math.hypot(dx, dy, dz);
+        dx /= l; dy /= l; dz /= l;
+        if (G.hasLiquid && G.isLiquid(dx, dy, dz)) continue;
+        const h = G.height(dx, dy, dz);
+        const r = R + h - size * 0.25;
+        p.set(dx * r - Cx, dy * r - Cy, dz * r - Cz);
+        up.set(dx, dy, dz);
+        q.setFromUnitVectors(yAxis, up).multiply(qa.setFromAxisAngle(yAxis, yaw)).multiply(qa.setFromAxisAngle(xAxis, tilt));
+        sc.set(size * s1, size * s2, size * s3);
+        m4.compose(p, q, sc);
+        this.rocks.setMatrixAt(n, m4);
+        const c = this.tex.sampleColor(body.id, Math.atan2(dy, dx), Math.asin(dz)) || [0.5, 0.5, 0.5];
+        const k = cfg.color * kc;
+        col.setRGB(s2l(c[0]) * k, s2l(c[1]) * k, s2l(c[2]) * k);
+        this.rocks.setColorAt(n, col);
+        n++;
+      }
+    }
+    this.rocks.count = n;
+    this.rocks.instanceMatrix.needsUpdate = true;
+    if (this.rocks.instanceColor) this.rocks.instanceColor.needsUpdate = true;
   }
 
   // Place la grille (rotation du corps, origine flottante)

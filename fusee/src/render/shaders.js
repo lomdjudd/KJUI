@@ -77,6 +77,8 @@ uniform float holeCos;
 uniform float emissive;
 uniform float time;
 uniform float gasFlow;
+uniform vec3 fogColor;
+uniform float fogDensity;
 varying vec3 vObjN;
 varying vec3 vWorld;
 varying vec2 vUv;
@@ -120,6 +122,9 @@ void main(){
     lit = mix(lit, lit * vec3(0.85, 0.92, 1.05), water * 0.5);
   }
   lit += col * emissive;
+  // brume lointaine quand on vole dans l'atmosphère de ce corps
+  float fd = length(vWorld - cameraPosition) * fogDensity;
+  lit = mix(lit, fogColor, 1.0 - exp(-fd * fd));
   gl_FragColor = vec4(lit, 1.0);
 }`;
 
@@ -136,6 +141,8 @@ uniform float drift;
 uniform vec3 tint;
 uniform vec3 holeDir;
 uniform float holeCos;
+uniform vec3 fogColor;
+uniform float fogDensity;
 varying vec3 vObjN;
 varying vec3 vWorld;
 varying vec2 vUv;
@@ -156,6 +163,8 @@ void main(){
   vec3 col = t.rgb * tint * (sunColor * max(geo, 0.0) * term + ambient);
   // léger rougeoiement au terminateur
   col += vec3(0.5, 0.25, 0.1) * sunColor * smoothstep(0.15, 0.0, abs(geo - 0.02)) * 0.25;
+  float fd = length(vWorld - cameraPosition) * fogDensity;
+  col = mix(col, fogColor, 1.0 - exp(-fd * fd));
   gl_FragColor = vec4(col, a);
 }`;
 
@@ -341,15 +350,15 @@ void main(){
   vec3 d = normalize(vObjN);
   vec3 bandN = normalize(vec3(0.3, 0.55, 0.78));
   float b = dot(d, bandN);
-  float band = exp(-b * b / 0.012);
-  float core = exp(-(1.0 - dot(d, normalize(vec3(-0.6, 0.7, -0.35)))) / 0.08);
-  float n = fbm3(d * 6.0) * 0.5 + 0.5;
-  float dust = smoothstep(0.4, 0.75, fbm3(d * 13.0 + 3.0) * 0.5 + 0.5);
-  float neb = pow(max(fbm3(d * 2.2 + 7.0), 0.0), 2.0);
-  vec3 col = vec3(0.5, 0.58, 0.8) * band * (0.2 + n * 0.6) * (1.0 - dust * 0.8);
-  col += vec3(0.95, 0.78, 0.58) * band * core * 0.8 * (1.0 - dust * 0.6);
-  col += vec3(0.45, 0.2, 0.6) * neb * 0.03 + vec3(0.12, 0.25, 0.5) * pow(max(fbm3(d * 3.1 - 5.0), 0.0), 2.0) * 0.025;
-  col *= 0.16;
+  float band = exp(-b * b / 0.006) + exp(-b * b / 0.04) * 0.18;
+  float core = exp(-(1.0 - dot(d, normalize(vec3(-0.6, 0.7, -0.35)))) / 0.035);
+  float n = fbm3(d * 9.0) * 0.5 + 0.5;
+  float grain = fbm3(d * 48.0) * 0.5 + 0.5;
+  float dust = smoothstep(0.45, 0.75, fbm3(d * 16.0 + 3.0) * 0.5 + 0.5);
+  vec3 col = vec3(0.5, 0.58, 0.8) * band * (0.15 + n * 0.5) * (0.55 + grain * 0.9) * (1.0 - dust * 0.85);
+  col += vec3(0.95, 0.78, 0.58) * band * core * 0.7 * (1.0 - dust * 0.7) * (0.7 + grain * 0.6);
+  col += vec3(0.45, 0.2, 0.6) * pow(max(fbm3(d * 2.2 + 7.0), 0.0), 2.0) * 0.02 + vec3(0.12, 0.25, 0.5) * pow(max(fbm3(d * 3.1 - 5.0), 0.0), 2.0) * 0.015;
+  col *= 0.075;
   gl_FragColor = vec4(col * brightness, 1.0);
 }`;
 export const BG_VS = /* glsl */ `

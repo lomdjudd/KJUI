@@ -3,6 +3,7 @@
 
 import { PART_BY_ID, partRadiusAt, GLOBAL_RES } from '../parts/catalog.js';
 import { G0 } from '../core/math.js';
+import { legFoot } from '../parts/legs.js';
 
 let UID = 1;
 
@@ -30,7 +31,11 @@ export class Craft {
     return {
       name: this.name,
       symCounter: this.symCounter,
-      parts: this.parts.map((p) => ({ uid: p.uid, id: p.id, parent: p.parent, attach: p.attach, sym: p.sym || 0, flip: !!p.flip, paint: p.paint || null, stage: p.stage ?? null })),
+      parts: this.parts.map((p) => {
+        const o = { uid: p.uid, id: p.id, parent: p.parent, attach: p.attach, sym: p.sym || 0, flip: !!p.flip, paint: p.paint || null, stage: p.stage ?? null };
+        if (p.fill != null && p.fill < 1) o.fill = p.fill;
+        return o;
+      }),
     };
   }
 
@@ -358,7 +363,8 @@ export class Craft {
     for (const p of this.parts) {
       const d = PART_BY_ID[p.id];
       m += d.mass;
-      if (d.res) for (const k in d.res) if (k !== 'ec') m += d.res[k];
+      const r = initialRes(p);
+      for (const k in r) if (k !== 'ec') m += r[k];
     }
     return m;
   }
@@ -476,7 +482,7 @@ export function stageStats(craft, pressure = 0, g = 9.81) {
   const res = new Map();
   for (const p of parts) {
     const d = PART_BY_ID[p.id];
-    if (d.res) res.set(p.uid, { ...d.res });
+    if (d.res) res.set(p.uid, initialRes(p));
   }
   const ctrl = craft.controlPart() || craft.root;
   const active = new Set();
@@ -609,4 +615,42 @@ export function fairingContents(base, parts) {
   }
   if (!contents.length) return null;
   return { top: cur - top + 0.15, maxR: r, contents };
+}
+
+// Jambes trop hautes : pour chaque segment (entre découpleurs) qui porte des
+// jambes, le pied déployé doit descendre sous le point le plus bas du segment.
+export function legsTooHigh(craft) {
+  craft.layout();
+  const parts = craft.parts;
+  const uf = new Map(parts.map((p) => [p.uid, p.uid]));
+  const find = (a) => { while (uf.get(a) !== a) a = uf.get(a); return a; };
+  const breaks = new Set();
+  for (const p of parts) { const e = craft.breakEdgeOf(p); if (e) breaks.add(e[0] + ':' + e[1]); }
+  for (const p of parts) if (p.parent != null && !breaks.has(p.parent + ':' + p.uid)) uf.set(find(p.uid), find(p.parent));
+  const segs = new Map();
+  for (const p of parts) {
+    const d = PART_BY_ID[p.id];
+    const k = find(p.uid);
+    if (!segs.has(k)) segs.set(k, { foot: Infinity, low: Infinity });
+    const g = segs.get(k);
+    if (d.legs) g.foot = Math.min(g.foot, p.pos.y + legFoot(d, 1)[1] * (p.flip ? -1 : 1));
+    else if (!d.decoupler || d.decoupler.radial) g.low = Math.min(g.low, p.box ? p.box[2] : p.pos.y - d.h / 2);
+  }
+  for (const g of segs.values()) if (g.foot < Infinity && g.foot > g.low - 0.1) return true;
+  return false;
+}
+
+// Ressources au lancement : les ergols suivent le taux de remplissage choisi
+// dans l'atelier (l'électricité et l'ablatif restent pleins).
+export function initialRes(p) {
+  const d = PART_BY_ID[p.id];
+  const out = {};
+  if (!d.res) return out;
+  const f = p.fill != null ? Math.max(0, Math.min(1, p.fill)) : 1;
+  for (const k in d.res) out[k] = k === 'ec' || k === 'ablator' ? d.res[k] : d.res[k] * f;
+  return out;
+}
+
+export function hasPropellant(d) {
+  return !!d.res && Object.keys(d.res).some((k) => k !== 'ec' && k !== 'ablator');
 }

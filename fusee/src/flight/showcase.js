@@ -105,8 +105,10 @@ export class Showcase {
       const east = new THREE.Vector3(-up[1], up[0], 0);
       const upV = new THREE.Vector3(up[0], up[1], 0);
       const north = new THREE.Vector3(0, 0, 1);
-      const t = this.time * 0.04;
-      const d = Math.max(60, this.height * 2.4);
+      // la caméra reste du côté éclairé et balance lentement
+      const se = (sun.x - es.x) * east.x + (sun.y - es.y) * east.y;
+      const t = (se >= 0 ? 0.78 : -0.78) + 0.32 * Math.sin(this.time * 0.045);
+      const d = Math.max(60, this.height * 2.1 + 16) * (cam.aspect < 1 ? 1.35 : 1);
       const pos = east.clone().multiplyScalar(Math.sin(t) * d).add(north.clone().multiplyScalar(-Math.cos(t) * d)).add(upV.clone().multiplyScalar(d * 0.28 + 8));
       cam.position.copy(pos);
       cam.up.copy(upV);
@@ -121,6 +123,11 @@ export class Showcase {
     }
     cam.near = 0.5;
     cam.far = 1e15;
+    // au centre spatial, la fusée se place à droite des cartes (ou au-dessus sur mobile)
+    if (this.mode === 'pad') {
+      const narrow = R.width < 820;
+      cam.setViewOffset(R.width, R.height, narrow ? 0 : -0.17 * R.width, narrow ? 0.14 * R.height : 0, R.width, R.height);
+    } else cam.clearViewOffset();
     cam.updateProjectionMatrix();
     // éclairage
     const sunDir = new THREE.Vector3(sun.x - ox, sun.y - oy, 0).normalize();
@@ -138,6 +145,7 @@ export class Showcase {
     f.hemi.groundColor.copy(light.ground).addScalar(0.02);
     f.scene.environment = f.envLight.update(dt, { skyTop: light.skyTop, horizon: light.horizon, ground: light.ground, sunDir, sunColor: light.sunColor.clone().multiplyScalar(light.sunI * 0.4), up: new THREE.Vector3(up[0], up[1], 0) });
     f.scene.fog = null;
+    for (const o of f.planets3d.objs.values()) if (o.uniforms) o.uniforms.fogDensity.value = 0;
     f.planets3d.group.visible = true;
     f.planets2d.group.visible = false;
     f.stars2d.visible = false;

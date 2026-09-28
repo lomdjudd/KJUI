@@ -238,6 +238,7 @@ export class Flight {
     this.cam.pitch = 0.1;
     this.cam.mode = 'orbit';
     this.view2.size = Math.max(12, hgt * 0.8 + 6);
+    this.view2.snap = true;
     this.hud.build();
     this.hud.setView2d(this.mode2d);
     this.active = true;
@@ -342,6 +343,7 @@ export class Flight {
 
   toggle2d() {
     this.mode2d = !this.mode2d;
+    this.view2.snap = true;
     Settings.set('view', this.mode2d ? '2d' : '3d');
     this.hud.setView2d(this.mode2d);
     this.envLight.t = 99;
@@ -443,6 +445,13 @@ export class Flight {
     return `Dans l'espace · ${b.name}`;
   }
 
+  cutChutes() {
+    const v = this.sim.active;
+    if (!v) return;
+    for (const p of v.parts) if (p.chute === 'semi' || p.chute === 'full') { p.chute = 'cut'; v.events.push({ type: 'chuteCut', part: p }); }
+    this.app.audio.noiseBurst(0.3, 900, 0.3, 0.4);
+  }
+
   contextActions(v) {
     const acts = [];
     const b = v.body;
@@ -456,6 +465,7 @@ export class Flight {
     const others = this.sim.vessels.filter((o) => o !== v && o.controlPart && !o.dead);
     if (others.length) acts.push({ label: 'Changer de vaisseau', fn: () => this.switchVessel(1) });
     if (v.parts.some((p) => p.def.engine && p.def.engine.escape)) acts.push({ label: 'Éjection !', kind: 'danger', fn: () => this.abort() });
+    if (!v.landed && !v.splashed && v.parts.some((p) => p.chute === 'semi' || p.chute === 'full')) acts.push({ label: 'Larguer les parachutes', fn: () => this.cutChutes() });
     return acts;
   }
 
@@ -729,7 +739,7 @@ export class Flight {
             const out = new THREE.Vector3(Math.cos(s.phi), 0, Math.sin(s.phi));
             const c = Math.cos(v.rot), sn = Math.sin(v.rot);
             const wx = out.x * c, wy = out.x * sn;
-            const origin = this.originAbs;
+            const origin = this.originAbs || v.absPos(sim.ut);
             const bs = v.body.state(sim.ut);
             this.debrisObjs.push({
               mesh: s.mesh, x: s.wp.x + origin[0] - bs.x, y: s.wp.y + origin[1] - bs.y, z: s.wp.z,
@@ -835,9 +845,18 @@ export class Flight {
       let upAng = Math.atan2(up[1], up[0]);
       if (this.cam.mode === 'lock') upAng = v.rot + Math.PI / 2;
       if (s > b.radius * 2.5) upAng = Math.PI / 2;
-      this.view2.up = this.view2.up + wrapPi(upAng - this.view2.up) * Math.min(1, dt * 4);
+      this.view2.up = this.view2.snap ? upAng : this.view2.up + wrapPi(upAng - this.view2.up) * Math.min(1, dt * 4);
+      this.view2.snap = false;
       const shk = this.shake * s * 0.004;
       cam.position.set((Math.random() - 0.5) * shk, (Math.random() - 0.5) * shk, -500);
+      // parachutes ouverts : cadrage élargi vers le haut
+      const ext = this.views.get(v)?.chuteExtent || 0;
+      if (ext > 0) {
+        const s2 = Math.max(s, ext * 0.95);
+        cam.left = -s2 * aspect; cam.right = s2 * aspect; cam.top = s2; cam.bottom = -s2;
+        cam.position.x += up[0] * ext * 0.18;
+        cam.position.y += up[1] * ext * 0.18;
+      }
       cam.up.set(Math.cos(this.view2.up), Math.sin(this.view2.up), 0);
       cam.lookAt(cam.position.x, cam.position.y, 0);
       cam.near = 1;
@@ -881,10 +900,19 @@ export class Flight {
     // brouillard dans l'atmosphère
     if (!mode2d && b.atmosphere && v.altitude < b.atmosphere.height) {
       const dens = b.density(Math.max(0, v.altitude)) / b.atmosphere.rho0;
-      this.fog.color.copy(light.horizon).multiplyScalar(0.9);
-      this.fog.density = (2.2e-5 * Math.sqrt(Math.max(0, dens))) / Math.max(0.3, b.atmosphere.H / 5600) * (b.atmosphere.density || 1);
+      // brume : horizon désaturé et éclairci (la diffusion multiple blanchit le lointain)
+      const hz = light.horizon;
+      const lum = hz.r * 0.2126 + hz.g * 0.7152 + hz.b * 0.0722;
+      this.fog.color.setRGB(0.74, 0.82, 0.94).multiplyScalar(lum * 3.2 + 0.004).lerp(hz, 0.2);
+      this.fog.density = (3.5e-5 * Math.sqrt(Math.max(0, dens))) / Math.max(0.3, b.atmosphere.H / 5600) * (b.atmosphere.density || 1);
       this.scene.fog = this.fog;
     } else this.scene.fog = null;
+    for (const o of this.planets3d.objs.values()) {
+      if (!o.uniforms) continue;
+      const on = this.scene.fog && o.body === b;
+      o.uniforms.fogDensity.value = on ? this.fog.density : 0;
+      if (on) o.uniforms.fogColor.value.copy(this.fog.color);
+    }
     // --- astres
     const hiddenOk = (bb) => !bb.hidden || this.app.game.hasTech(bb.hidden);
     this.planets3d.group.visible = !mode2d;
@@ -897,6 +925,12 @@ export class Flight {
     } else {
       const px = (this.view2.size * 2) / R.height;
       this.planets2d.update(ut, [ox, oy], v, this.view2.size, px);
+      const dbh = R.renderer.getDrawingBufferSize(new THREE.Vector2()).y;
+      for (const o of this.planets2d.objs.values()) {
+        if (!o.au) continue;
+        o.au.screenH.value = dbh;
+        o.au.grad.value = o.body === b ? clamp(1 - this.view2.size / (b.atmosphere.height * 0.08), 0, 1) : 0;
+      }
       const su = this.stars2d.material.uniforms;
       su.res.value.set(R.width, R.height);
       su.offset.value.set(0, 0);
@@ -1003,6 +1037,13 @@ export class Flight {
         pos = east.clone().multiplyScalar(Math.sin(c.yaw) * cp).add(north.clone().multiplyScalar(-Math.cos(c.yaw) * cp)).add(upV.clone().multiplyScalar(Math.sin(c.pitch)));
         pos.multiplyScalar(c.dist);
         cam.up.copy(upV);
+      }
+      // parachutes ouverts : on recule et on vise entre la capsule et la voilure
+      const ext = this.views.get(v)?.chuteExtent || 0;
+      if (ext > 0) {
+        const need = ext * 2.1;
+        if (pos.length() < need) pos.setLength(need);
+        tgt.addScaledVector(upV, ext * 0.28);
       }
       // ne pas passer sous le sol
       if (v.body.hasSurface) {

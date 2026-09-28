@@ -57,8 +57,8 @@ function lander(extra = []) {
   for (const id of extra) t = c.add(id, t, { type: 'bottom' });
   c.add('eng_colibri', t, { type: 'bottom' });
   const s = c.symCounter++;
-  for (let k = 0; k < 4; k++) c.add('legs_s', c.parts[1], { type: 'side', y: 0, psi: Math.PI / 4 + (k * Math.PI) / 2 }, { sym: s });
-  c.add('computer', cab, { type: 'side', y: 0, psi: Math.PI });
+  // jambes sur le réservoir inférieur, assez bas pour dépasser la tuyère
+  for (let k = 0; k < 4; k++) c.add('legs_s', t, { type: 'side', y: -0.5, psi: Math.PI / 4 + (k * Math.PI) / 2 }, { sym: s });
   return c;
 }
 
@@ -85,12 +85,11 @@ export const CHALLENGES = [
       const s1 = c.symCounter++;
       for (let k = 0; k < 4; k++) c.add('fin_grid', t, { type: 'side', y: 3.2, psi: Math.PI / 4 + (k * Math.PI) / 2 }, { sym: s1 });
       const s2 = c.symCounter++;
-      for (let k = 0; k < 4; k++) c.add('legs_m', t2, { type: 'side', y: -0.4, psi: Math.PI / 4 + (k * Math.PI) / 2 }, { sym: s2 });
-      c.add('computer', pc, { type: 'side', y: 0, psi: 0 });
+      for (let k = 0; k < 4; k++) c.add('legs_m', t2, { type: 'side', y: -1.6, psi: Math.PI / 4 + (k * Math.PI) / 2 }, { sym: s2 });
       const v = Vessel.fromCraft(c.toJSON(), sys);
       fuelFraction(v, 0.16);
       v.computeMass();
-      placeAbove(v, sys.home, EARTH_SITES.lz.lon - 6000 / sys.home.radius, 9000, sim.ut, 190, -210, Math.PI + 0.35);
+      placeAbove(v, sys.home, EARTH_SITES.lz.lon - 6000 / sys.home.radius, 9000, sim.ut, 260, -210, -0.7);
       ignite(v);
       v.sas = 'retro';
       return v;
@@ -148,7 +147,7 @@ export const CHALLENGES = [
       const a = Math.PI * 0.7;
       v.body = b;
       v.x = Math.cos(a) * r; v.y = Math.sin(a) * r;
-      const gam = 5.2 * Math.PI / 180;
+      const gam = 19.5 * Math.PI / 180;
       const sp = 3100;
       const tx = -Math.sin(a), ty = Math.cos(a);
       v.vx = sp * (tx * Math.cos(gam) - Math.cos(a) * Math.sin(gam));
@@ -195,7 +194,7 @@ export const CHALLENGES = [
   },
   {
     id: 'venus', name: 'Descente vers Vénus', icon: 'planet',
-    desc: 'Une sonde à coque pressurisée entre dans l\'atmosphère écrasante de Vénus. Survivez jusqu\'au sol.',
+    desc: 'Une sonde à coque pressurisée entre dans l\'atmosphère écrasante de Vénus. Survivez jusqu\'au sol (sous parachute, le temps peut être accéléré jusqu\'à ×50).',
     goal: 'Or : se poser à moins de 8 m/s · Argent : 14 m/s · Bronze : se poser',
     create(sys, sim) {
       const c = new Craft('Sonde Vénéra');
@@ -212,7 +211,7 @@ export const CHALLENGES = [
       const a = Math.PI * 0.2;
       v.body = b;
       v.x = Math.cos(a) * r; v.y = Math.sin(a) * r;
-      const gam = 9 * Math.PI / 180;
+      const gam = 22.5 * Math.PI / 180;
       const spd = 2900;
       v.vx = spd * (-Math.sin(a) * Math.cos(gam) - Math.cos(a) * Math.sin(gam));
       v.vy = spd * (Math.cos(a) * Math.cos(gam) - Math.sin(a) * Math.sin(gam));
@@ -245,10 +244,10 @@ export const CHALLENGES = [
       const v = Vessel.fromCraft(c.toJSON(), sys);
       const b = sys.get('titan');
       const r = b.radius + b.atmosphere.height + 10000;
-      const a = 1.1;
+      const a = 1.6;
       v.body = b;
       v.x = Math.cos(a) * r; v.y = Math.sin(a) * r;
-      const gam = 18 * Math.PI / 180;
+      const gam = 38 * Math.PI / 180;
       const spd = 1900;
       v.vx = spd * (-Math.sin(a) * Math.cos(gam) - Math.cos(a) * Math.sin(gam));
       v.vy = spd * (Math.cos(a) * Math.cos(gam) - Math.sin(a) * Math.sin(gam));
@@ -257,12 +256,15 @@ export const CHALLENGES = [
       v.met0 = sim.ut;
       v.stages = [v.parts.filter((p) => p.def.chute).map((p) => p.uid)];
       v.stageIdx = 0;
+      v.initialParts = v.parts.length;
       v.sas = 'retro';
       return v;
     },
     check(v) {
       if (!(v.landed || v.splashed) || v.body.id !== 'titan') return null;
-      return { medal: v.splashed ? 'argent' : 'or', text: v.splashed ? 'Amerrissage sur un lac de méthane' : 'Posé sur la terre ferme' };
+      const lost = (v.initialParts || v.parts.length) - v.parts.length;
+      if (lost > 0) return { medal: 'bronze', text: `Sonde posée, mais ${lost} pièce${lost > 1 ? 's' : ''} perdue${lost > 1 ? 's' : ''}` };
+      return { medal: v.splashed ? 'argent' : 'or', text: v.splashed ? 'Amerrissage sur un lac de méthane' : 'Posé sur la terre ferme, sonde intacte' };
     },
   },
 ];

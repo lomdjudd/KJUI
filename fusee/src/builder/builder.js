@@ -1,7 +1,7 @@
 // Atelier d'assemblage : placement des pièces, symétrie, étages, statistiques.
 
 import * as THREE from 'three';
-import { Craft, placePart, stageStats } from '../craft/craft.js';
+import { Craft, placePart, stageStats, legsTooHigh, hasPropellant } from '../craft/craft.js';
 import { CraftView } from '../craft/craftview.js';
 import { PARTS, PART_BY_ID, CATEGORIES, PROPELLANTS, partRadiusAt } from '../parts/catalog.js';
 import { PAINTS } from '../parts/materials.js';
@@ -139,6 +139,8 @@ export class Builder {
         h('button', { class: 'btn ghost', style: { minHeight: '26px', fontSize: '11px' }, onclick: () => this.resetStaging() }, 'Auto')),
       this.stagesEl);
     insp.addEventListener('click', (e) => { if (e.target === insp && window.innerWidth < 820) insp.classList.toggle('collapsed'); });
+    if (window.innerWidth < 820) insp.classList.add('collapsed');
+    this.inspEl = insp;
     root.appendChild(insp);
 
     this.infoEl = h('div', { class: 'part-info panel', hidden: true });
@@ -209,6 +211,22 @@ export class Builder {
     el.appendChild(h('h4', {}, def.name));
     el.appendChild(h('p', {}, def.desc));
     el.appendChild(kvEl);
+    if (part && hasPropellant(def)) {
+      // taux de remplissage des réservoirs (et des propulseurs à poudre)
+      const pct = Math.round((part.fill ?? 1) * 100);
+      const out = h('b', {}, pct + ' %');
+      const inp = h('input', { type: 'range', min: '5', max: '100', step: '5', value: String(pct), 'aria-label': 'Remplissage' });
+      let snap = false;
+      inp.addEventListener('input', () => {
+        if (!snap) { this.snapshot(); snap = true; }
+        const f = Number(inp.value) / 100;
+        for (const q of this.craft.symGroup(part)) q.fill = f >= 1 ? undefined : f;
+        out.textContent = inp.value + ' %';
+        this.updateStats();
+      });
+      inp.addEventListener('change', () => { snap = false; });
+      el.appendChild(h('label', { class: 'fill-row' }, h('span', {}, 'Remplissage'), inp, out));
+    }
     if (part) {
       const row = h('div', { class: 'row' });
       const paints = h('div', { class: 'paints' });
@@ -365,7 +383,8 @@ export class Builder {
     const sel = h('select', { 'aria-label': 'Environnement de calcul' }, ...opts.map(([v, n]) => h('option', { value: v, selected: v === this.envBody }, n)));
     sel.addEventListener('change', () => { this.envBody = sel.value; this.updateStats(); });
     this.statsEl.innerHTML = '';
-    this.statsEl.appendChild(h('div', { class: 'label' }, 'Performances'));
+    this.statsEl.appendChild(h('div', { class: 'insp-head' }, h('span', { class: 'label' }, 'Performances'),
+      h('button', { class: 'insp-toggle', 'aria-label': 'Afficher ou masquer les détails', onclick: () => this.inspEl.classList.toggle('collapsed') })));
     this.statsEl.appendChild(h('div', { class: 'stat-grid' },
       h('div', { class: 'stat' }, h('b', { class: 'amber' }, fmtInt(dv) + ' m/s'), h('span', {}, 'Δv total')),
       h('div', { class: 'stat' }, h('b', { class: firstTWR >= 1.15 ? 'green' : firstTWR >= 1 ? 'amber' : 'red' }, fmt2(firstTWR)), h('span', {}, 'Poussée / poids')),
@@ -388,6 +407,7 @@ export class Builder {
       if (g.mode === 'career' && cost > g.funds) warns.push(['bad', 'Fonds insuffisants pour ce lancement.']);
       if (ctrl && PART_BY_ID[ctrl.id].command.probe && !c.parts.some((p) => PART_BY_ID[p.id].res?.ec)) warns.push(['', 'Sonde sans batterie.']);
       const unshielded = c.parts.some((p) => PART_BY_ID[p.id].command?.crew) && !c.parts.some((p) => PART_BY_ID[p.id].heatShield);
+      if (c.parts.some((p) => PART_BY_ID[p.id].legs) && legsTooHigh(c)) warns.push(['', 'Jambes trop hautes : déployées, elles ne dépassent pas sous la tuyère. Fixez-les plus bas.']);
       if (unshielded && dvVac > 5500) warns.push(['', 'Capsule sans bouclier thermique : dangereux au retour de la Lune ou de Mars.']);
     } else {
       warns.push(['', 'Choisissez une capsule ou une sonde dans la palette pour commencer.']);
@@ -451,7 +471,9 @@ export class Builder {
     const wid = this.craft.parts.length ? Math.max(b.maxX - b.minX, b.maxZ - b.minZ) : 4;
     this.orbit.ty = hgt / 2;
     this.orbit.tx = 0;
-    this.orbit.dist = Math.max(10, Math.max(hgt * 1.65, wid * 2.2) + 6);
+    const R = this.app.R;
+    const tall = R && R.width < R.height ? 1.9 : 1;
+    this.orbit.dist = Math.max(10, Math.max(hgt * 1.65, wid * 2.2) + 6) * tall;
     this.ortho.cx = 0;
     this.ortho.cy = hgt / 2;
     this.ortho.size = Math.max(6, hgt * 0.62 + 2);
@@ -486,7 +508,7 @@ export class Builder {
       c.aspect = aspect;
       const tgt = new THREE.Vector3(o.tx, o.ty, 0);
       c.position.set(tgt.x + Math.cos(o.yaw) * Math.cos(o.pitch) * o.dist, tgt.y + Math.sin(o.pitch) * o.dist, Math.sin(o.yaw) * Math.cos(o.pitch) * o.dist);
-      if (narrow) tgt.y -= o.dist * 0.18;
+      if (narrow) tgt.y -= o.dist * (R.width < R.height ? 0.09 : 0.18);
       c.lookAt(tgt);
       c.near = 0.1;
       c.far = 2000;

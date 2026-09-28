@@ -7,6 +7,7 @@ import { Vessel } from './vessel.js';
 
 export const WARPS = [1, 2, 3, 4, 10, 50, 100, 1000, 10000, 100000, 1e6, 1e7];
 export const PHYS_WARP = 3; // index max de l'accélération physique
+export const CHUTE_WARP = 5; // ×50 pendant une descente stable sous parachute
 
 export class Sim {
   constructor(sys, ut = 0) {
@@ -54,6 +55,17 @@ export class Sim {
     return '';
   }
 
+  // Descente lente sous parachute : la physique peut tourner jusqu'à ×50
+  chuteDescent(v = this.active) {
+    if (!v || v.landed || v.inContact || v.clamped || v.onRails) return false;
+    const b = v.body;
+    if (!b.atmosphere || v.altitude > b.atmosphere.height) return false;
+    if (!v.parts.some((p) => p.chute === 'full' || p.chute === 'semi')) return false;
+    if (v.parts.some((p) => p.engOn && (p.thrustFrac || 0) > 0.01)) return false;
+    const sv = v.surfaceVelocity();
+    return Math.hypot(sv[0], sv[1]) < 80;
+  }
+
   // Accélération maximale selon l'altitude (comme les simulateurs du genre)
   maxRailsIdx(v = this.active) {
     if (!v) return WARPS.length - 1;
@@ -74,7 +86,9 @@ export class Sim {
   setWarp(idx) {
     idx = Math.max(0, Math.min(WARPS.length - 1, idx));
     const v = this.active;
-    if (idx > PHYS_WARP) {
+    if (idx > PHYS_WARP && this.chuteDescent(v)) {
+      if (idx > CHUTE_WARP) { idx = CHUTE_WARP; this.maxWarpMsg = 'Descente sous parachute : ×50 au maximum'; }
+    } else if (idx > PHYS_WARP) {
       const blk = this.railsBlocker(v);
       if (blk) {
         this.maxWarpMsg = blk;
@@ -92,9 +106,14 @@ export class Sim {
   // ------------------------------------------------------------------------
   update(dtReal, controls) {
     const v = this.active;
+    // fin de la descente sous parachute : retour à une accélération physique normale
+    const cd = this.chuteDescent(v);
+    if (!cd && this.warpIdx > PHYS_WARP && this.warpIdx <= CHUTE_WARP && v && !v.onRails && this.railsBlocker(v)) {
+      this.warpIdx = v.inContact ? 0 : PHYS_WARP;
+    }
     const warp = this.warp;
     let dt = dtReal * warp;
-    if (this.warpIdx > PHYS_WARP) {
+    if (this.warpIdx > (cd ? CHUTE_WARP : PHYS_WARP)) {
       // Sur rails
       for (const o of this.vessels) if (!o.onRails) {
         if (o.landed) o.captureLanded(this.ut);

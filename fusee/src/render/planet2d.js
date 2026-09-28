@@ -105,6 +105,8 @@ uniform vec3 sky;
 uniform vec3 sunset;
 uniform vec3 sunDir;
 uniform float strength;
+uniform float screenH;
+uniform float grad;
 varying vec3 vWorld;
 void main(){
   vec2 p = (vWorld.xy - center.xy);
@@ -119,7 +121,12 @@ void main(){
   float dusk = exp(-c * c / 0.02) * 0.9;
   vec3 col = mix(sky * day, sunset, dusk * (1.0 - day * 0.5)) ;
   float a = dens * strength * (0.25 + 0.75 * max(day, dusk * 0.8));
-  gl_FragColor = vec4(col * (0.6 + 0.8 * day), clamp(a, 0.0, 0.96));
+  col *= 0.6 + 0.8 * day;
+  // de près : dégradé vertical (brume claire en bas, bleu profond en haut)
+  float sy = clamp(gl_FragCoord.y / screenH, 0.0, 1.0);
+  vec3 haze = mix(col, vec3(0.62, 0.74, 0.9) * (dot(col, vec3(0.2126, 0.7152, 0.0722)) * 2.2 + 0.05), 0.55);
+  col = mix(col, mix(haze, col * 0.78, sqrt(sy)), grad);
+  gl_FragColor = vec4(col, clamp(a, 0.0, 0.96));
 }`;
 
 function makeHeightTex(n) {
@@ -169,6 +176,7 @@ export class Planets2D {
         ...common, atmH: { value: a.height }, H: { value: a.H * 1.6 },
         sky: { value: new THREE.Color(a.sky).convertSRGBToLinear() }, sunset: { value: new THREE.Color('#ff8a3c').convertSRGBToLinear() },
         strength: { value: Math.min(1, 0.55 + (a.density || 1) * 0.3) },
+        screenH: { value: 1000 }, grad: { value: 0 },
       };
       o.au = au;
       const ringG = new THREE.RingGeometry(b.radius * 0.97, b.radius + a.height * 1.02, 360, 1);

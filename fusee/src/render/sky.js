@@ -151,7 +151,7 @@ export class Sky {
     this.starU.brightness.value = opts.starBrightness ?? 1;
     this.starU.twinkle.value = opts.twinkle ?? 0;
     this.starU.scale.value = opts.pixelRatio ?? 1;
-    this.milkyMat.color.setScalar((opts.starBrightness ?? 1) * 3.2);
+    this.milkyMat.color.setScalar((opts.starBrightness ?? 1) * 2.0);
     const d = Math.hypot(sunRel.x - cam.position.x, sunRel.y - cam.position.y, sunRel.z - cam.position.z);
     // halo à la position du Soleil (taille apparente + halo)
     this.sunGlow.position.copy(sunRel);

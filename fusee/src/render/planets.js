@@ -116,6 +116,7 @@ export class Planets3D {
       baseColor: { value: new THREE.Color(b.color).convertSRGBToLinear() }, hasMap: { value: 0 },
       holeDir: { value: new THREE.Vector3(1, 0, 0) }, holeCos: { value: 2 }, emissive: { value: 0 }, time: { value: 0 },
       gasFlow: { value: b.type === 'gas' ? 0.0000004 : 0 },
+      fogColor: { value: new THREE.Color(0, 0, 0) }, fogDensity: { value: 0 },
     };
     const mat = new THREE.ShaderMaterial({ uniforms, vertexShader: PLANET_VS, fragmentShader: PLANET_FS });
     o.surface = new THREE.Mesh(this.sphereHi, mat);
@@ -128,6 +129,7 @@ export class Planets3D {
         map: { value: null }, sunDir: uniforms.sunDir, sunColor: uniforms.sunColor, ambient: { value: 0.01 }, opacity: { value: b.id === 'venus' ? 1.0 : 0.95 },
         time: { value: 0 }, drift: { value: b.id === 'venus' ? 0.0000012 : 0.0000002 }, tint: { value: new THREE.Color(1, 1, 1) },
         holeDir: uniforms.holeDir, holeCos: { value: 2 },
+        fogColor: uniforms.fogColor, fogDensity: uniforms.fogDensity,
       };
       const cm = new THREE.ShaderMaterial({ uniforms: cu, vertexShader: PLANET_VS, fragmentShader: CLOUD_FS, transparent: true, depthWrite: false, side: THREE.DoubleSide });
       o.clouds = new THREE.Mesh(this.sphereHi, cm);
