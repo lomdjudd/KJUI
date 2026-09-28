@@ -144,10 +144,13 @@ export class PhotoMode {
     ctx.drawImage(src, 0, 0);
     ctx.filter = 'none';
     // signature façon Daily Bugle
-    ctx.font = `bold ${Math.round(c.height * 0.04)}px Impact, Arial Black, sans-serif`;
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.font = `400 ${Math.round(c.height * 0.05)}px "Bebas Neue", Impact, sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
     ctx.textAlign = 'right';
-    ctx.fillText('SPIDER-MAN · MONDE OUVERT', c.width - 20, c.height - 20);
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 8;
+    ctx.fillText('SPIDER-MAN · MONDE OUVERT', c.width - 24, c.height - 22);
+    ctx.shadowBlur = 0;
     g.audio.play('ui');
     const msg = (t) => {
       const el = $('ph-msg');
@@ -157,6 +160,13 @@ export class PhotoMode {
     };
     try {
       const url = c.toDataURL('image/png');
+      // Application Android : la WebView ne gère pas les téléchargements, on passe par la passerelle native
+      if (window.Android && window.Android.savePhoto) {
+        window.Android.savePhoto(url);
+        msg('📸 Photo enregistrée !');
+        g.stat('photos');
+        return;
+      }
       const a = document.createElement('a');
       a.href = url;
       a.download = `spiderman-photo-${Date.now()}.png`;

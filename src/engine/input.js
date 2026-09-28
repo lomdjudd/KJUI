@@ -50,6 +50,25 @@ const PADMAP = {
   15: 'styleNext',
 };
 
+// Icônes vectorielles des boutons tactiles (viewBox 24x24)
+const S = (d, w = 2.2) => `<path d="${d}" fill="none" stroke="#fff" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+const F = (d) => `<path d="${d}" fill="#fff"/>`;
+const ICONS = {
+  swing: S('M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9 4.9 19.1', 1.5) + S('M12 6.2l4.1 1.7 1.7 4.1-1.7 4.1-4.1 1.7-4.1-1.7L6.2 12l1.7-4.1z', 1.5) + S('M12 9.4l1.8.8.8 1.8-.8 1.8-1.8.8-1.8-.8-.8-1.8.8-1.8z', 1.5),
+  jump: S('M6 13l6-6 6 6M6 19l6-6 6 6', 2.6),
+  attack: F('M12 2l2.2 5.6L20 6l-3 5 5 3-5.8 1L17 21l-5-3.5L7 21l.8-6L2 14l5-3-3-5 5.8 1.6z'),
+  dodge: S('M5 12h12M12 6l6 6-6 6', 2.6) + S('M2 7h3M2 17h3', 2),
+  webShoot: S('M12 5a7 7 0 1 0 .01 0M12 2v4M12 18v4M2 12h4M18 12h4', 2) + F('M12 9.5a2.5 2.5 0 1 0 .01 0z'),
+  webStrike: F('M13 2 5 13h6l-1 9 8-11h-6z'),
+  zip: S('M5 19 19 5M9 5h10v10', 2.6),
+  gadget: S('M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9z', 2) + F('M12 9a3 3 0 1 0 .01 0z'),
+  gadgetNext: S('M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5', 2.2),
+  finisher: F('M12 2l3 6.5 7 .8-5.2 4.8 1.4 7L12 17.6 5.8 21l1.4-7L2 9.3l7-.8z'),
+  heal: S('M12 5v14M5 12h14', 3.4),
+  styleNext: F('M12 2.5l3.2 3.2L12 8.9 8.8 5.7zM18.3 8.8l3.2 3.2-3.2 3.2-3.2-3.2zM5.7 8.8 8.9 12l-3.2 3.2L2.5 12zM12 15.1l3.2 3.2-3.2 3.2-3.2-3.2z'),
+  interact: S('M12 4v10', 3.4) + F('M12 17.2a1.9 1.9 0 1 0 .01 0z'),
+};
+
 const TOUCH_BUTTONS = [
   { action: 'swing', label: 'TOILE', cls: 'tb-swing' },
   { action: 'jump', label: 'SAUT', cls: 'tb-jump' },
@@ -59,7 +78,7 @@ const TOUCH_BUTTONS = [
   { action: 'webStrike', label: 'ASSAUT', cls: 'tb-strike' },
   { action: 'zip', label: 'ZIP', cls: 'tb-zip' },
   { action: 'gadget', label: 'GADGET', cls: 'tb-gadget' },
-  { action: 'gadgetNext', label: '⟳', cls: 'tb-gnext' },
+  { action: 'gadgetNext', label: '', cls: 'tb-gnext' },
   { action: 'finisher', label: 'K.O.', cls: 'tb-finisher' },
   { action: 'heal', label: 'SOIN', cls: 'tb-heal' },
   { action: 'styleNext', label: 'STYLE', cls: 'tb-style' },
@@ -85,6 +104,8 @@ export class Input {
     this.padPrev = {};
     this.sensitivity = 1;
     this.isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+    this.invertY = false;
+    this.buttons = {};
     this._sources = new Map(); // action -> nombre de sources actives
     this._bind();
     if (this.isTouch) this._buildTouch();
@@ -277,8 +298,9 @@ export class Input {
     for (const b of TOUCH_BUTTONS) {
       const el = document.createElement('div');
       el.className = `tbtn ${b.cls}`;
-      el.textContent = b.label;
+      el.innerHTML = `${b.action === 'gadget' ? '<i class="cd"></i>' : ''}<svg viewBox="0 0 24 24">${ICONS[b.action] || ''}</svg>${b.label ? `<em>${b.label}</em>` : ''}`;
       el.dataset.action = b.action;
+      this.buttons[b.action] = el;
       btnWrap.appendChild(el);
       el.addEventListener(
         'touchstart',
@@ -287,6 +309,7 @@ export class Input {
           e.stopPropagation();
           el.classList.add('down');
           this._press(b.action);
+          if (this.haptic) this.haptic();
         },
         { passive: false },
       );
@@ -394,7 +417,7 @@ export class Input {
   }
 
   consumeLook() {
-    const l = { x: this.look.x, y: this.look.y };
+    const l = { x: this.look.x, y: this.invertY ? -this.look.y : this.look.y };
     this.look.x = 0;
     this.look.y = 0;
     return l;

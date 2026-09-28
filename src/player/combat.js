@@ -423,6 +423,7 @@ export class Combat {
             this.game.fx.explosion(tgt.chest, 0.4);
             this.game.fx.impact(tgt.chest, '#ffffff');
             this.game.audio.play('finisher');
+            this.game.vibrate([25, 40, 45]);
             this.game.cam.shake(0.8);
             this.game.hud.floatText(tgt.chest, 'K.O. !', '#ffd23f', true);
             this.game.slowmo(0.6, 0.25);
@@ -557,6 +558,7 @@ export class Combat {
     fx.impact(e.chest, r.blocked ? '#9fd0ff' : '#ffffff');
     this.game.audio.play(r.blocked ? 'block' : info.sfx || 'punch');
     this.game.hitstop(r.killed ? 0.1 : 0.045);
+    this.game.vibrate(r.killed ? 24 : 9);
     this.game.cam.shake(0.12 * shake + (r.killed ? 0.2 : 0));
     this.game.hud.damage(e.chest, Math.round(dmg), r.killed);
     this.game.hud.comboUpdate(this.combo);
@@ -597,6 +599,7 @@ export class Combat {
     const threat = Math.min(game.enemies.nextThreat(), game.projectiles.threatTime(p), game.boss ? game.boss.threatTime() : Infinity);
     if (threat < 0.45 + game.stats.perfectWindow) {
       game.stat('perfectDodges');
+      game.vibrate(14);
       game.slowmo(0.7, 0.3);
       p.focus = Math.min(100, p.focus + 12);
       this.counterT = 1.5;

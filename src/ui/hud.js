@@ -17,6 +17,11 @@ export class HUD {
       focus: $('focus-fill'),
       focusBar: $('focus-fill').parentElement,
       xp: $('xp-fill'),
+      xpRing: $('xp-ring'),
+      hpBar: $('hp-fill').parentElement,
+      bossLag: $('boss-lag'),
+      comboT: $('combo-t'),
+      touch: $('touch-ui'),
       lvl: $('lvl'),
       spBadge: $('sp-badge'),
       mPanel: $('mission-panel'),
@@ -95,19 +100,19 @@ export class HUD {
   buildMap() {
     const city = this.game.city;
     const S = 1024;
-    const W = ISLAND * 2 + 400; // mètres couverts
+    const W = ISLAND * 2 + 160; // mètres couverts
     this.mapScale = S / W;
     this.mapW = W;
     const c = makeCanvas(S, S);
     const ctx = c.getContext('2d');
     const tx = (x) => (x + W / 2) * this.mapScale;
-    ctx.fillStyle = '#16324a';
+    ctx.fillStyle = '#0c1a2b';
     ctx.fillRect(0, 0, S, S);
     // île
-    ctx.fillStyle = '#2b3140';
+    ctx.fillStyle = '#1b2130';
     ctx.fillRect(tx(-ISLAND), tx(-ISLAND), ISLAND * 2 * this.mapScale, ISLAND * 2 * this.mapScale);
     // rues
-    ctx.fillStyle = '#434b5e';
+    ctx.fillStyle = '#3a4357';
     for (let i = 0; i <= N; i++) {
       const s = X0 + i * PITCH;
       ctx.fillRect(tx(s - STREET / 2), tx(-ISLAND + 30), STREET * this.mapScale, (ISLAND * 2 - 60) * this.mapScale);
@@ -115,13 +120,13 @@ export class HUD {
     }
     // parc
     const pk = city.landmarks.park;
-    ctx.fillStyle = '#2f6b35';
+    ctx.fillStyle = '#1f5a34';
     ctx.fillRect(tx(pk.x0), tx(pk.z0), (pk.x1 - pk.x0) * this.mapScale, (pk.z1 - pk.z0) * this.mapScale);
     // immeubles
     for (const b of city.buildings) {
       const h = clamp(b.roof / 200, 0, 1);
-      const l = 32 + h * 30;
-      ctx.fillStyle = b.role === 'oscorp' ? '#3f9a6a' : `hsl(222, 14%, ${l}%)`;
+      const l = 16 + h * 22;
+      ctx.fillStyle = b.role === 'oscorp' ? '#2f8a5a' : `hsl(220, 16%, ${l}%)`;
       const x0 = b.fx0 !== undefined ? b.fx0 : b.x0;
       const x1 = b.fx1 !== undefined ? b.fx1 : b.x1;
       const z0 = b.fz0 !== undefined ? b.fz0 : b.z0;
@@ -143,13 +148,13 @@ export class HUD {
 
   drawMinimap(pois) {
     const ctx = this.mm;
-    const W = 220;
+    const W = this.el.minimap.width;
     const g = this.game;
     const p = g.player.pos;
     const yaw = g.cam.yaw;
     const zoom = 2.2; // px canvas par px de carte
     ctx.save();
-    ctx.fillStyle = '#16324a';
+    ctx.fillStyle = '#0c1a2b';
     ctx.fillRect(0, 0, W, W);
     ctx.translate(W / 2, W / 2);
     ctx.rotate(yaw);
@@ -200,11 +205,21 @@ export class HUD {
     // Nord
     const nx = sin * (R + 2);
     const ny = -cos * (R + 2);
-    ctx.fillStyle = '#e23636';
-    ctx.font = 'bold 15px Bangers, Impact, sans-serif';
+    ctx.beginPath();
+    ctx.arc(W / 2 + nx * 0.94, W / 2 + ny * 0.94, 11, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(8,10,18,0.85)';
+    ctx.fill();
+    ctx.fillStyle = '#ff4a50';
+    ctx.font = '600 15px "Barlow Condensed", Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('N', W / 2 + nx, W / 2 + ny);
+    ctx.fillText('N', W / 2 + nx * 0.94, W / 2 + ny * 0.94 + 1);
+    // vignette intérieure
+    const vg = ctx.createRadialGradient(W / 2, W / 2, W * 0.3, W / 2, W / 2, W * 0.5);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(0,0,0,0.55)');
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, W, W);
     // Joueur
     const f = g.player.facing;
     const fx = Math.sin(f);
@@ -248,9 +263,12 @@ export class HUD {
       ctx.stroke();
       if (poi.label && !poi.small) {
         ctx.fillStyle = '#fff';
-        ctx.font = '18px Bangers, Impact, sans-serif';
+        ctx.font = '600 19px "Barlow Condensed", Arial, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(poi.label, x * k, y * k - 14);
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 4;
+        ctx.fillText(poi.label.toUpperCase(), x * k, y * k - 15);
+        ctx.shadowBlur = 0;
       }
     }
     const [px, py] = this._worldToMap(g.player.pos.x, g.player.pos.z);
@@ -269,14 +287,9 @@ export class HUD {
     ctx.lineWidth = 3;
     ctx.stroke();
     ctx.restore();
-    ctx.fillStyle = '#fff';
-    ctx.font = '26px Bangers, Impact, sans-serif';
-    ctx.textAlign = 'left';
     const s = g.save;
-    ctx.fillText(`Missions : ${s.completed.length}/${g.missions.storyCount}   Sacs : ${s.bags.length}/${g.missions.totalBags}   Bases : ${s.bases.length}/3   Métro : ${(s.stations || []).length}/6`, 16, 34);
-    ctx.font = '20px Barlow Condensed, Arial, sans-serif';
-    ctx.fillStyle = '#9dffb8';
-    ctx.fillText('Clique sur une station M découverte pour y voyager', 16, S - 16);
+    const ms = document.getElementById('map-stats');
+    if (ms) ms.textContent = `Missions ${s.completed.length}/${g.missions.storyCount} · Sacs ${s.bags.length}/${g.missions.totalBags} · Bases ${s.bases.length}/3 · Métro ${(s.stations || []).length}/6`;
   }
 
   // ---------- Projection 3D -> écran ----------
@@ -426,8 +439,9 @@ export class HUD {
     el.className = `toast ${cls}`;
     el.textContent = text;
     this.el.toasts.appendChild(el);
-    while (this.el.toasts.children.length > 3) this.el.toasts.firstChild.remove();
-    setTimeout(() => el.remove(), 3500);
+    while (this.el.toasts.children.length > 4) this.el.toasts.firstChild.remove();
+    setTimeout(() => el.classList.add('out'), 3200);
+    setTimeout(() => el.remove(), 3600);
   }
 
   hint(text, dur = 6) {
@@ -470,9 +484,9 @@ export class HUD {
 
   missionComplete(title, xp, final, outro) {
     this.game.showResult({
-      kicker: final ? 'VICTOIRE !' : 'MISSION RÉUSSIE',
+      kicker: final ? 'VICTOIRE' : 'MISSION RÉUSSIE',
       title,
-      text: `+${xp} XP${outro ? `<br><br>${outro}` : ''}`,
+      text: `<span class="xp-big">+${xp} XP</span>${outro ? outro : ''}`,
       retry: false,
     });
   }
@@ -560,6 +574,12 @@ export class HUD {
     this.el.focusBar.classList.toggle('full', p.focus >= g.stats.focusCost);
     this.el.lvl.textContent = s.level;
     this.el.xp.style.width = `${(s.xp / g.xpForNext()) * 100}%`;
+    const xr = 163.4 * (1 - s.xp / g.xpForNext());
+    if (Math.abs(xr - (this._xr || 0)) > 0.3) {
+      this._xr = xr;
+      this.el.xpRing.style.strokeDashoffset = `${xr}`;
+    }
+    this.el.hpBar.classList.toggle('low', p.health / p.maxHealth < 0.3);
 
     // Mission
     const m = g.missions.active;
@@ -576,9 +596,25 @@ export class HUD {
     // Invite de mission
     const near = g.nearbyEntry;
     if (near) {
-      this.el.prompt.innerHTML = `<b>[F]</b> ${near.kind === 'story' ? 'Mission' : 'Défi'} : ${near.title}`;
+      const key = g.input.isTouch ? '!' : 'F';
+      const html = `<b>${key}</b> ${near.kind === 'story' ? 'Mission' : 'Défi'} : ${near.title}`;
+      if (this._promptHtml !== html) this.el.prompt.innerHTML = this._promptHtml = html;
       this.el.prompt.classList.remove('hidden');
     } else this.el.prompt.classList.add('hidden');
+    // Boutons tactiles contextuels
+    if (g.input.isTouch) {
+      const t = this.el.touch;
+      const combat = g.combat.inCombat || !!(g.boss && g.boss.alive);
+      if (combat !== this._tCombat) t.classList.toggle('combat', (this._tCombat = combat));
+      if (!!near !== this._tNear) t.classList.toggle('near-action', (this._tNear = !!near));
+      const ready = p.focus >= g.stats.focusCost;
+      if (ready !== this._tReady) {
+        this._tReady = ready;
+        const b = g.input.buttons;
+        if (b.heal) b.heal.classList.toggle('ready', ready);
+        if (b.finisher) b.finisher.classList.toggle('ready', ready);
+      }
+    }
 
     if (this.hintT > 0) {
       this.hintT -= dt;
@@ -586,15 +622,25 @@ export class HUD {
     }
     if (this.comboT > 0) {
       this.comboT -= dt;
+      this.el.comboT.style.transform = `scaleX(${Math.max(0, this.comboT / 3).toFixed(3)})`;
       if (this.comboT <= 0 || g.combat.combo < 2) this.el.combo.classList.add('hidden');
     }
 
     // Gadget recharge
     const cd = g.combat.gadgetCd[g.combat.gadgetIndex] / (g.combat.gadget.cd * g.stats.gadgetCdMul);
     this.el.gadgetCd.style.strokeDashoffset = `${94.25 * cd}`;
+    const gb = g.input.buttons && g.input.buttons.gadget;
+    if (gb) {
+      const v = `${Math.round(cd * 100)}%`;
+      if (v !== this._gcd) gb.style.setProperty('--cd', (this._gcd = v));
+    }
 
     // Boss
-    if (this.boss) this.el.bossFill.style.width = `${(this.boss.hp / this.boss.maxHp) * 100}%`;
+    if (this.boss) {
+      const w = `${(Math.max(0, this.boss.hp) / this.boss.maxHp) * 100}%`;
+      this.el.bossFill.style.width = w;
+      this.el.bossLag.style.width = w;
+    }
 
     // Sens d'araignée
     this.el.sense.classList.toggle('on', g.senseT > 0);

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { Rig } from '../player/rig.js';
 import * as A from '../player/anims.js';
-import { clamp, damp, angleLerp, pick, rand } from '../engine/utils.js';
+import { clamp, damp, angleLerp, rand } from '../engine/utils.js';
+import { makeEnemyOutfit, addHeadwear } from './outfits.js';
 
 export const ENEMY_TYPES = {
   voyou: {
@@ -47,29 +48,6 @@ export const ENEMY_TYPES = {
   },
 };
 
-const JACKETS = ['#3b3f46', '#5a2a2a', '#2f4a3a', '#6b5a3a', '#2a2f4f', '#4a4a4a', '#7a3b1f'];
-const PANTS = ['#1f2530', '#2b2b2b', '#3a3f55', '#4a3b2b'];
-const SKINS = ['#f1c7a5', '#d9a07a', '#a86e4a', '#6b4430', '#e8b894'];
-
-function enemyMaterials(type) {
-  const std = (c, r = 0.8) => new THREE.MeshStandardMaterial({ color: c, roughness: r });
-  const jacket = type === 'costaud' ? '#26262a' : pick(JACKETS);
-  const pants = pick(PANTS);
-  const skin = pick(SKINS);
-  const m = {
-    head: std(skin, 0.7),
-    torso: std(jacket),
-    pelvis: std(pants),
-    upperArm: std(type === 'costaud' ? skin : jacket),
-    foreArm: std(type === 'costaud' ? skin : jacket),
-    hand: std(skin, 0.7),
-    thigh: std(pants),
-    shin: std(pants),
-    foot: std('#151515', 0.6),
-  };
-  return m;
-}
-
 const _v = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 
@@ -99,7 +77,8 @@ export class Enemy {
     this.home = opts.home ? opts.home.clone() : pos.clone();
     this.leash = opts.leash || 60;
     this.t = Math.random() * 10;
-    this.mats = enemyMaterials(type);
+    this.outfit = makeEnemyOutfit(type);
+    this.mats = this.outfit.materials;
     this.rig = new Rig({ materials: this.mats, scale: this.type.scale, bulk: this.type.bulk, kind: 'enemy' });
     this._decorate();
     this.game.scene.add(this.rig.group);
@@ -113,31 +92,35 @@ export class Enemy {
   _decorate() {
     const head = this.rig.j.head;
     const t = this.typeKey;
-    if (t === 'voyou' || (t === 'tireur' && Math.random() < 0.5)) {
-      // bonnet
-      const hat = new THREE.Mesh(
-        new THREE.SphereGeometry(0.13, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
-        new THREE.MeshStandardMaterial({ color: pick(['#1a1a1a', '#6b1d1d', '#1d3b6b', '#2e2e2e']), roughness: 0.9 }),
-      );
-      hat.position.y = 0.12;
-      hat.scale.set(0.95, 0.9, 1.0);
-      head.add(hat);
-    }
-    // masque sur les yeux (bandits)
-    const mask = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.05, 0.05), new THREE.MeshStandardMaterial({ color: 0x111111 }));
-    mask.position.set(0, 0.1, 0.1);
-    head.add(mask);
+    addHeadwear(head, this.outfit);
     if (t === 'tireur') {
-      const gun = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, 0.28), new THREE.MeshStandardMaterial({ color: 0x1b1b1b, metalness: 0.6, roughness: 0.4 }));
-      gun.position.set(0, -0.3, 0.1);
-      this.rig.j.rElbow.add(gun);
-      this.gun = gun;
+      // pistolet : glissière dans l'axe de l'avant-bras, crosse dans la main
+      const metal = new THREE.MeshStandardMaterial({ color: 0x1b1c1e, metalness: 0.7, roughness: 0.35 });
+      const pistol = new THREE.Group();
+      const slide = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.2, 0.042), metal);
+      slide.position.set(0, -0.11, 0.028);
+      const grip = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.045, 0.11), new THREE.MeshStandardMaterial({ color: 0x0e0e0f, roughness: 0.7 }));
+      grip.position.set(0, -0.02, -0.01);
+      grip.rotation.x = -0.25;
+      const muzzle = new THREE.Object3D();
+      muzzle.position.set(0, -0.22, 0.028);
+      pistol.add(slide, grip, muzzle);
+      this.rig.j.rHand.add(pistol);
+      this.gun = muzzle;
     }
     if (t === 'costaud') {
-      // plaques de protection
-      const plate = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.4, 0.3), new THREE.MeshStandardMaterial({ color: 0x3b4450, metalness: 0.5, roughness: 0.4 }));
-      plate.position.set(0, 0.1, 0.03);
+      // plastron et épaulières de protection
+      const armor = new THREE.MeshStandardMaterial({ color: 0x2c333b, metalness: 0.55, roughness: 0.38 });
+      const plate = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.16, 4, 12), armor);
+      plate.scale.set(1.25, 1, 0.72);
+      plate.position.set(0, 0.12, 0.04);
       this.rig.j.chest.add(plate);
+      for (const s of [1, -1]) {
+        const pad = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), armor);
+        pad.position.set(0, 0.02, 0);
+        pad.scale.set(1.1, 0.9, 1.1);
+        this.rig.j[s > 0 ? 'lShoulder' : 'rShoulder'].add(pad);
+      }
     }
     // cocon de toile (visible si l'ennemi est emmailloté)
     const cocoon = new THREE.Mesh(
