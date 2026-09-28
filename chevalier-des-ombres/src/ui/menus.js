@@ -3,6 +3,7 @@
 // boutiques, autels, portail, mort, introduction et fin.
 import { settings, SETTINGS_SCHEMA, DIFFICULTY } from '../core/settings.js';
 import { audio } from '../core/audio.js';
+import { listGamepads } from '../core/input.js';
 import { native } from '../core/storage.js';
 import { el, escapeHtml, formatTime, formatNumber, clamp } from '../core/utils.js';
 import { SLOTS, slotInfo, slotLabel, loadProfile, deleteSlot, mostRecentSlot, exportCode, importCode, saveProfile } from '../game/save.js';
@@ -858,8 +859,7 @@ export class Menus {
   // Navigation à la manette dans les menus
   pollGamepad() {
     if (!this.current) return;
-    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-    const pad = [...pads].find((p) => p && p.connected);
+    const pad = listGamepads().find((p) => p && p.connected);
     if (!pad) return;
     const prev = this._padPrev || {};
     const press = (i) => pad.buttons[i] && pad.buttons[i].pressed && !prev[i];

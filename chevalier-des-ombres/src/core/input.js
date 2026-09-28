@@ -31,6 +31,15 @@ const KEYMAP = {
   KeyL: ['journal'],
 };
 
+// Manettes connectées ; l'API peut être refusée (page intégrée dans un cadre) : liste vide
+export function listGamepads() {
+  try {
+    return navigator.getGamepads ? [...navigator.getGamepads()] : [];
+  } catch {
+    return [];
+  }
+}
+
 // Mapping standard des manettes (Xbox)
 const PADMAP = {
   0: 'jump', // A (interagit aussi à proximité d'un PNJ/objet)
@@ -177,7 +186,7 @@ export class Input {
   }
 
   _pollPad() {
-    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const pads = listGamepads();
     let pad = null;
     for (const p of pads) if (p && p.connected) {
       pad = p;

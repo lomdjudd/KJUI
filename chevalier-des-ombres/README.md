@@ -4,6 +4,10 @@ Action-RPG **dark fantasy en 3D**, dans l'esprit des jeux Xbox 360 : un chevalie
 
 Tous les graphismes (modèles, textures, ciel, effets) et tous les sons (effets et musique) sont **générés par le code** : aucun fichier externe, le jeu tient dans un seul fichier HTML d'environ 1,2 Mo et fonctionne hors ligne.
 
+## 🌐 Jouer en ligne (sans rien installer)
+
+Le jeu est publié sous forme de page web : **https://claude.ai/artifact/3aMX1wqZJe2jpMavTZiZzW**. Il s'ouvre sur téléphone (tactile, en tenant l'écran à l'horizontale), sur tablette ou sur PC. La page est privée par défaut ; pour la donner à d'autres personnes, utilise le menu **Partager** de la page. Les sauvegardes restent dans le navigateur utilisé : pour changer d'appareil, passe par **Sauvegarder → code d'export**.
+
 ## 📱 Installer l'APK (Android 7.0 ou plus)
 
 1. Copie [`release/ChevalierDesOmbres.apk`](release/ChevalierDesOmbres.apk) sur le téléphone (ou télécharge-le depuis GitHub).
