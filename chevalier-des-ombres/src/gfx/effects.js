@@ -34,6 +34,60 @@ void main(){
   gl_FragColor = vec4(uColor * 1.6, a);
 }`;
 
+// Halo rond (éclats d'impact)
+function makeGlowTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grd.addColorStop(0, 'rgba(255,255,255,1)');
+  grd.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+  grd.addColorStop(0.5, 'rgba(255,255,255,0.18)');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 64, 64);
+  // Branches d'étoile
+  g.globalCompositeOperation = 'lighter';
+  g.fillStyle = 'rgba(255,255,255,0.5)';
+  g.fillRect(0, 31, 64, 2);
+  g.fillRect(31, 0, 2, 64);
+  return new THREE.CanvasTexture(c);
+}
+
+// Fissures rayonnantes incandescentes (décalque au sol)
+function makeCrackTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.strokeStyle = 'rgba(255,255,255,0.95)';
+  g.lineCap = 'round';
+  const branch = (x, y, a, len, w, depth) => {
+    let px = x;
+    let py = y;
+    const steps = 6;
+    for (let i = 0; i < steps; i++) {
+      a += (Math.random() - 0.5) * 0.7;
+      const nx = px + Math.cos(a) * (len / steps);
+      const ny = py + Math.sin(a) * (len / steps);
+      g.lineWidth = w * (1 - i / steps) + 0.5;
+      g.beginPath();
+      g.moveTo(px, py);
+      g.lineTo(nx, ny);
+      g.stroke();
+      if (depth > 0 && Math.random() < 0.35) branch(nx, ny, a + (Math.random() - 0.5) * 1.6, len * 0.45, w * 0.6, depth - 1);
+      px = nx;
+      py = ny;
+    }
+  };
+  for (let i = 0; i < 9; i++) branch(128, 128, (i / 9) * Math.PI * 2 + Math.random() * 0.4, 90 + Math.random() * 30, 4, 2);
+  const grd = g.createRadialGradient(128, 128, 0, 128, 128, 40);
+  grd.addColorStop(0, 'rgba(255,255,255,0.7)');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 256, 256);
+  return new THREE.CanvasTexture(c);
+}
+
 export class Effects {
   constructor(scene, particles, particlesAlpha) {
     this.scene = scene;
@@ -116,6 +170,34 @@ export class Effects {
 
     // Traînées d'armes
     this.trails = [];
+    // Silhouettes rémanentes
+    this.ghosts = [];
+    // Éclats d'impact (sprites additifs)
+    this.sprites = [];
+    const glowTex = makeGlowTexture();
+    for (let i = 0; i < 8; i++) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xffffff, transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending }));
+      sp.visible = false;
+      sp.renderOrder = 7;
+      sp.userData = { life: 0 };
+      scene.add(sp);
+      this.sprites.push(sp);
+    }
+    // Fissures au sol
+    this.crackPool = [];
+    const crackTex = makeCrackTexture();
+    for (let i = 0; i < 5; i++) {
+      const m = new THREE.Mesh(
+        new THREE.PlaneGeometry(2, 2),
+        new THREE.MeshBasicMaterial({ map: crackTex, color: 0xffb070, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -3 }),
+      );
+      m.visible = false;
+      m.renderOrder = 2;
+      m.userData = { life: 0 };
+      scene.add(m);
+      this.crackPool.push(m);
+    }
+    this.renderer = null;
   }
 
   // ---------- Lumières ----------
@@ -227,12 +309,16 @@ export class Effects {
   }
 
   // ---------- Traînée d'arme ----------
-  createTrail(color = 0xffffff, maxPoints = 10) {
+  // Ruban lissé (sous-échantillonné), cœur blanc vers la pointe, couleur de l'élément
+  createTrail(color = 0xffffff, maxPoints = 22) {
     const geo = new THREE.BufferGeometry();
     const pos = new Float32Array(maxPoints * 2 * 3);
     const alpha = new Float32Array(maxPoints * 2);
+    const side = new Float32Array(maxPoints * 2);
+    for (let i = 0; i < maxPoints; i++) side[i * 2 + 1] = 1;
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
     geo.setAttribute('aAlpha', new THREE.BufferAttribute(alpha, 1).setUsage(THREE.DynamicDrawUsage));
+    geo.setAttribute('aSide', new THREE.BufferAttribute(side, 1));
     const idx = [];
     for (let i = 0; i < maxPoints - 1; i++) {
       const a = i * 2;
@@ -241,8 +327,16 @@ export class Effects {
     geo.setIndex(idx);
     const mat = new THREE.ShaderMaterial({
       uniforms: { uColor: { value: new THREE.Color(color) }, uOpacity: { value: 1 } },
-      vertexShader: `attribute float aAlpha; varying float vA; void main(){ vA = aAlpha; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-      fragmentShader: `uniform vec3 uColor; uniform float uOpacity; varying float vA; void main(){ gl_FragColor = vec4(uColor * 1.4, vA * uOpacity * 0.55); }`,
+      vertexShader: `attribute float aAlpha; attribute float aSide; varying float vA; varying float vS;
+        void main(){ vA = aAlpha; vS = aSide; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+      fragmentShader: `uniform vec3 uColor; uniform float uOpacity; varying float vA; varying float vS;
+        void main(){
+          float edge = pow(vS, 3.0);
+          float core = smoothstep(0.55, 1.0, vS) * vA;
+          vec3 c = uColor * (0.9 + edge * 1.6) + vec3(1.0) * core * 1.4;
+          float a = vA * (0.15 + edge * 0.85) * uOpacity * 0.75;
+          gl_FragColor = vec4(c, a);
+        }`,
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
@@ -258,14 +352,26 @@ export class Effects {
   }
 
   pushTrail(trail, base, tip) {
+    const prev = trail.pts[0];
+    // Sous-échantillonnage : points intermédiaires quand la lame va vite
+    if (prev) {
+      const d = Math.hypot(tip.x - prev[3], tip.y - prev[4], tip.z - prev[5]);
+      const n = Math.min(3, Math.floor(d / 0.25));
+      for (let i = 1; i <= n; i++) {
+        const k = i / (n + 1);
+        trail.pts.unshift([
+          prev[0] + (base.x - prev[0]) * k, prev[1] + (base.y - prev[1]) * k, prev[2] + (base.z - prev[2]) * k,
+          prev[3] + (tip.x - prev[3]) * k, prev[4] + (tip.y - prev[4]) * k, prev[5] + (tip.z - prev[5]) * k,
+        ]);
+      }
+    }
     trail.pts.unshift([base.x, base.y, base.z, tip.x, tip.y, tip.z]);
-    if (trail.pts.length > trail.maxPoints) trail.pts.pop();
+    while (trail.pts.length > trail.maxPoints) trail.pts.pop();
   }
 
   _updateTrail(tr, dt) {
     if (!tr.active) {
-      if (tr.pts.length) tr.pts.pop();
-      if (tr.pts.length) tr.pts.pop();
+      tr.pts.splice(Math.max(0, tr.pts.length - 3), 3);
     }
     const pos = tr.mesh.geometry.attributes.position;
     const al = tr.mesh.geometry.attributes.aAlpha;
@@ -276,12 +382,96 @@ export class Effects {
       const p = tr.pts[Math.min(i, n - 1)];
       pos.setXYZ(i * 2, p[0], p[1], p[2]);
       pos.setXYZ(i * 2 + 1, p[3], p[4], p[5]);
-      const a = i < n ? (1 - i / n) * 0.85 : 0;
-      al.setX(i * 2, a * 0.1);
+      const a = i < n ? Math.pow(1 - i / n, 1.4) : 0;
+      al.setX(i * 2, a);
       al.setX(i * 2 + 1, a);
     }
     pos.needsUpdate = true;
     al.needsUpdate = true;
+  }
+
+  // ---------- Silhouettes rémanentes (esquives, ruées) ----------
+  afterimage(src, color = 0x9a6aff, life = 0.38) {
+    if (!src || !src.isSkinnedMesh || this.ghosts.length > 10) return;
+    const sk = src.skeleton.clone();
+    sk.boneMatrices = new Float32Array(src.skeleton.boneMatrices);
+    sk.update = () => {};
+    sk.computeBoneTexture();
+    const mat = new THREE.ShaderMaterial({
+      uniforms: { uColor: { value: new THREE.Color(color) }, uOpacity: { value: 0.65 } },
+      vertexShader: `#include <common>
+        #include <skinning_pars_vertex>
+        varying vec3 vN; varying vec3 vV;
+        void main(){
+          #include <skinbase_vertex>
+          #include <begin_vertex>
+          #include <beginnormal_vertex>
+          #include <skinnormal_vertex>
+          #include <skinning_vertex>
+          vec4 mv = modelViewMatrix * vec4(transformed, 1.0);
+          vN = normalize(normalMatrix * objectNormal); vV = normalize(-mv.xyz);
+          gl_Position = projectionMatrix * mv;
+        }`,
+      fragmentShader: `uniform vec3 uColor; uniform float uOpacity; varying vec3 vN; varying vec3 vV;
+        void main(){ float fr = pow(1.0 - abs(dot(normalize(vN), vV)), 1.6); gl_FragColor = vec4(uColor * (0.35 + fr * 1.7), (0.06 + fr * 0.62) * uOpacity); }`,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const g = new THREE.SkinnedMesh(src.geometry, mat);
+    g.bindMode = src.bindMode;
+    g.bind(sk, src.bindMatrix);
+    g.matrixAutoUpdate = false;
+    g.matrix.copy(src.matrixWorld);
+    g.frustumCulled = false;
+    g.renderOrder = 5;
+    g.userData = { life, maxLife: life };
+    this.scene.add(g);
+    this.ghosts.push(g);
+  }
+
+  // ---------- Onde de choc (distorsion de l'image + anneau + éclair lumineux) ----------
+  shockwave(pos, strength = 0.6, color = 0xffffff) {
+    if (this.renderer && settings.get('distortion')) this.renderer.addWave(pos, strength);
+    this.ring(pos, color, 1.5 + strength * 3, 0.35 + strength * 0.2, 0.3);
+    this.flash(pos, color, 20 + strength * 30, 8 + strength * 6, 0.2);
+  }
+
+  // ---------- Impact d'arme : éclat lumineux + étincelles ----------
+  impact(target, crit, big, element = 'physical') {
+    const fxq = settings.get('fxQuality');
+    const y = target.pos.y + (target.hover || 0) + Math.min(1.4, (target.height || 1.8) * 0.6);
+    const pos = { x: target.pos.x, y, z: target.pos.z };
+    const col = ELEMENT_COLORS[element] || 0xffffff;
+    const sp = this.sprites.find((s) => !s.visible) || this.sprites[0];
+    sp.visible = true;
+    sp.position.set(pos.x, pos.y, pos.z);
+    sp.material.color.setHex(crit ? 0xffe89a : element === 'physical' ? 0xfff2e0 : col);
+    sp.userData = { life: 0.14, maxLife: 0.14, size: crit ? 2.6 : big ? 2.1 : 1.4 };
+    if (fxq !== 'low') {
+      const n = (fxq === 'high' ? 16 : 9) * (big ? 1.5 : 1);
+      this.p.burst(pos, crit ? 0xffe066 : col === 0xffffff ? 0xffd8a8 : col, n, big ? 9 : 6, 0.12, 0.3, { drag: 0.9, gravity: 8, intensity: 2.6 });
+    }
+    if (big || crit) this.flash(pos, crit ? 0xffe089 : col, big ? 28 : 18, 7, 0.14);
+  }
+
+  // Charge d'une attaque lourde : anneau au sol et lueur
+  chargePulse(actor, level) {
+    const col = [0xffffff, 0xffd08a, 0xff9a3a, 0xc06aff][level] || 0xffffff;
+    this.ring({ x: actor.pos.x, z: actor.pos.z, y: actor.pos.y }, col, 1.2 + level * 0.5, 0.35, 0.06);
+    this.flash({ x: actor.pos.x, y: actor.pos.y + 0.5, z: actor.pos.z }, col, 12 + level * 10, 6, 0.3);
+  }
+
+  // Fissures au sol (coups puissants)
+  cracks(pos, radius = 2.5) {
+    const m = this.crackPool.find((c) => !c.visible) || this.crackPool[0];
+    m.visible = true;
+    const y = this.heightAt(pos.x, pos.z);
+    m.position.set(pos.x, y + 0.06, pos.z);
+    m.rotation.set(-Math.PI / 2, 0, Math.random() * Math.PI * 2);
+    m.scale.setScalar(radius);
+    m.material.opacity = 1;
+    m.userData = { life: 4, maxLife: 4 };
   }
 
   // ---------- Bouffées de particules thématiques ----------
@@ -370,6 +560,32 @@ export class Effects {
       if (b.userData.life <= 0) b.visible = false;
     }
     for (const tr of this.trails) this._updateTrail(tr, dt);
+    for (let i = this.ghosts.length - 1; i >= 0; i--) {
+      const g = this.ghosts[i];
+      g.userData.life -= dt;
+      const k = Math.max(0, g.userData.life / g.userData.maxLife);
+      g.material.uniforms.uOpacity.value = k * 0.65;
+      if (g.userData.life <= 0) {
+        this.scene.remove(g);
+        g.material.dispose();
+        g.skeleton.dispose();
+        this.ghosts.splice(i, 1);
+      }
+    }
+    for (const sp of this.sprites) {
+      if (!sp.visible) continue;
+      sp.userData.life -= dt;
+      const t = 1 - sp.userData.life / sp.userData.maxLife;
+      sp.scale.setScalar(sp.userData.size * (0.4 + t * 0.9));
+      sp.material.opacity = Math.max(0, 1 - t);
+      if (sp.userData.life <= 0) sp.visible = false;
+    }
+    for (const c of this.crackPool) {
+      if (!c.visible) continue;
+      c.userData.life -= dt;
+      c.material.opacity = Math.min(1, c.userData.life / 1.5) * (0.6 + 0.4 * Math.min(1, (c.userData.maxLife - c.userData.life) * 4));
+      if (c.userData.life <= 0) c.visible = false;
+    }
   }
 
   clear() {
@@ -380,6 +596,14 @@ export class Effects {
     }
     for (const r of this.rings) r.visible = false;
     for (const b of this.beams) b.visible = false;
+    for (const sp of this.sprites) sp.visible = false;
+    for (const c of this.crackPool) c.visible = false;
+    for (const g of this.ghosts) {
+      this.scene.remove(g);
+      g.material.dispose();
+      g.skeleton.dispose();
+    }
+    this.ghosts.length = 0;
     for (const l of this.lights) {
       l.userData.life = 0;
       l.intensity = 0;

@@ -67,6 +67,8 @@ export class Hud {
       <div id="toast"></div><div id="phase-msg"></div>
       <div id="notifs"></div>
       <div id="prompt"></div>
+      <div id="exec-prompt"></div>
+      <div id="sneak-ind">◐ Furtif</div>
       <div id="banner"><div class="big"></div><div class="sub"></div></div>
       <div id="zone-title"><div class="n"></div><div class="line"></div><div class="s"></div></div>
       <div id="fps"></div>`;
@@ -234,6 +236,30 @@ export class Hud {
     this.e.saving.classList.add('show');
     clearTimeout(this._st);
     this._st = setTimeout(() => this.e.saving.classList.remove('show'), 1500);
+  }
+
+  // Invite d'exécution / assassinat (ennemi vulnérable devant soi)
+  execPrompt(text) {
+    const p = this.execEl || (this.execEl = document.getElementById('exec-prompt'));
+    if (!p) return;
+    if (!text) {
+      if (this._exec) {
+        p.classList.remove('show');
+        this._exec = null;
+      }
+      return;
+    }
+    if (this._exec === text) return;
+    this._exec = text;
+    const inp = this.game.input;
+    const key = inp.isTouch ? '⚔' : inp.lastDevice === 'gamepad' ? 'X' : 'Clic';
+    p.innerHTML = `<span class="k">${key}</span>${escapeHtml(text)}`;
+    p.classList.add('show');
+  }
+
+  setSneak(on) {
+    const el2 = document.getElementById('sneak-ind');
+    if (el2) el2.classList.toggle('show', on);
   }
 
   prompt(text) {

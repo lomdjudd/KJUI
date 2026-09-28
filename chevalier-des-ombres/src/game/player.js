@@ -16,6 +16,25 @@ import { ELEMENT_COLORS } from '../gfx/effects.js';
 const ARCS = {
   slashR: 2.3, slashL: 2.3, overhead: 1.3, thrust: 0.75, spin: 6.3, rising: 1.5, sweep2h: 2.7, slam: 1.5, stab: 0.9, stabL: 0.9,
   claw: 1.6, clawL: 1.6, bite: 1.2, jumpAtk: 1.6, kick: 1.2, bashL: 1.2, hammer: 1.2, castAoe: 6.3,
+  lungeSlash: 2.4, counter: 6.3, artWhirl: 6.3, artPierce: 1.8, artFlurry: 1.2, execute: 1.2, plungeLand: 6.3,
+};
+
+// Esquives : durée, vitesse de départ/fin, invulnérabilité, coût, animation
+const DODGES = {
+  roll: { dur: 0.62, v0: 8.5, v1: 0, iframes: null, cost: 22, clip: 'roll' },
+  backstep: { dur: 0.45, v0: 6.4, v1: 0, iframes: 0.28, cost: 16, clip: 'backstep' },
+  sidestep: { dur: 0.32, v0: 10.5, v1: 2, iframes: 0.2, cost: 14, clip: 'sidestepL' },
+  slide: { dur: 0.7, v0: 10, v1: 3, iframes: 0.32, cost: 16, clip: 'slide' },
+  airDash: { dur: 0.26, v0: 13, v1: 6, iframes: 0.16, cost: 16, clip: 'dash', noGravity: true },
+};
+
+// Arts d'armes (touche Art) : animation, multiplicateur, coût en mana
+const ARTS = {
+  '1h': { clip: 'artWhirl', name: 'Lame tourbillonnante', mul: 0.85, mana: 22, arc: 6.3 },
+  '2h': { clip: 'jumpAtk', name: 'Fracas tellurique', mul: 1.5, mana: 25, quake: 5.2 },
+  polearm: { clip: 'artPierce', name: 'Percée spectrale', mul: 1.25, mana: 22, dash: 17, arc: 1.8 },
+  dagger: { clip: 'artFlurry', name: 'Danse des lames', mul: 0.5, mana: 20, crit: 0.25 },
+  staff: { clip: 'castAoe', name: 'Onde arcane', mul: 1.6, mana: 28, nova: 6 },
 };
 
 const _v = new THREE.Vector3();
@@ -55,6 +74,23 @@ export class Player extends Actor {
     this.lastHitTime = 0;
     this.inLiquid = false;
     this.mat = null;
+    // Mouvements avancés
+    this.dodge = DODGES.roll;
+    this.dodgeKind = 'roll';
+    this.doubleJumped = false;
+    this.airDashed = false;
+    this.sneaking = false;
+    this.sprintT = 0;
+    this.chargeT = 0;
+    this.chargeLevel = 0;
+    this.counterUntil = 0;
+    this.perfectUntil = 0;
+    this.artCd = 0;
+    this.hitWin = -1;
+    this.atkMul = 1;
+    this.atkFlags = {};
+    this.execTarget = null;
+    this.ghostT = 0;
   }
 
   get profile() {
@@ -159,6 +195,7 @@ export class Player extends Actor {
     this.iframes -= dt;
     this.comboTimer -= dt;
     for (const k in this.cooldowns) this.cooldowns[k] = Math.max(0, this.cooldowns[k] - dt);
+    this.artCd = Math.max(0, this.artCd - dt);
     for (const k in this.buffs) {
       this.buffs[k].t -= dt;
       if (this.buffs[k].t <= 0) delete this.buffs[k];
@@ -203,7 +240,8 @@ export class Player extends Actor {
         if (wantLen > 0.1) {
           const locked = !!this.lockTarget;
           const sprintWanted = input.isDown('sprint') && !this.blocking && this.stamina > 1;
-          const sp = this.blocking ? 2.2 : sprintWanted ? 7.4 : locked ? 4.2 : 4.9;
+          if (sprintWanted && this.sneaking) this.setSneak(false);
+          const sp = this.blocking ? 2.2 : sprintWanted ? 7.4 : this.sneaking ? 2.5 : locked ? 4.2 : 4.9;
           speed = sp * st.speedMul * wantLen * slow * (this.buffs.berserk ? 1.15 : 1);
           dirX = wantX / wantLen;
           dirZ = wantZ / wantLen;
@@ -225,19 +263,60 @@ export class Player extends Actor {
         this.blocking = false;
         break;
       case 'roll': {
-        const t = this.anim.actionT;
-        const clipT = this.rollT = (this.rollT || 0) + dt;
-        const dur = this.rollDur;
-        const k = clipT / dur;
-        speed = (k < 0.7 ? 8.5 : 8.5 * (1 - (k - 0.7) / 0.3)) * slow * (this.backstep ? 0.75 : 1);
+        const d = this.dodge;
+        this.rollT = (this.rollT || 0) + dt;
+        const k = this.rollT / d.dur;
+        speed = (k < 0.6 ? d.v0 : d.v0 + (d.v1 - d.v0) * clamp((k - 0.6) / 0.4, 0, 1)) * slow;
         if (this.dashBoost) speed = this.dashBoost;
         dirX = this.rollDir.x;
         dirZ = this.rollDir.z;
-        if (clipT >= dur || t < 0) {
+        if (d.noGravity) this.vy = 0;
+        // Silhouettes rémanentes pendant les esquives rapides
+        if (this.dodgeKind !== 'roll' && this.dodgeKind !== 'backstep') {
+          this._ghost(dt, 0.045);
+          if (this.dodgeKind === 'airDash' || this.dodgeKind === 'powerDash') g.renderer.fx.radial = Math.max(g.renderer.fx.radial || 0, 0.7);
+        }
+        if (this.rollT >= d.dur) {
           this.state = 'move';
           this.dashBoost = 0;
+          this.counterUntil = Math.max(this.counterUntil, g.time + 0.4);
         }
         this.blocking = false;
+        break;
+      }
+      case 'charge': {
+        // Attaque lourde chargée : 3 niveaux, relâcher pour frapper
+        this.blocking = false;
+        this.chargeT += dt;
+        this.stamina -= 5 * dt;
+        this.staminaDelay = 0.6;
+        const lvl = this.chargeT > 1.4 ? 3 : this.chargeT > 0.9 ? 2 : this.chargeT > 0.45 ? 1 : 0;
+        if (lvl > this.chargeLevel) {
+          this.chargeLevel = lvl;
+          this.flash([0xffffff, 0xffd08a, 0xff9a3a, 0xc06aff][lvl], 0.6);
+          audio.play('charge', { pos: this.pos, level: lvl });
+          if (g.effects.chargePulse) g.effects.chargePulse(this, lvl);
+        }
+        if (Math.random() < dt * (8 + this.chargeLevel * 10) && this.weaponMesh) {
+          this.weaponMesh.getWorldPosition(_v);
+          g.particles.spawn(_v.x + rand(-0.4, 0.4), _v.y + rand(0, 0.6), _v.z + rand(-0.4, 0.4), 0, 0.8, 0, 0.5, 0.12 + this.chargeLevel * 0.05, [0xffffff, 0xffd08a, 0xff9a3a, 0xc06aff][this.chargeLevel], { intensity: 2.5 });
+        }
+        if (this.lockTarget) this.faceTowards(this.lockTarget.pos.x, this.lockTarget.pos.z, 10, dt);
+        else if (wantLen > 0.2) this.yaw = dampAngle(this.yaw, Math.atan2(wantX, wantZ), 6, dt);
+        if (!input.isDown('heavy') || this.chargeT > 2.6 || this.stamina <= 0) {
+          const level = this.chargeT < 0.2 ? 0 : this.chargeLevel;
+          this.state = 'move';
+          this.startAttack(true, { charge: level });
+        }
+        break;
+      }
+      case 'plunge': {
+        // Attaque plongeante : chute rapide puis impact au sol
+        this.blocking = false;
+        this.plungeT += dt;
+        if (this.plungeT > 0.16) this.vy = Math.min(this.vy, -24);
+        else this.vy = Math.max(this.vy, 2);
+        this._ghost(dt, 0.05);
         break;
       }
       case 'cast':
@@ -291,11 +370,8 @@ export class Player extends Actor {
     this.vy -= 24 * dt;
     this.pos.y += this.vy * dt;
     const wasGrounded = this.grounded;
+    const fallV = this.vy;
     if (this.pos.y <= gh) {
-      if (!wasGrounded && this.vy < -9) {
-        audio.play('land', { pos: this.pos, heavy: this.vy < -14 });
-        g.effects.dust({ x: this.pos.x, y: gh, z: this.pos.z }, 6);
-      }
       this.pos.y = gh;
       this.vy = 0;
       this.grounded = true;
@@ -305,6 +381,18 @@ export class Player extends Actor {
       this.vy = 0;
       this.grounded = true;
     }
+    // Atterrissage
+    if (this.grounded && !wasGrounded) {
+      if (fallV < -9) {
+        audio.play('land', { pos: this.pos, heavy: fallV < -14 });
+        g.effects.dust({ x: this.pos.x, y: gh, z: this.pos.z }, 6);
+      }
+      this.doubleJumped = false;
+      this.airDashed = false;
+      if (this.state === 'plunge') this._plungeImpact(gh);
+    }
+    // Sécurité : une plongeante ne peut pas durer indéfiniment
+    if (this.state === 'plunge' && this.plungeT > 3) this.state = 'move';
     // Liquides
     const liq = w.liquidLevel;
     this.inLiquid = this.pos.y < liq - 0.25;
@@ -313,19 +401,22 @@ export class Player extends Actor {
     }
     this.speedNow = Math.hypot(this.vel.x, this.vel.z);
     this.moving = this.speedNow > 0.3;
-    // Bruits de pas
-    if (this.grounded && this.speedNow > 1 && this.state === 'move') {
+    this.sprintT = this.sprinting ? this.sprintT + dt : 0;
+    // Bruits de pas (silencieux en mode furtif)
+    if (this.grounded && this.speedNow > 1 && this.state === 'move' && !this.sneaking) {
       this.stepTimer -= dt * this.speedNow;
       if (this.stepTimer <= 0) {
         this.stepTimer = 2.2;
-        audio.play('step', { surface: w.zone.indoor ? 'stone' : 'dirt', heavy: this.stats.outfit.def > 25 });
+        audio.play('step', { surface: w.zone.indoor ? 'stone' : w.zone.terrain.ground || 'dirt', heavy: this.stats.outfit.def > 25, sprint: this.sprinting });
+        if (this.sprinting && settings.get('fxQuality') !== 'low') g.effects.dust({ x: this.pos.x, y: this.pos.y, z: this.pos.z }, 2);
       }
     }
     // Animation
     const lookYaw = this.lockTarget ? clamp(this.angleTo(this.lockTarget), -0.9, 0.9) : 0;
-    this.anim.update(dt, { speed: this.state === 'move' ? this.speedNow : 0, grounded: this.grounded, blocking: this.blocking, sprint: this.sprinting, lookYaw });
+    this.anim.update(dt, { speed: this.state === 'move' ? this.speedNow : 0, grounded: this.grounded, blocking: this.blocking, sprint: this.sprinting, sneak: this.sneaking && this.state === 'move', lookYaw });
     this.updateVisual(dt);
     this._updateTrail();
+    this._updateExecPrompt();
     // Vue 1re personne
     if (g.camRig.mode === 'first') {
       const act = this.anim.action;
@@ -372,56 +463,97 @@ export class Player extends Actor {
       }
       g.hud.refreshPowers();
     }
-    // Roulade (annule la fin d'une attaque)
-    const canCancel = this.state === 'attack' && this.anim.actionT > (this.curClip && this.curClip.hit ? this.curClip.hit[1] : 0.6);
-    if (input.wasPressed('dodge') && !(free || canCancel)) this.dodgeBuffer = 0.3;
+    // Mode furtif (Ctrl, ou L3 à l'arrêt sur manette)
+    if (input.wasPressed('sneak') || (input.wasPressed('l3') && wantLen < 0.2)) {
+      if (free && this.grounded) this.setSneak(!this.sneaking);
+    }
+    // Esquives : roulade, pas de côté (cible verrouillée), glissade (en sprint), ruée aérienne
+    const canCancel = this.state === 'attack' && this.anim.actionT > (this.curClip && this.curClip.hit ? this.curClip.hit[1] : 0.6) && !this.atkFlags.execute;
+    const dodgeOk = free || canCancel || this.state === 'charge';
+    if (input.wasPressed('dodge') && !dodgeOk) this.dodgeBuffer = 0.3;
     if (this.dodgeBuffer > 0) this.dodgeBuffer -= dt;
-    if ((input.wasPressed('dodge') || this.dodgeBuffer > 0) && (free || canCancel) && this.grounded) {
+    if ((input.wasPressed('dodge') || this.dodgeBuffer > 0) && dodgeOk && this.stamina > 1) {
       this.dodgeBuffer = 0;
-      const cost = 22 * st.rollCost;
-      if (this.stamina > 1) {
-        this.stamina -= cost;
-        this.staminaDelay = 0.7;
-        this.state = 'roll';
-        this.rollT = 0;
-        this.backstep = wantLen < 0.1 && !!this.lockTarget;
-        if (wantLen > 0.1) this.rollDir.set(wantX / wantLen, 0, wantZ / wantLen);
-        else this.rollDir.set(-this.forwardX * (this.backstep ? 1 : -1), 0, -this.forwardZ * (this.backstep ? 1 : -1));
-        if (!this.backstep) this.yaw = Math.atan2(this.rollDir.x, this.rollDir.z);
-        this.rollDur = this.backstep ? 0.45 : 0.62;
-        this.anim.play(this.backstep ? 'backstep' : 'roll', H_CLIPS[this.backstep ? 'backstep' : 'roll'].dur / this.rollDur);
-        this.iframes = this.backstep ? 0.28 : st.rollIframes;
-        this.rollStart = g.time;
-        audio.play('roll', { pos: this.pos });
-        this.queuedAttack = null;
+      let kind = 'roll';
+      let dx = wantLen > 0.1 ? wantX / wantLen : 0;
+      let dz = wantLen > 0.1 ? wantZ / wantLen : 0;
+      if (!this.grounded) {
+        if (this.airDashed) kind = null;
+        else kind = 'airDash';
+      } else if (this.sprintT > 0.25 && wantLen > 0.1) kind = 'slide';
+      else if (this.lockTarget && wantLen > 0.1) {
+        // Pas de côté si la direction est latérale ou vers l'arrière par rapport à la cible
+        const toT = Math.atan2(this.lockTarget.pos.x - this.pos.x, this.lockTarget.pos.z - this.pos.z);
+        const rel = Math.abs(angleDiff(toT, Math.atan2(dx, dz)));
+        kind = rel > 0.9 ? 'sidestep' : 'roll';
+      } else if (wantLen <= 0.1 && this.lockTarget) kind = 'backstep';
+      if (kind) {
+        if (wantLen <= 0.1) {
+          const back = kind === 'backstep' ? -1 : 1;
+          dx = this.forwardX * back;
+          dz = this.forwardZ * back;
+        }
+        this.startDodge(kind, dx, dz);
         return;
       }
     }
-    // Saut
+    // Saut et double saut spectral
     const interacting = g.interactTarget && input.wasPressed('interact');
-    if (input.wasPressed('jump') && !interacting && free && this.grounded && !this.blocking && this.stamina > 5) {
-      this.vy = 8;
-      this.grounded = false;
-      this.stamina -= 8;
-      this.staminaDelay = 0.5;
-      audio.play('jump', { pos: this.pos });
+    if (input.wasPressed('jump') && !interacting && free && !this.blocking && this.stamina > 5) {
+      if (this.grounded) {
+        this.vy = 8;
+        this.grounded = false;
+        this.stamina -= 8;
+        this.staminaDelay = 0.5;
+        if (this.sneaking) this.setSneak(false);
+        audio.play('jump', { pos: this.pos });
+      } else if (!this.doubleJumped && this.stamina > 10) {
+        this.doubleJumped = true;
+        this.vy = 7.6;
+        this.stamina -= 10;
+        this.staminaDelay = 0.5;
+        this.anim.play('doubleJump', 1);
+        audio.play('doubleJump', { pos: this.pos });
+        g.particles.burst({ x: this.pos.x, y: this.pos.y + 0.2, z: this.pos.z }, 0xb07aff, 16, 2.5, 0.3, 0.6, { intensity: 2.5 });
+        if (g.effects.ring) g.effects.ring({ x: this.pos.x, z: this.pos.z, y: this.pos.y + 0.1 }, 0xb07aff, 1.6, 0.35);
+      }
     }
     // Attaques (avec mémoire tampon)
     const atk = input.wasPressed('attack');
-    const heavy = input.wasPressed('heavy');
-    if (atk || heavy) {
-      if (free && this.stamina > 1) this.startAttack(heavy);
-      else if (this.state === 'attack') this.queuedAttack = heavy ? 'heavy' : 'light';
-      else this.buffered = { heavy, t: 0.35 };
+    const heavyPress = input.wasPressed('heavy');
+    // Coup de pied (lourde en garde) : brise la garde adverse
+    if (heavyPress && free && this.blocking && this.grounded && this.stamina > 1) {
+      this.startAttack(false, { kick: true });
+    } else if (heavyPress && free && this.grounded && this.stamina > 1) {
+      // Charge de l'attaque lourde (maintenir) ; relâcher tôt = attaque lourde normale
+      this.state = 'charge';
+      this.chargeT = 0;
+      this.chargeLevel = 0;
+      this.anim.play('chargeHold', 1);
+    } else if (atk || heavyPress) {
+      if (free && this.stamina > 1) this.startAttack(heavyPress);
+      else if (this.state === 'attack') this.queuedAttack = heavyPress ? 'heavy' : 'light';
+      else if (this.state === 'roll' && atk && this.dodgeKind === 'slide' && this.rollT > 0.18) this.startAttack(false, { slideAtk: true });
+      else if (this.state === 'roll' && atk && this.rollT > this.dodge.dur * 0.55) this.buffered = { heavy: false, t: 0.35 };
+      else this.buffered = { heavy: heavyPress, t: 0.35 };
     }
     if (this.buffered) {
       this.buffered.t -= dt;
       if (this.buffered.t <= 0) this.buffered = null;
-      else if (free && this.stamina > 1 && this.grounded) {
+      else if (free && this.stamina > 1) {
         const h = this.buffered.heavy;
         this.buffered = null;
         this.startAttack(h);
       }
+    }
+    // Art d'arme
+    if (input.wasPressed('art')) {
+      if (free && this.grounded) this.startArt();
+      else if (this.state === 'attack') this.queuedArt = true;
+    }
+    if (this.queuedArt && free) {
+      this.queuedArt = false;
+      if (this.grounded) this.startArt();
     }
     // Pouvoir
     const p = this.profile;
@@ -453,35 +585,158 @@ export class Player extends Actor {
     g.hud.refreshFlasks();
   }
 
-  startAttack(heavy) {
+  // ---------------- Esquives et déplacements ----------------
+  startDodge(kind, dx, dz, override = null) {
+    const g = this.game;
+    const st = this.stats;
+    const d = { ...(DODGES[kind] || DODGES.roll), ...(override || {}) };
+    this.stamina -= d.cost * st.rollCost;
+    this.staminaDelay = 0.7;
+    this.state = 'roll';
+    this.dodge = d;
+    this.dodgeKind = kind;
+    this.rollT = 0;
+    this.rollDur = d.dur;
+    this.backstep = kind === 'backstep';
+    this.rollDir.set(dx, 0, dz);
+    if (kind === 'roll' || kind === 'slide' || kind === 'airDash' || kind === 'powerDash') this.yaw = Math.atan2(dx, dz);
+    let clip = d.clip;
+    if (kind === 'sidestep') {
+      // Côté du pas selon l'orientation du chevalier
+      const side = Math.sin(Math.atan2(dx, dz) - this.yaw);
+      clip = side > 0 ? 'sidestepL' : 'sidestepR';
+    }
+    const c = H_CLIPS[clip];
+    this.anim.play(clip, c ? c.dur / d.dur : 1);
+    this.iframes = d.iframes ?? st.rollIframes;
+    this.rollStart = g.time;
+    this.trail.active = false;
+    this.queuedAttack = null;
+    if (kind === 'airDash') {
+      this.airDashed = true;
+      this.vy = 0;
+    }
+    if (this.sneaking && kind !== 'roll') this.setSneak(false);
+    audio.play(kind === 'roll' || kind === 'backstep' ? 'roll' : kind === 'slide' ? 'slide' : 'dash', { pos: this.pos });
+    if (kind !== 'roll' && kind !== 'backstep') g.effects.dust({ x: this.pos.x, y: this.pos.y, z: this.pos.z }, kind === 'slide' ? 10 : 5);
+  }
+
+  setSneak(on) {
+    if (this.sneaking === on) return;
+    this.sneaking = on;
+    this.game.hud.setSneak && this.game.hud.setSneak(on);
+    audio.play(on ? 'sneakOn' : 'sneakOff');
+  }
+
+  // Silhouette spectrale laissée derrière soi (esquives, ruées)
+  _ghost(dt, every) {
+    if (!settings.get('afterimages')) return;
+    this.ghostT -= dt;
+    if (this.ghostT > 0) return;
+    this.ghostT = every;
+    if (this.game.effects.afterimage && this.mesh && this.mesh.visible) this.game.effects.afterimage(this.mesh, 0x9a6aff);
+  }
+
+  // ---------------- Attaques ----------------
+  // opts : { charge, kick, slideAtk, art, execute:{target, assassin} }
+  startAttack(heavy, opts = {}) {
     const st = this.stats;
     const cls = st.weaponClass;
+    const g = this.game;
     let name;
-    if (!this.grounded) name = 'overhead';
-    else if (heavy) name = cls.heavy;
+    let mul = 1;
+    const flags = {};
+    // Exécution / assassinat d'un ennemi vulnérable
+    if (!heavy && !opts.kick && !opts.art && this.grounded) {
+      const ex = this._findExecTarget();
+      if (ex) opts.execute = ex;
+    }
+    if (opts.execute) {
+      name = 'execute';
+      flags.execute = opts.execute;
+      mul = opts.execute.assassin ? 4 : opts.execute.target.isBoss ? 1.6 : 3;
+    } else if (opts.art) {
+      name = opts.art.clip;
+      flags.art = opts.art;
+      mul = opts.art.mul;
+    } else if (opts.kick) {
+      name = 'kick';
+      flags.kick = true;
+      mul = 0.4;
+    } else if (!this.grounded) {
+      const h = this.pos.y - g.world.heightAt(this.pos.x, this.pos.z);
+      if (h > 1.2 || (h > 0.7 && this.vy < -3)) return this.startPlunge();
+      name = cls.combo[0];
+      flags.air = true;
+      this.vy = Math.max(this.vy, 2.5);
+    } else if (opts.slideAtk) {
+      name = 'rising';
+      mul = 1.35;
+      flags.slide = true;
+    } else if (!heavy && g.time < this.counterUntil) {
+      // Contre-attaque juste après une esquive (bonus après une esquive parfaite)
+      name = 'counter';
+      mul = g.time < this.perfectUntil ? 1.8 : 1.3;
+      flags.counter = true;
+      if (g.time < this.perfectUntil) this.riposte = true;
+      this.counterUntil = 0;
+      this.perfectUntil = 0;
+    } else if (!heavy && this.sprintT > 0.35) {
+      name = 'lungeSlash';
+      mul = 1.25;
+      flags.sprint = true;
+    } else if (heavy) name = cls.heavy;
     else {
       if (this.comboTimer <= 0) this.comboIndex = 0;
       name = cls.combo[this.comboIndex % cls.combo.length];
     }
+    if (opts.charge) {
+      mul *= 1 + opts.charge * 0.45;
+      flags.charge = opts.charge;
+    }
     const clip = H_CLIPS[name];
     if (!clip) return;
-    const cost = st.weapon.stamina * (heavy ? 1.6 : 1);
+    const cost = opts.execute ? 0 : st.weapon.stamina * (heavy ? 1.6 : opts.kick ? 0.8 : 1) * (opts.art ? 0.6 : 1);
     this.stamina -= cost;
     this.staminaDelay = 0.8;
     this.state = 'attack';
     this.heavy = heavy;
     this.curClip = clip;
     this.curAttack = name;
+    this.atkMul = mul;
+    this.atkFlags = flags;
+    this.hitWin = -1;
     this.hitSet.clear();
     this.queuedAttack = null;
-    const speed = st.weapon.speed * st.comboSpeed * (heavy ? 0.82 : 1) * (this.buffs.berserk ? 1.15 : 1);
+    if (this.sneaking && !opts.execute) this.setSneak(false);
+    let speed = st.weapon.speed * st.comboSpeed * (heavy ? 0.82 : 1) * (this.buffs.berserk ? 1.15 : 1);
+    if (opts.execute || opts.art) speed = 1;
+    if (flags.air) speed *= 1.25;
     this.anim.play(name, speed);
     this.attackSpeed = speed;
     this.swung = false;
+    this.slamDone = false;
+    if (opts.execute) {
+      // Mise en place : face à la cible, à portée de lame, invulnérable
+      const t = opts.execute.target;
+      this.faceTowards(t.pos.x, t.pos.z, -1, 0);
+      const d = this.distTo(t);
+      const want = t.radius + 0.9;
+      if (d > want) {
+        this.pos.x += this.forwardX * (d - want);
+        this.pos.z += this.forwardZ * (d - want);
+      }
+      this.iframes = clip.dur + 0.2;
+      this.attackTarget = t;
+      if (t.onExecuted) t.onExecuted(this, opts.execute.assassin);
+      g.hud.toast(opts.execute.assassin ? 'Assassinat !' : 'Exécution !');
+      if (settings.get('slowmo')) g.slowMo(0.45, 0.35);
+      if (g.effects.shockwave) g.effects.shockwave(t.pos, 0.6, 0x9a6aff);
+      return;
+    }
     // Aide à la visée : se tourne vers l'ennemi proche
-    const g = this.game;
     let target = this.lockTarget;
-    if (!target && settings.get('autoLock')) target = g.nearestEnemy(this.pos, 5.5, this.yaw, 1.4);
+    if (!target && settings.get('autoLock')) target = g.nearestEnemy(this.pos, flags.sprint ? 8 : 5.5, this.yaw, 1.4);
     this.attackTarget = target || null;
     if (target) this.faceTowards(target.pos.x, target.pos.z, -1, 0);
     else if (g.camRig.mode === 'first') this.yaw = g.camRig.yaw;
@@ -494,12 +749,101 @@ export class Player extends Actor {
         this.yaw = Math.atan2(wx, wz);
       }
     }
+    if (flags.charge >= 2 && g.effects.shockwave) g.effects.shockwave(this.pos, 0.3 + flags.charge * 0.15, 0xffc080);
+  }
+
+  startArt() {
+    const g = this.game;
+    const art = ARTS[this.stats.weapon.cls] || ARTS['1h'];
+    if (this.artCd > 0) return g.hud.toast(`${art.name} : encore ${Math.ceil(this.artCd)} s`, true);
+    const cost = art.mana;
+    if (this.mana < cost) return g.hud.toast(`Pas assez de mana pour « ${art.name} »`, true);
+    this.mana -= cost;
+    this.artCd = 6;
+    this.startAttack(false, { art });
+    g.hud.toast(art.name);
+    audio.play('art', { pos: this.pos });
+    this.flash(0xc06aff, 0.7);
+    if (g.effects.shockwave) g.effects.shockwave(this.pos, 0.45, 0xc06aff);
+  }
+
+  startPlunge() {
+    const g = this.game;
+    this.state = 'plunge';
+    this.plungeT = 0;
+    this.heavy = true;
+    this.curAttack = 'plungeLand';
+    this.curClip = H_CLIPS.plungeLand;
+    this.atkMul = 1.7;
+    this.atkFlags = { plunge: true };
+    this.hitSet.clear();
+    this.anim.play('plunge', 1);
+    this.trail.pts.length = 0;
+    this.trail.active = true;
+    audio.play('swing', { pos: this.pos, weight: 1.8 });
+    g.hud.toast('Attaque plongeante');
+  }
+
+  // Impact de l'attaque plongeante
+  _plungeImpact(gh) {
+    const g = this.game;
+    const r = 3.6;
+    const px = this.pos.x + this.forwardX * 0.8;
+    const pz = this.pos.z + this.forwardZ * 0.8;
+    g.effects.ring({ x: px, z: pz }, 0xc0a0ff, r, 0.45);
+    g.effects.dust({ x: px, y: gh, z: pz }, 18);
+    if (g.effects.shockwave) g.effects.shockwave({ x: px, y: gh, z: pz }, 0.9, 0xc0a0ff);
+    if (g.effects.cracks) g.effects.cracks({ x: px, y: gh, z: pz }, 2.6);
+    g.camRig.shake(0.5);
+    audio.play('slam', { pos: this.pos });
+    for (const e of g.combat.actorsInRadius(px, pz, r, 'player')) if (!this.hitSet.has(e.id)) this._applyHit(e, 1);
+    // Récupération : fin de l'animation d'impact
+    this.state = 'attack';
+    this.anim.play('plungeLand', 1);
+    this.attackSpeed = 1;
+    this.swung = true;
+    this.hitWin = 0;
+    this.attackTarget = null;
+  }
+
+  // Cible d'exécution : ennemi étourdi devant soi, ou ennemi inconscient pris à revers en mode furtif
+  _findExecTarget() {
+    const g = this.game;
+    let best = null;
+    let bd = 2.8;
+    for (const e of g.enemies) {
+      if (!e.alive || e.untargetable || e.def.rig === 'wisp') continue;
+      const d = this.distTo(e) - e.radius;
+      if (d > bd) continue;
+      const ang = Math.abs(this.angleTo(e));
+      const unaware = this.sneaking && !e.isBoss && (e.state === 'idle' || e.state === 'return' || e.state === 'dormant') && e.def.rig !== 'mimic';
+      const behind = Math.abs(angleDiff(e.yaw, Math.atan2(this.pos.x - e.pos.x, this.pos.z - e.pos.z))) > 2.0;
+      if (e.staggered && ang < 1.2 && (e.execImmune || 0) < g.time) {
+        best = { target: e, assassin: false };
+        bd = d;
+      } else if (unaware && behind && ang < 1.0 && d < 2.2) {
+        best = { target: e, assassin: true };
+        bd = d;
+      }
+    }
+    return best;
+  }
+
+  _updateExecPrompt() {
+    const g = this.game;
+    this.execCheckT = (this.execCheckT || 0) - 1 / 60;
+    if (this.execCheckT > 0) return;
+    this.execCheckT = 0.1;
+    const ex = this.state === 'move' && this.grounded ? this._findExecTarget() : null;
+    this.execTarget = ex;
+    if (g.hud.execPrompt) g.hud.execPrompt(ex ? (ex.assassin ? 'Assassinat' : 'Exécution') : null);
   }
 
   _updateAttack(dt, wantX, wantZ, wantLen) {
     const clip = this.curClip;
     const t = this.anim.actionT;
     const g = this.game;
+    const flags = this.atkFlags;
     if (t < 0) {
       const q = this.queuedAttack;
       this._endAttack();
@@ -510,30 +854,50 @@ export class Player extends Actor {
       return 0;
     }
     // Petite correction de direction pendant l'élan
-    if (t < clip.hit[0] && wantLen > 0.2 && !this.lockTarget) this.yaw = dampAngle(this.yaw, Math.atan2(wantX, wantZ), 4, dt);
-    if (this.lockTarget && t < clip.hit[0]) this.faceTowards(this.lockTarget.pos.x, this.lockTarget.pos.z, 10, dt);
-    // Fenêtre active
-    if (t >= clip.hit[0] - 0.05 && !this.swung) {
-      this.swung = true;
+    if (t < clip.hit[0] && wantLen > 0.2 && !this.lockTarget && !flags.execute) this.yaw = dampAngle(this.yaw, Math.atan2(wantX, wantZ), 4, dt);
+    if (this.lockTarget && t < clip.hit[0] && !flags.execute) this.faceTowards(this.lockTarget.pos.x, this.lockTarget.pos.z, 10, dt);
+    // Fenêtres actives (plusieurs pour les arts et les exécutions)
+    const wins = clip.hits || [clip.hit];
+    let wi = -1;
+    for (let i = 0; i < wins.length; i++) if (t >= wins[i][0] - 0.05 && t <= wins[i][1]) wi = i;
+    if (wi >= 0 && wi !== this.hitWin) {
+      this.hitWin = wi;
+      if (wi > 0) this.hitSet.clear();
       audio.play('swing', { pos: this.pos, weight: this.stats.weaponClass.twoHanded ? 1.6 : 1 });
       this.trail.pts.length = 0;
       this.trail.active = true;
+      this.swung = true;
+      this._onWindow(wi);
     }
-    if (t >= clip.hit[0] && t <= clip.hit[1]) this._meleeCheck();
-    if (t > clip.hit[1] + 0.08) this.trail.active = false;
+    if (wi >= 0 && t >= wins[wi][0]) this._meleeCheck();
+    if (t > wins[wins.length - 1][1] + 0.08) this.trail.active = false;
     // Onde de choc des coups lourds au sol
     if ((this.curAttack === 'slam' || this.curAttack === 'jumpAtk') && !this.slamDone && t >= clip.hit[0]) {
       this.slamDone = true;
-      const r = 3.2;
+      const quake = flags.art && flags.art.quake;
+      const r = quake || 3.2;
       const px = this.pos.x + this.forwardX * 1.8;
       const pz = this.pos.z + this.forwardZ * 1.8;
-      g.effects.ring({ x: px, z: pz }, 0xffd8a0, r, 0.4);
-      g.effects.dust({ x: px, y: this.pos.y, z: pz }, 14);
+      g.effects.ring({ x: px, z: pz }, quake ? 0xc06aff : 0xffd8a0, r, 0.4);
+      g.effects.dust({ x: px, y: this.pos.y, z: pz }, quake ? 24 : 14);
+      if (g.effects.shockwave) g.effects.shockwave({ x: px, y: this.pos.y, z: pz }, quake ? 1 : 0.5, quake ? 0xc06aff : 0xffd8a0);
+      if (quake && g.effects.cracks) g.effects.cracks({ x: px, y: this.pos.y, z: pz }, 3.5);
+      g.camRig.shake(quake ? 0.6 : 0.35);
+      if (quake) audio.play('slam', { pos: this.pos });
+      for (const e of g.combat.actorsInRadius(px, pz, r, 'player')) if (!this.hitSet.has(e.id)) this._applyHit(e, quake ? 1 : 0.6);
+    }
+    // Onde arcane (art du bâton)
+    if (flags.art && flags.art.nova && !this.slamDone && t >= clip.hit[0]) {
+      this.slamDone = true;
+      const r = flags.art.nova;
+      g.effects.ring({ x: this.pos.x, z: this.pos.z }, 0x9a6aff, r, 0.5);
+      if (g.effects.shockwave) g.effects.shockwave(this.pos, 1, 0x9a6aff);
+      g.particles.burst({ x: this.pos.x, y: this.pos.y + 1, z: this.pos.z }, 0xb07aff, 40, 7, 0.4, 0.7, { intensity: 3 });
       g.camRig.shake(0.35);
-      for (const e of g.combat.actorsInRadius(px, pz, r, 'player')) if (!this.hitSet.has(e.id)) this._applyHit(e, 0.6);
+      for (const e of g.combat.actorsInRadius(this.pos.x, this.pos.z, r, 'player')) if (!this.hitSet.has(e.id)) this._applyHit(e, 1);
     }
     // Enchaînement
-    if (this.queuedAttack && t > clip.hit[1] - 0.05 && this.stamina > 1) {
+    if (this.queuedAttack && t > wins[wins.length - 1][1] - 0.05 && this.stamina > 1 && !flags.art && !flags.execute) {
       const heavy = this.queuedAttack === 'heavy';
       if (!heavy) this.comboIndex++;
       else this.comboIndex = 0;
@@ -541,19 +905,43 @@ export class Player extends Actor {
       this.startAttack(heavy);
       return 0;
     }
+    if (flags.execute) return 0;
     // Élan vers l'avant (+ rapprochement de la cible visée)
     const lunge = clip.lunge || 0;
     const lk = t > 0.1 && t < clip.hit[1] ? 1 : 0;
     let speed = lk * lunge * 2.6 * this.attackSpeed;
+    if (flags.sprint && t < 0.45) speed = Math.max(speed, 9 * (1 - t / 0.45) + 2);
+    if (flags.slide && t < 0.3) speed = Math.max(speed, 5);
+    if (flags.art && flags.art.dash && t > 0.18 && t < 0.62) {
+      speed = flags.art.dash;
+      this._ghost(dt, 0.04);
+    }
     const tg = this.attackTarget;
-    if (tg && tg.alive && t < clip.hit[0] + 0.05) {
+    if (tg && tg.alive && t < clip.hit[0] + 0.05 && !(flags.art && flags.art.dash)) {
       this.faceTowards(tg.pos.x, tg.pos.z, 14, dt);
       const reach = this.stats.weapon.reach;
       const d = this.distTo(tg) - tg.radius;
-      if (d > reach * 0.7) speed = Math.max(speed, Math.min(6, (d - reach * 0.6) * 5));
+      if (d > reach * 0.7) speed = Math.max(speed, Math.min(flags.sprint ? 10 : 6, (d - reach * 0.6) * 5));
       else if (d < reach * 0.35) speed = 0;
     }
     return speed;
+  }
+
+  // Début d'une fenêtre active : effets propres aux attaques spéciales
+  _onWindow(i) {
+    const g = this.game;
+    const f = this.atkFlags;
+    if (f.execute) {
+      const tg = f.execute.target;
+      if (i === 0 && settings.get('slowmo')) g.slowMo(0.3, 0.45);
+      if (i === 1) {
+        if (g.effects.shockwave) g.effects.shockwave(tg.pos, 0.8, 0xff4a6a);
+        g.camRig.shake(0.45);
+      }
+      // L'exécution touche toujours sa cible
+      if (tg.alive) this._applyHit(tg, 1, { forceCrit: i === 1 });
+    }
+    if (f.art && f.art.clip === 'artWhirl') g.particles.burst({ x: this.pos.x, y: this.pos.y + 1.1, z: this.pos.z }, 0xc0a0ff, 12, 4, 0.25, 0.4, { intensity: 2 });
   }
 
   _endAttack() {
@@ -586,11 +974,13 @@ export class Player extends Actor {
   }
 
   // Calcul des dégâts d'arme (physique + élément) et application
-  _applyHit(e, mul) {
+  _applyHit(e, mul, extra = {}) {
     const g = this.game;
     const st = this.stats;
     const w = st.weapon;
+    const f = this.atkFlags || {};
     this.hitSet.add(e.id);
+    mul *= this.atkMul || 1;
     let phys = st.weaponDmg * st.dmgMul * mul;
     let elem = st.weaponElem * st.dmgMul * st.elemMul * mul;
     if (this.heavy) {
@@ -611,7 +1001,7 @@ export class Player extends Actor {
     const behind = Math.abs(angleDiff(e.yaw, Math.atan2(this.pos.x - e.pos.x, this.pos.z - e.pos.z))) > 2.1;
     if (behind && !e.isBoss) k *= st.backstab;
     if (e.staggered) k *= 1.3 * st.staggerMul;
-    let crit = Math.random() < st.crit + (riposte ? 0.5 : 0);
+    let crit = extra.forceCrit || Math.random() < st.crit + (riposte ? 0.5 : 0) + (f.art && f.art.crit ? f.art.crit : 0) + (f.counter ? 0.2 : 0);
     if (crit) k *= st.critMul;
     // Résistances de la cible
     const resP = clamp((e.resist && e.resist.physical) || 0, -0.5, 0.95);
@@ -627,14 +1017,21 @@ export class Player extends Actor {
       if (w.element === 'poison') status.poison = 5;
       if (w.element === 'lightning' && Math.random() < 0.3) status.shock = 1;
     }
+    // Déséquilibre : coups de pied et charges brisent la garde
+    let poise = w.poise * st.poiseMul * (this.heavy ? 2 : 1) * mul * (1 + (f.charge || 0) * 0.8);
+    if (f.kick) poise = Math.max(poise, 70);
+    if (f.kick && e.def && e.def.blocks && e.state !== 'stagger' && e._stagger) e._stagger(1.3);
+    const knock = f.kick ? 6 : f.charge ? 4 + f.charge * 1.5 : this.heavy ? 4.5 : comboLast || f.counter ? 2.5 : 0.8;
     const res = g.combat.hit(e, {
-      amount, element: elem > 0 ? w.element : 'physical', source: this, crit, poise: w.poise * st.poiseMul * (this.heavy ? 2 : 1) * mul, kind: 'melee', knock: this.heavy ? 4.5 : comboLast ? 2.5 : 0.8,
+      amount, element: elem > 0 ? w.element : 'physical', source: this, crit, poise, kind: 'melee', knock, noBlock: !!(f.execute || f.kick),
       status, statusDps: elem * 0.3, preResisted: true, bonusVs: w.bonusVs, dirX: e.pos.x - this.pos.x, dirZ: e.pos.z - this.pos.z,
       lifesteal: st.lifesteal + (w.element === 'shadow' ? 0.03 : 0),
     });
     if (res && res.dmg > 0) {
-      if (settings.get('hitStop')) g.hitStop = Math.max(g.hitStop, crit || this.heavy ? 0.085 : 0.05);
-      g.camRig.shake(crit || this.heavy ? 0.28 : 0.14);
+      const big = crit || this.heavy || f.charge || f.execute;
+      if (settings.get('hitStop')) g.hitStop = Math.max(g.hitStop, f.execute ? 0.12 : big ? 0.085 : 0.05);
+      g.camRig.shake(f.execute ? 0.4 : big ? 0.28 : 0.14);
+      if (g.effects.impact) g.effects.impact(e, crit, big, w.element);
       if (settings.get('vibration')) native.vibrate(crit ? 35 : 18);
       if (st.manaOnHit) this.mana = Math.min(this.maxMana, this.mana + st.manaOnHit);
       if (w.element === 'lightning' && status.shock) {
@@ -681,13 +1078,19 @@ export class Player extends Actor {
       this._takeDamage(info.amount, info, false);
       return { dmg: info.amount };
     }
-    // Esquive (invulnérabilité)
+    // Esquive (invulnérabilité) ; au dernier moment : esquive parfaite → Temps des Ombres
     if (this.iframes > 0) {
-      if (st.dodgeCounter && g.time - (this.rollStart || 0) < 0.2 && !this.perfectDodgeCd) {
-        g.slowMo(0.7, 0.35);
+      const window = st.dodgeCounter ? 0.3 : 0.22;
+      if (this.state === 'roll' && g.time - (this.rollStart || 0) < window && g.time > (this.perfectCdUntil || 0)) {
+        this.perfectCdUntil = g.time + 2;
+        this.perfectUntil = g.time + 1.6;
+        this.counterUntil = g.time + 1.6;
+        g.shadowTime(st.dodgeCounter ? 1.6 : 1.15);
         g.hud.toast('Esquive parfaite !');
-        this.perfectDodgeCd = true;
-        setTimeout(() => (this.perfectDodgeCd = false), 1500);
+        audio.play('perfectDodge');
+        this.flash(0xb07aff, 0.8);
+        if (g.effects.shockwave) g.effects.shockwave(this.pos, 0.7, 0xb07aff);
+        if (settings.get('vibration')) native.vibrate(30);
       }
       return { dmg: 0, dodged: true };
     }
@@ -704,6 +1107,7 @@ export class Player extends Actor {
         audio.play('parry', { pos: this.pos });
         g.effects.hitSpark({ x: this.pos.x + this.forwardX, y: this.pos.y + 1.4, z: this.pos.z + this.forwardZ }, 'metal', true);
         g.slowMo(0.5, 0.25);
+        g.effects.shockwave({ x: this.pos.x + this.forwardX, y: this.pos.y, z: this.pos.z + this.forwardZ }, 0.55, 0xffe8b0);
         g.hud.toast('Parade !');
         g.camRig.shake(0.2);
         if (st.shield.id === 'holy_bulwark') this.heal(this.maxHp * 0.05);

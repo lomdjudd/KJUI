@@ -437,13 +437,18 @@ export class Menus {
   _tabControls() {
     const rows = (arr) => arr.map(([a, b]) => `<div class="statline"><span>${a}</span><b>${b}</b></div>`).join('');
     return `<h2>Commandes</h2><div class="stats-cols"><div><h3>Clavier et souris</h3>${rows([
-      ['Se déplacer', 'ZQSD / WASD'], ['Caméra', 'Souris'], ['Attaque légère', 'Clic gauche / J'], ['Attaque lourde', 'K'], ['Garde / parade', 'Clic droit / A (Q)'], ['Roulade', 'C / Alt'],
-      ['Sauter', 'Espace'], ['Sprinter', 'Maj'], ['Verrouiller la cible', 'T / clic molette'], ['Pouvoirs', '1 2 3 4 · molette = sélection'], ['Fiole de Braise', 'R'], ['Fiole d’Éther', 'X'],
-      ['Interagir', 'E / F'], ['Vue 1re / 3e personne', 'V'], ['Carte', 'Tab / M'], ['Inventaire / Journal', 'I / L'], ['Pause', 'Échap / P'],
+      ['Se déplacer', 'ZQSD / WASD'], ['Caméra', 'Souris'], ['Attaque légère', 'Clic gauche / J'], ['Attaque lourde (maintenir = charger)', 'K'], ['Garde / parade', 'Clic droit / A (Q)'], ['Esquive', 'C / Alt'],
+      ['Sauter (2× = double saut)', 'Espace'], ['Sprinter', 'Maj'], ['Mode furtif', 'Ctrl'], ['Art d’arme', 'G'], ['Verrouiller la cible', 'T / clic molette'], ['Pouvoirs', '1 2 3 4 · molette = sélection'],
+      ['Fiole de Braise / d’Éther', 'R / X'], ['Interagir', 'E / F'], ['Vue 1re / 3e personne', 'V'], ['Carte', 'Tab / M'], ['Inventaire / Journal', 'I / L'], ['Pause', 'Échap / P'],
     ])}</div><div><h3>Manette</h3>${rows([
-      ['Attaque légère / lourde', 'X / Y · RT'], ['Garde', 'LB / LT'], ['Roulade', 'B'], ['Sauter / interagir', 'A'], ['Pouvoir sélectionné', 'RB'], ['Changer de pouvoir', 'Croix ← →'],
-      ['Fioles', 'Croix ↑ (braise) · ↓ (éther)'], ['Verrouiller', 'R3'], ['Sprint', 'L3'], ['Carte / Pause', 'Select / Start'],
-    ])}<h3>Tactile</h3>${rows([['Déplacement', 'Joystick à gauche (poussé à fond = sprint)'], ['Caméra', 'Glisser à droite'], ['Actions', 'Boutons à droite'], ['Vue', 'Icône œil']])}</div></div>`;
+      ['Attaque légère / lourde', 'X / Y · RT'], ['Garde', 'LB'], ['Art d’arme', 'LT'], ['Esquive', 'B'], ['Sauter / interagir', 'A'], ['Pouvoir sélectionné', 'RB'], ['Changer de pouvoir', 'Croix ← →'],
+      ['Fioles', 'Croix ↑ (braise) · ↓ (éther)'], ['Verrouiller', 'R3'], ['Sprint · furtif (à l’arrêt)', 'L3'], ['Carte / Pause', 'Select / Start'],
+    ])}<h3>Tactile</h3>${rows([['Déplacement', 'Joystick à gauche (poussé à fond = sprint)'], ['Caméra', 'Glisser à droite'], ['Actions', 'Boutons à droite (Art, Furtif…)'], ['Vue', 'Icône œil']])}
+    <h3>Techniques</h3>${rows([
+      ['Pas de côté', 'Esquive avec une cible verrouillée'], ['Glissade', 'Esquive en sprintant'], ['Ruée aérienne', 'Esquive en l’air'], ['Esquive parfaite', 'Esquiver au dernier moment : le temps ralentit'],
+      ['Contre-attaque', 'Attaquer juste après une esquive'], ['Attaque en course', 'Attaquer en sprintant'], ['Attaque plongeante', 'Attaquer en l’air, en hauteur'], ['Coup de pied', 'Attaque lourde en garde : brise les boucliers'],
+      ['Exécution', 'Attaquer un ennemi étourdi'], ['Assassinat', 'En mode furtif, attaquer un ennemi de dos'],
+    ])}</div></div>`;
   }
 
   // ======================= DIALOGUES ET BOUTIQUES =======================

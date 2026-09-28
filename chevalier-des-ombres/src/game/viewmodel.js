@@ -112,6 +112,9 @@ export class ViewModel {
         case 'slashR':
         case 'sweep2h':
         case 'spin':
+        case 'lungeSlash':
+        case 'counter':
+        case 'artWhirl':
           rz = -1.4 * wind * (1 - back);
           ry = (-0.3 + k * 2.9) * (1 - back);
           px = 0.24 + 0.1 * wind - k * 0.4 + back * 0.3;
@@ -126,6 +129,7 @@ export class ViewModel {
         case 'jumpAtk':
         case 'hammer':
         case 'rising':
+        case 'plungeLand':
           rx = (0.9 * wind - k * 2.6) * (1 - back);
           py = -0.24 + 0.12 * wind - 0.1 * k + back * 0.1;
           px = 0.14;
@@ -133,6 +137,9 @@ export class ViewModel {
         case 'thrust':
         case 'stab':
         case 'stabL':
+        case 'artPierce':
+        case 'artFlurry':
+        case 'execute':
           rx = -1.45 * wind * (1 - back);
           pz = -0.48 + 0.1 * wind - Math.sin(k * PI) * 0.35;
           px = 0.18;

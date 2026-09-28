@@ -309,6 +309,136 @@ export const H_CLIPS = {
       [1, { chest: [0.2, 0, 0], head: [0.4, 0, 0], armR: [-0.9, -0.5, -0.1], foreR: [-1.4, 0, 0], armL: [-0.9, 0.5, 0.1], foreL: [-1.4, 0, 0], rootY: -0.42, thighL: [-1.5, 0, 0], shinL: [1.6, 0, 0], thighR: [0.1, 0, 0], shinR: [1.6, 0, 0] }],
     ],
   },
+  // ---------- Déplacements et esquives ----------
+  sidestepL: {
+    dur: 0.34,
+    keys: [
+      [0, {}],
+      [0.3, { chest: [0.1, 0, 0.25], spine: [0, 0, 0.1], rootY: -0.14, thighL: [-0.3, 0, 0.4], shinL: [0.5, 0, 0], thighR: [-0.1, 0, 0.25], shinR: [0.7, 0, 0], armL: [-0.3, 0, 0.7], armR: [-0.4, 0, -0.3] }],
+      [1, {}],
+    ],
+  },
+  sidestepR: {
+    dur: 0.34,
+    keys: [
+      [0, {}],
+      [0.3, { chest: [0.1, 0, -0.25], spine: [0, 0, -0.1], rootY: -0.14, thighR: [-0.3, 0, -0.4], shinR: [0.5, 0, 0], thighL: [-0.1, 0, -0.25], shinL: [0.7, 0, 0], armR: [-0.3, 0, -0.7], armL: [-0.4, 0, 0.3] }],
+      [1, {}],
+    ],
+  },
+  slide: {
+    dur: 0.7,
+    keys: [
+      [0, {}],
+      [0.15, { chest: [-0.4, 0, 0], spine: [-0.2, 0, 0], head: [0.35, 0, 0], rootY: -0.62, thighL: [-1.45, 0, 0.1], shinL: [0.25, 0, 0], thighR: [-0.35, 0, -0.1], shinR: [1.9, 0, 0], armL: [-0.2, 0, 1.1], foreL: [-0.3, 0, 0], armR: [0.3, 0, -0.6] }],
+      [0.82, { chest: [-0.4, 0, 0], spine: [-0.2, 0, 0], head: [0.35, 0, 0], rootY: -0.6, thighL: [-1.45, 0, 0.1], shinL: [0.25, 0, 0], thighR: [-0.35, 0, -0.1], shinR: [1.9, 0, 0], armL: [-0.2, 0, 1.1], foreL: [-0.3, 0, 0], armR: [0.3, 0, -0.6] }],
+      [1, {}],
+    ],
+  },
+  dash: {
+    dur: 0.3,
+    keys: [
+      [0, {}],
+      [0.25, { chest: [0.55, 0, 0], spine: [0.25, 0, 0], head: [-0.3, 0, 0], armL: [0.6, 0, 0.3], armR: [0.5, 0, -0.3], foreL: [-0.4, 0, 0], foreR: [-0.4, 0, 0], thighL: [-0.9, 0, 0], shinL: [1.1, 0, 0], thighR: [0.4, 0, 0], shinR: [0.5, 0, 0], rootY: -0.1 }],
+      [0.85, { chest: [0.55, 0, 0], spine: [0.25, 0, 0], head: [-0.3, 0, 0], armL: [0.6, 0, 0.3], armR: [0.5, 0, -0.3], foreL: [-0.4, 0, 0], foreR: [-0.4, 0, 0], thighL: [-0.9, 0, 0], shinL: [1.1, 0, 0], thighR: [0.4, 0, 0], shinR: [0.5, 0, 0], rootY: -0.1 }],
+      [1, {}],
+    ],
+  },
+  doubleJump: {
+    dur: 0.55, flip: true,
+    keys: [
+      [0, {}],
+      [0.3, { chest: [0.6, 0, 0], spine: [0.4, 0, 0], head: [0.4, 0, 0], thighL: [-1.9, 0, 0.1], shinL: [2.1, 0, 0], thighR: [-1.8, 0, -0.1], shinR: [2.1, 0, 0], armL: [-1.0, 0, 0.4], foreL: [-1.5, 0, 0], armR: [-1.0, 0, -0.4], foreR: [-1.5, 0, 0], rootY: 0.2 }],
+      [0.75, { chest: [0.5, 0, 0], spine: [0.3, 0, 0], thighL: [-1.6, 0, 0.1], shinL: [1.9, 0, 0], thighR: [-1.5, 0, -0.1], shinR: [1.9, 0, 0], armL: [-0.8, 0, 0.4], foreL: [-1.2, 0, 0], armR: [-0.8, 0, -0.4], foreR: [-1.2, 0, 0], rootY: 0.15 }],
+      [1, {}],
+    ],
+  },
+  // ---------- Attaques spéciales ----------
+  lungeSlash: {
+    dur: 0.62, hit: [0.28, 0.5], lunge: 1.2,
+    keys: [
+      [0, {}],
+      [0.22, { chest: [0.35, -0.7, 0], spine: [0.15, -0.3, 0], armR: [-0.3, -0.6, -1.3], foreR: [-0.4, 0, 0], handR: [1.0, 0.6, 0], armL: [0.3, 0, 0.6], rootY: -0.15, thighL: [-0.9, 0, 0], shinL: [0.9, 0, 0], thighR: [0.5, 0, 0], shinR: [0.4, 0, 0] }],
+      [0.45, { chest: [0.3, 0.8, 0], spine: [0.1, 0.35, 0], armR: [-0.1, 1.9, -1.45], foreR: [-0.1, 0, 0], handR: [1.1, 0.6, 0], armL: [0.2, 0, 0.7], rootY: -0.2, thighL: [-1.0, 0, 0], shinL: [1.0, 0, 0], thighR: [0.6, 0, 0], shinR: [0.3, 0, 0] }],
+      [0.8, { chest: [0.15, 0.6, 0], armR: [0.1, 2.2, -1.2], foreR: [-0.3, 0, 0], handR: [1.0, 0.6, 0], rootY: -0.1 }],
+      [1, {}],
+    ],
+  },
+  counter: {
+    dur: 0.62, hit: [0.18, 0.55], lunge: 1.0, spin: true,
+    keys: [
+      [0, {}],
+      [0.15, { chest: [0.2, -0.6, 0], armR: [-0.2, 0.5, -1.45], foreR: [-0.1, 0, 0], handR: [1.3, 0.5, 0], armL: [-0.2, -0.6, 1.4], rootY: -0.2, thighL: [-0.6, 0, 0], shinL: [0.8, 0, 0] }],
+      [0.55, { chest: [-0.1, -0.2, 0], armR: [-0.9, 0.9, -1.2], foreR: [-0.1, 0, 0], handR: [1.2, 0.5, 0], armL: [-0.2, -0.6, 1.3], rootY: -0.05 }],
+      [1, {}],
+    ],
+  },
+  plunge: {
+    dur: 0.4, hold: true,
+    keys: [
+      [0, {}],
+      [0.45, { chest: [-0.3, 0, 0], armR: [-2.9, 0, -0.1], foreR: [-0.5, 0, 0], armL: [-2.8, 0, 0.1], foreL: [-0.5, 0, 0], thighL: [-1.4, 0, 0], shinL: [1.8, 0, 0], thighR: [-1.0, 0, 0], shinR: [1.6, 0, 0] }],
+      [1, { chest: [0.5, 0, 0], spine: [0.3, 0, 0], armR: [-0.9, 0, -0.1], foreR: [-0.2, 0, 0], handR: [1.25, 0, 0], armL: [-0.9, 0, 0.1], foreL: [-0.3, 0, 0], thighL: [-1.2, 0, 0], shinL: [1.6, 0, 0], thighR: [-0.6, 0, 0], shinR: [1.4, 0, 0] }],
+    ],
+  },
+  plungeLand: {
+    dur: 0.55, hit: [0, 0.12],
+    keys: [
+      [0, { chest: [0.65, 0, 0], spine: [0.3, 0, 0], armR: [-1.0, 0, -0.1], foreR: [-0.1, 0, 0], handR: [1.3, 0, 0], armL: [-1.0, 0, 0.1], rootY: -0.42, thighL: [-1.0, 0, 0], shinL: [1.5, 0, 0], thighR: [0.3, 0, 0], shinR: [1.3, 0, 0] }],
+      [0.55, { chest: [0.55, 0, 0], spine: [0.25, 0, 0], armR: [-1.0, 0, -0.1], foreR: [-0.1, 0, 0], handR: [1.2, 0, 0], armL: [-1.0, 0, 0.1], rootY: -0.35, thighL: [-0.9, 0, 0], shinL: [1.3, 0, 0], thighR: [0.3, 0, 0], shinR: [1.1, 0, 0] }],
+      [1, {}],
+    ],
+  },
+  chargeHold: {
+    dur: 0.35, hold: true,
+    keys: [
+      [0, {}],
+      [1, { chest: [-0.1, -0.9, 0], spine: [0, -0.4, 0], armR: [-0.6, -0.9, -1.0], foreR: [-0.9, 0, 0], handR: [0.9, 0.6, 0], armL: [-0.6, -0.5, 0.5], foreL: [-1.0, 0, 0], rootY: -0.18, thighL: [-0.5, 0, 0], shinL: [0.7, 0, 0], thighR: [0.35, 0, 0], shinR: [0.5, 0, 0] }],
+    ],
+  },
+  artWhirl: {
+    dur: 1.1, hit: [0.12, 0.88], hits: [[0.12, 0.36], [0.4, 0.62], [0.66, 0.88]], lunge: 0.7, spin: true, spinTurns: 2,
+    keys: [
+      [0, {}],
+      [0.1, { chest: [0.15, -0.5, 0], armR: [-0.2, 0.6, -1.5], foreR: [-0.05, 0, 0], handR: [1.35, 0.5, 0], armL: [-0.2, -0.6, 1.4], rootY: -0.15 }],
+      [0.88, { chest: [0.15, -0.4, 0], armR: [-0.2, 0.8, -1.5], foreR: [-0.05, 0, 0], handR: [1.35, 0.5, 0], armL: [-0.2, -0.6, 1.4], rootY: -0.18 }],
+      [1, {}],
+    ],
+  },
+  artPierce: {
+    dur: 0.75, hit: [0.2, 0.62], lunge: 0,
+    keys: [
+      [0, {}],
+      [0.18, { chest: [0.1, -0.6, 0], armR: [-0.6, 0.1, -0.4], foreR: [-1.8, 0, 0], handR: [1.4, 0, 0], armL: [-0.6, 0, 0.5], rootY: -0.12, thighR: [0.4, 0, 0], thighL: [-0.4, 0, 0], shinL: [0.4, 0, 0] }],
+      [0.35, { chest: [0.35, 0.3, 0], spine: [0.15, 0.1, 0], armR: [-1.55, 0, -0.05], foreR: [-0.05, 0, 0], handR: [1.5, 0, 0], armL: [0.3, 0, 0.6], rootY: -0.22, thighL: [-1.0, 0, 0], shinL: [1.0, 0, 0], thighR: [0.6, 0, 0], shinR: [0.2, 0, 0] }],
+      [0.7, { chest: [0.35, 0.3, 0], spine: [0.15, 0.1, 0], armR: [-1.55, 0, -0.05], foreR: [-0.05, 0, 0], handR: [1.5, 0, 0], armL: [0.3, 0, 0.6], rootY: -0.22, thighL: [-1.0, 0, 0], shinL: [1.0, 0, 0], thighR: [0.6, 0, 0], shinR: [0.2, 0, 0] }],
+      [1, {}],
+    ],
+  },
+  artFlurry: {
+    dur: 1.0, hit: [0.08, 0.9], hits: [[0.08, 0.16], [0.22, 0.3], [0.36, 0.44], [0.5, 0.58], [0.64, 0.72], [0.8, 0.9]], lunge: 0.9,
+    keys: [
+      [0, {}],
+      [0.12, { chest: [0.15, 0.3, 0], armR: [-1.5, 0, 0], foreR: [-0.1, 0, 0], handR: [1.5, 0, 0], armL: [-0.5, 0, 0.3], foreL: [-1.6, 0, 0], rootY: -0.1 }],
+      [0.26, { chest: [0.15, -0.3, 0], armL: [-1.5, 0, 0], foreL: [-0.1, 0, 0], handL: [1.5, 0, 0], armR: [-0.5, 0, -0.3], foreR: [-1.6, 0, 0], rootY: -0.1 }],
+      [0.4, { chest: [0.15, 0.3, 0], armR: [-1.5, 0, 0], foreR: [-0.1, 0, 0], handR: [1.5, 0, 0], armL: [-0.5, 0, 0.3], foreL: [-1.6, 0, 0], rootY: -0.12 }],
+      [0.54, { chest: [0.15, -0.3, 0], armL: [-1.5, 0, 0], foreL: [-0.1, 0, 0], handL: [1.5, 0, 0], armR: [-0.5, 0, -0.3], foreR: [-1.6, 0, 0], rootY: -0.12 }],
+      [0.68, { chest: [0.15, 0.3, 0], armR: [-1.5, 0, 0], foreR: [-0.1, 0, 0], handR: [1.5, 0, 0], armL: [-0.5, 0, 0.3], foreL: [-1.6, 0, 0], rootY: -0.14 }],
+      [0.84, { chest: [0.3, 0.5, 0], spine: [0.1, 0.2, 0], armR: [-0.2, 1.8, -1.4], foreR: [-0.1, 0, 0], handR: [1.1, 0.6, 0], armL: [-1.5, 0, 0], foreL: [-0.1, 0, 0], handL: [1.5, 0, 0], rootY: -0.16 }],
+      [1, {}],
+    ],
+  },
+  execute: {
+    dur: 1.3, hit: [0.3, 0.92], hits: [[0.3, 0.42], [0.8, 0.92]], lunge: 0,
+    keys: [
+      [0, {}],
+      [0.3, { chest: [0.3, -0.4, 0], armR: [-1.5, 0, -0.05], foreR: [-0.05, 0, 0], handR: [1.5, 0, 0], armL: [-1.2, 0, 0.4], foreL: [-0.8, 0, 0], rootY: -0.2, thighL: [-0.9, 0, 0], shinL: [1.0, 0, 0], thighR: [0.5, 0, 0] }],
+      [0.55, { chest: [0.4, -0.2, 0], armR: [-1.4, 0.1, -0.05], foreR: [-0.1, 0, 0], handR: [1.5, 0.3, 0], armL: [-1.2, 0, 0.4], foreL: [-0.8, 0, 0], rootY: -0.22, thighL: [-0.9, 0, 0], shinL: [1.0, 0, 0], thighR: [0.5, 0, 0] }],
+      [0.7, { chest: [-0.25, 0.3, 0], armR: [-2.7, 0.4, -0.3], foreR: [-0.6, 0, 0], handR: [0.5, 0, 0], armL: [-2.4, 0, 0.3], foreL: [-0.8, 0, 0], rootY: -0.02 }],
+      [0.86, { chest: [0.55, 0, 0], spine: [0.25, 0, 0], armR: [-1.1, 0, -0.1], foreR: [-0.1, 0, 0], handR: [0.8, 0, 0], armL: [-1.0, 0, 0.1], rootY: -0.28, thighL: [-0.8, 0, 0], shinL: [1.1, 0, 0], thighR: [0.2, 0, 0], shinR: [0.8, 0, 0] }],
+      [1, {}],
+    ],
+  },
   hammer: {
     dur: 0.9, hit: [0.5, 0.52],
     keys: [
@@ -363,6 +493,7 @@ export class Animator {
     this.capePhase = 0;
     this.rootOffset = 0;
     this.extraYaw = 0;
+    this.flipAngle = 0;
     this.lidOpen = 0;
     this.retarget = built.retarget || null;
     for (const name in this.b) this.cur[name] = [0, 0, 0];
@@ -508,6 +639,19 @@ export class Animator {
         }
       }
     }
+    // Déplacement furtif : accroupi, buste penché
+    if (s.sneak && s.grounded !== false && !hov) {
+      rootY -= 0.28;
+      pose.chest[0] += 0.35;
+      pose.spine[0] += 0.15;
+      pose.head[0] -= 0.3;
+      pose.thighL[0] = pose.thighL[0] * 0.7 - 0.75;
+      pose.thighR[0] = pose.thighR[0] * 0.7 - 0.75;
+      pose.shinL[0] = pose.shinL[0] * 0.6 + 1.05;
+      pose.shinR[0] = pose.shinR[0] * 0.6 + 1.05;
+      pose.footL[0] -= 0.25;
+      pose.footR[0] -= 0.25;
+    }
     if (s.grounded === false && !hov) {
       pose.thighL = [-0.9, 0, 0.1];
       pose.shinL = [1.2, 0, 0];
@@ -535,8 +679,11 @@ export class Animator {
       const rbv = b.rootY ?? 0;
       rootY += lerp(ra, rbv, k);
       lambda = 32;
-      this.extraYaw = clip.spin ? smoothstep(clip.hit[0] - 0.1, clip.hit[1], t) * Math.PI * 2 : 0;
+      this.extraYaw = clip.spin ? smoothstep(clip.hit[0] - 0.1, clip.hit[1], t) * Math.PI * 2 * (clip.spinTurns || 1) : 0;
+      // Salto (double saut) : rotation complète du bassin
+      if (clip.flip) this.flipAngle = smoothstep(0.08, 0.82, t) * Math.PI * 2;
     }
+    if (!this.action || !this.action.clip || !this.action.clip.flip) this.flipAngle = 0;
     if (!this.action) this.extraYaw = 0;
     // Réaction aux coups (additive)
     if (this.hitT > 0) {
@@ -547,6 +694,7 @@ export class Animator {
     // Regard vers la cible
     if (s.lookYaw) pose.head[1] += clamp(s.lookYaw, -0.8, 0.8);
     for (const n of H_BONES) this._set(n, pose[n][0], pose[n][1], pose[n][2], dt, lambda);
+    if (this.flipAngle) this.b.hips.rotation.x = this.cur.hips[0] + this.flipAngle;
     const hips = this.b.hips;
     this.rootOffset = damp(this.rootOffset, rootY, 18, dt);
     hips.position.y = hips.userData.rest.y + this.rootOffset;

@@ -240,6 +240,8 @@ export class Boss extends Enemy {
       for (const a of ph.add || []) this.attacks.push({ ...a, cdLeft: 0.5 });
       this.game.hud.bossPhase(ph.msg);
       this.game.effects.ring(this.pos, 0xffffff, 10, 0.8);
+      this.game.effects.shockwave(this.pos, 1, 0xffffff);
+      if (settings.get('slowmo')) this.game.slowMo(0.35, 0.6);
       this.game.camRig.shake(0.5);
       audio.play('roar', { pos: this.pos });
       this.untargetable = true;

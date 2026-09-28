@@ -12,7 +12,7 @@ export const TIER_LABEL = { low: 'Faible', medium: 'Moyen', high: 'Élevé', ult
 
 // Réglages recommandés par palier
 export const TIER_REC = {
-  low: { preset: 'low', charTexture: 512, worldTexture: 256, maxEnemies: 10, fxQuality: 'low', audioQuality: 'low', distortion: false, afterimages: false, maxDpr: 1.5 },
+  low: { preset: 'low', charTexture: 512, worldTexture: 256, maxEnemies: 10, fxQuality: 'low', audioQuality: 'low', distortion: true, afterimages: true, maxDpr: 1.5 },
   medium: { preset: 'medium', charTexture: 1024, worldTexture: 512, maxEnemies: 16, fxQuality: 'medium', audioQuality: 'medium', distortion: true, afterimages: true, maxDpr: 2 },
   high: { preset: 'high', charTexture: 1024, worldTexture: 512, maxEnemies: 24, fxQuality: 'high', audioQuality: 'high', distortion: true, afterimages: true, maxDpr: 2 },
   ultra: { preset: 'ultra', charTexture: 2048, worldTexture: 1024, maxEnemies: 32, fxQuality: 'high', audioQuality: 'high', distortion: true, afterimages: true, maxDpr: 2.5 },

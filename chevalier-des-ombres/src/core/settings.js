@@ -10,7 +10,7 @@ export const GRAPHICS_PRESETS = {
   low: {
     renderScale: 0.6, dynamicRes: true, shadows: 'off', bloom: false, bloomStrength: 0.7, aa: 'none',
     drawDistance: 'short', propDensity: 0.55, particles: 'low', textureQuality: 'low', grain: false, chroma: false,
-    charTexture: 512, fxQuality: 'low', distortion: false, afterimages: false, maxEnemies: 10,
+    charTexture: 512, fxQuality: 'low', distortion: true, afterimages: true, maxEnemies: 10,
   },
   medium: {
     renderScale: 0.8, dynamicRes: true, shadows: 'low', bloom: true, bloomStrength: 0.85, aa: 'none',

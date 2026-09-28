@@ -38,6 +38,7 @@ const _v = new THREE.Vector3();
 export class Game {
   constructor(canvas) {
     this.canvas = canvas;
+    this.settings = settings;
     this.renderer = new Renderer(canvas);
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(settings.get('fov'), window.innerWidth / window.innerHeight, 0.08, 400);
@@ -78,6 +79,7 @@ export class Game {
     this.particlesAlpha = new Particles(this.scene, 700, false);
     this.effects = new Effects(this.scene, this.particles, this.particlesAlpha);
     this.effects.heightAt = (x, z) => this.world.heightAt(x, z);
+    this.effects.renderer = this.renderer;
     this.combat = new Combat(this);
     this.camRig = new CameraRig(this.camera, this.world);
     this.viewModel = new ViewModel();
@@ -465,6 +467,14 @@ export class Game {
     this.slowT = dur;
   }
 
+  // Temps des Ombres (esquive parfaite) : le monde ralentit, pas le chevalier
+  shadowTime(dur) {
+    if (!settings.get('slowmo')) return;
+    this.witchT = dur;
+    this.witchMax = dur;
+    audio.setSlowmo && audio.setSlowmo(true);
+  }
+
   update(realDt, elapsed) {
     const input = this.input;
     input.update(realDt);
@@ -488,6 +498,14 @@ export class Game {
       this.hitStop -= realDt;
       dt *= 0.05;
     }
+    let playerDt = dt;
+    if (this.witchT > 0) {
+      this.witchT -= realDt;
+      playerDt = this.hitStop > 0 ? realDt * 0.05 : realDt;
+      dt *= 0.28;
+      if (this.witchT <= 0) audio.setSlowmo && audio.setSlowmo(false);
+    }
+    this.renderer.fx.shadowTime = this.witchT > 0 ? Math.min(1, this.witchT / 0.25, (this.witchMax - this.witchT) / 0.12 + 0.2) : 0;
     const paused = this.state !== 'playing' || menuOpen;
     if (this.state === 'title') {
       this._titleUpdate(realDt);
@@ -507,7 +525,7 @@ export class Game {
     // Entités
     this._perfGuard(realDt);
     this._updateActiveSet(realDt);
-    this.player.update(dt, input);
+    this.player.update(playerDt, input);
     for (const e of this.enemies) e.update(dt);
     for (const a of this.allies) a.update(dt);
     this._cleanup();

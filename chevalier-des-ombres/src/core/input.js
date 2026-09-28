@@ -29,6 +29,9 @@ const KEYMAP = {
   KeyM: ['map'],
   KeyI: ['inventory'],
   KeyL: ['journal'],
+  ControlLeft: ['sneak'],
+  ControlRight: ['sneak'],
+  KeyG: ['art'],
 };
 
 // Manettes connectées ; l'API peut être refusée (page intégrée dans un cadre) : liste vide
@@ -48,11 +51,11 @@ const PADMAP = {
   3: 'heavy', // Y
   4: 'block', // LB
   5: 'power', // RB (pouvoir sélectionné)
-  6: 'blockAlt', // LT
+  6: 'art', // LT (art d'arme)
   7: 'heavy', // RT
   8: 'map', // Back
   9: 'pause', // Start
-  10: 'sprint', // L3
+  10: 'sprint', // L3 (à l'arrêt : mode furtif)
   11: 'lock', // R3
   12: 'heal', // haut
   13: 'mana', // bas
@@ -210,7 +213,7 @@ export class Input {
         const act = PADMAP[i];
         if (act) {
           // A : saut, ou interaction quand un objet/PNJ est à portée (le joueur choisit)
-          const acts = act === 'blockAlt' ? ['block'] : act === 'jump' ? ['jump', 'interact'] : [act];
+          const acts = act === 'blockAlt' ? ['block'] : act === 'jump' ? ['jump', 'interact'] : act === 'sprint' ? ['sprint', 'l3'] : [act];
           for (const a of acts) {
             if (is) this._press(a);
             else this._release(a);
@@ -262,6 +265,9 @@ export class Input {
 
   wasPressed(a) {
     return this.pressed.has(a);
+  }
+  wasReleased(a) {
+    return this.released.has(a);
   }
   isDown(a) {
     return this.down.has(a);

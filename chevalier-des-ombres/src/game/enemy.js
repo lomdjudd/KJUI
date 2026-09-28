@@ -209,7 +209,9 @@ export class Enemy extends Actor {
             moveSpeed = this.speed * 0.35;
           }
         }
-        if (p.alive && d < this.aggro && this._canSee(p)) this._setState('alert');
+        // Furtivité : détection réduite, surtout de dos
+        const stealth = p.sneaking ? (Math.abs(this.angleTo(p)) > 1.7 ? 0.2 : 0.45) : 1;
+        if (p.alive && d < this.aggro * stealth && this._canSee(p)) this._setState('alert');
         break;
       }
       case 'alert': {
@@ -699,7 +701,7 @@ export class Enemy extends Actor {
     if (this.untargetable) return null;
     let amount = info.amount;
     // Ennemis qui bloquent de face (chevaliers squelettes)
-    if (this.def.blocks && info.kind === 'melee' && this.state !== 'stagger' && this.state !== 'attack' && info.source) {
+    if (this.def.blocks && info.kind === 'melee' && !info.noBlock && this.state !== 'stagger' && this.state !== 'attack' && info.source) {
       const ang = Math.abs(angleDiff(this.yaw, Math.atan2(info.source.pos.x - this.pos.x, info.source.pos.z - this.pos.z)));
       if (ang < 1.1 && Math.random() < this.def.blocks) {
         amount *= 0.2;
@@ -713,7 +715,7 @@ export class Enemy extends Actor {
       }
     }
     // Parade ennemie (chevaliers déchus, Valdric…)
-    if (this.def.parries && info.kind === 'melee' && this.state === 'chase' && Math.random() < this.def.parries * 0.5 && info.source === g.player) {
+    if (this.def.parries && info.kind === 'melee' && !info.noBlock && this.state === 'chase' && Math.random() < this.def.parries * 0.5 && info.source === g.player) {
       audio.play('parry', { pos: this.pos });
       g.effects.hitSpark({ x: this.pos.x, y: this.pos.y + 1.4, z: this.pos.z }, 'metal', true);
       this.anim.play('parry', 1.2);
@@ -773,6 +775,13 @@ export class Enemy extends Actor {
     if (this.def.rig === 'humanoid') this.anim.play('stagger', 1.1 / t);
     else this.anim.play('hit', 1, { dur: t });
     if (this.isBoss) this.game.hud.toast('Vulnérable !');
+  }
+
+  // Exécution / assassinat par le joueur : immobilisé le temps de l'animation
+  onExecuted(player, assassin) {
+    this._stagger(1.7);
+    this.execImmune = this.game.time + 5;
+    if (assassin) this._setState('stagger');
   }
 
   onParried() {

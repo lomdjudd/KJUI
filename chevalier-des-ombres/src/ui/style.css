@@ -377,3 +377,12 @@ body.touch #zone-name { display: none; }
 .dev-panel .statline b { font-weight: normal; text-align: right; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mem-bar { height: 8px; border: 1px solid var(--gold-dim); background: rgba(0, 0, 0, 0.5); margin: 2px 0 8px; }
 .mem-bar div { height: 100%; }
+
+#exec-prompt { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); padding: 6px 16px; display: none; font-family: 'Cinzel', serif; font-size: 19px; letter-spacing: 2px; color: #ffd0d8;
+  text-shadow: 0 0 10px rgba(255, 60, 90, 0.9); background: linear-gradient(90deg, transparent, rgba(40, 4, 12, 0.85), transparent); white-space: nowrap; animation: execPulse 0.9s ease-in-out infinite; }
+#exec-prompt.show { display: block; }
+#exec-prompt .k { display: inline-block; min-width: 26px; padding: 1px 6px; margin-right: 8px; border: 1px solid #ff6a80; color: #ffb0bc; font-size: 13px; text-align: center; }
+@keyframes execPulse { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; transform: translateX(-50%) scale(1.06); } }
+#sneak-ind { position: absolute; left: 50%; bottom: calc(96px + var(--safe-b)); transform: translateX(-50%); display: none; font-family: 'Cinzel', serif; font-size: 14px; letter-spacing: 2px; color: #b8a8ff; text-shadow: 0 0 8px #5a3aff; opacity: 0.9; }
+#sneak-ind.show { display: block; }
+@media (prefers-reduced-motion: reduce) { #exec-prompt { animation: none; } }

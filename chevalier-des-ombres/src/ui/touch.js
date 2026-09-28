@@ -18,6 +18,8 @@ const BUTTONS = [
   ['heal', '', '', 46, 214, 110, false],
   ['mana', '', '', 40, 268, 150, false],
   ['interact', 'Action', '✋', 58, 196, 186, false],
+  ['art', 'Art', '✧', 54, 270, 36, false],
+  ['sneak', 'Furtif', '◐', 44, 300, 204, false],
 ];
 
 export class Touch {
@@ -52,6 +54,7 @@ export class Touch {
       if (act === 'heal') b.innerHTML = '<div><div class="ico" style="color:#ff8a3a">⚱</div></div><span class="cnt"></span>';
       if (act === 'mana') b.innerHTML = '<div><div class="ico" style="color:#4dd8ff">⚱</div></div><span class="cnt"></span>';
       if (act === 'power') b.innerHTML = '<div class="cd"></div><div><div class="ico">✦</div><span class="pn"></span></div>';
+      if (act === 'art') b.innerHTML = '<div class="cd"></div><div><div class="ico">✧</div>Art</div>';
       r.appendChild(b);
       this.buttons[act] = b;
       this._bindButton(b, act, BUTTONS.find((x) => x[0] === act)[6]);
@@ -294,5 +297,7 @@ export class Touch {
     this.buttons.power.querySelector('.cd').style.setProperty('--p', (cd > 0 ? (cd / max) * 100 : 0) + '%');
     this.buttons.interact.classList.toggle('hide', !g.interactTarget);
     this.buttons.lock.classList.toggle('on', !!p.lockTarget);
+    this.buttons.art.querySelector('.cd').style.setProperty('--p', (p.artCd > 0 ? (p.artCd / 6) * 100 : 0) + '%');
+    this.buttons.sneak.classList.toggle('on', !!p.sneaking);
   }
 }

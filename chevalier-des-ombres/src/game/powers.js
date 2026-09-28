@@ -162,16 +162,9 @@ export class Powers {
         break;
       }
       case 'dash': {
-        player.state = 'roll';
-        player.rollT = 0;
-        player.rollDur = 0.3;
-        player.backstep = false;
         const fx = player.moving ? player.forwardX : Math.sin(g.camRig.yaw);
         const fz = player.moving ? player.forwardZ : Math.cos(g.camRig.yaw);
-        player.rollDir.set(fx, 0, fz);
-        player.yaw = Math.atan2(fx, fz);
-        player.iframes = 0.45;
-        player.anim.play('roll', 2);
+        player.startDodge('powerDash', fx, fz, { dur: 0.3, v0: pw.range / 0.3, v1: pw.range / 0.3, iframes: 0.45, cost: 0, clip: 'dash' });
         const start = player.pos.clone();
         const hitSet = new Set();
         for (let i = 0; i < 10; i++) {

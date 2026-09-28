@@ -320,7 +320,13 @@ export class Combat {
         this.game.effects.ring(pos, ELEMENT_COLORS[z.element] || 0xffaa66, z.radius * 1.1, 0.35);
       }
       if (!z.quiet) audio.play('explosion', { pos, big: z.radius > 3.5 });
-      this.game.camRig.shake(z.shake ?? Math.min(0.5, z.radius * 0.07));
+      const shake = z.shake ?? Math.min(0.5, z.radius * 0.07);
+      this.game.camRig.shake(shake);
+      // Impacts puissants : onde de choc et fissures
+      if (shake >= 0.3 && vis !== 'none') {
+        this.game.effects.shockwave(pos, Math.min(1, shake * 1.4), ELEMENT_COLORS[z.element] || 0xffc080);
+        if (z.radius >= 3 && (!z.element || z.element === 'physical' || z.element === 'fire' || z.element === 'shadow')) this.game.effects.cracks(pos, z.radius * 0.8);
+      }
       // Dégâts
       for (const a of this.targetsFor(z.team)) {
         if (!a.alive) continue;
