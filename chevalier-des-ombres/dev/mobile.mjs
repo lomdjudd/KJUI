@@ -1,0 +1,32 @@
+import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+const [,, url, outDir] = process.argv;
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--allow-file-access-from-files'] });
+const ctx = await browser.newContext({ viewport: { width: 800, height: 380 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, userAgent: 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36' });
+const page = await ctx.newPage();
+const logs = [];
+page.on('console', (m) => { if (m.type() === 'error') logs.push('error: ' + m.text()); });
+page.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.message));
+await page.goto(url);
+await page.waitForFunction(() => window.__game && document.querySelector('#menu.show'), null, { timeout: 180000 });
+await page.waitForTimeout(1500);
+await page.screenshot({ path: `${outDir}/mob1_title.png` });
+await page.tap('[data-act=new]');
+await page.waitForTimeout(300);
+await page.tap('[data-act=startNew]');
+await page.waitForFunction(() => window.__game.state === 'playing', null, { timeout: 180000 });
+await page.waitForTimeout(800);
+await page.tap('[data-act=close]');
+await page.waitForTimeout(1500);
+await page.screenshot({ path: `${outDir}/mob2_hub.png` });
+// Joystick : glisser depuis la gauche
+const cdp = await ctx.newCDPSession(page);
+const touch = async (type, x, y, id = 0) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id }] });
+await touch('touchStart', 120, 300);
+for (let i = 0; i < 8; i++) { await touch('touchMove', 120, 300 - i * 8); await page.waitForTimeout(80); }
+await page.waitForTimeout(1500);
+const moved = await page.evaluate(() => ({ z: window.__game.player.pos.z, x: window.__game.player.pos.x, save: !!localStorage.getItem('cdo_save_1') }));
+await page.screenshot({ path: `${outDir}/mob3_move.png` });
+await touch('touchEnd', 0, 0);
+logs.push('position après joystick ' + JSON.stringify(moved));
+console.log(logs.join('\n'));
+await browser.close();

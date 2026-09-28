@@ -366,7 +366,10 @@ export class Player extends Actor {
     }
     // Roulade (annule la fin d'une attaque)
     const canCancel = this.state === 'attack' && this.anim.actionT > (this.curClip && this.curClip.hit ? this.curClip.hit[1] : 0.6);
-    if (input.wasPressed('dodge') && (free || canCancel) && this.grounded) {
+    if (input.wasPressed('dodge') && !(free || canCancel)) this.dodgeBuffer = 0.3;
+    if (this.dodgeBuffer > 0) this.dodgeBuffer -= dt;
+    if ((input.wasPressed('dodge') || this.dodgeBuffer > 0) && (free || canCancel) && this.grounded) {
+      this.dodgeBuffer = 0;
       const cost = 22 * st.rollCost;
       if (this.stamina > 1) {
         this.stamina -= cost;
@@ -394,12 +397,22 @@ export class Player extends Actor {
       this.staminaDelay = 0.5;
       audio.play('jump', { pos: this.pos });
     }
-    // Attaques
+    // Attaques (avec mémoire tampon)
     const atk = input.wasPressed('attack');
     const heavy = input.wasPressed('heavy');
     if (atk || heavy) {
       if (free && this.stamina > 1) this.startAttack(heavy);
       else if (this.state === 'attack') this.queuedAttack = heavy ? 'heavy' : 'light';
+      else this.buffered = { heavy, t: 0.35 };
+    }
+    if (this.buffered) {
+      this.buffered.t -= dt;
+      if (this.buffered.t <= 0) this.buffered = null;
+      else if (free && this.stamina > 1 && this.grounded) {
+        const h = this.buffered.heavy;
+        this.buffered = null;
+        this.startAttack(h);
+      }
     }
     // Pouvoir
     const p = this.profile;
@@ -459,7 +472,8 @@ export class Player extends Actor {
     // Aide à la visée : se tourne vers l'ennemi proche
     const g = this.game;
     let target = this.lockTarget;
-    if (!target && settings.get('autoLock')) target = g.nearestEnemy(this.pos, 5, this.yaw, 1.3);
+    if (!target && settings.get('autoLock')) target = g.nearestEnemy(this.pos, 5.5, this.yaw, 1.4);
+    this.attackTarget = target || null;
     if (target) this.faceTowards(target.pos.x, target.pos.z, -1, 0);
     else if (g.camRig.mode === 'first') this.yaw = g.camRig.yaw;
     else {
@@ -478,7 +492,12 @@ export class Player extends Actor {
     const t = this.anim.actionT;
     const g = this.game;
     if (t < 0) {
+      const q = this.queuedAttack;
       this._endAttack();
+      if (q && this.stamina > 1) {
+        if (q === 'light') this.comboTimer = 0.45;
+        this.startAttack(q === 'heavy');
+      }
       return 0;
     }
     // Petite correction de direction pendant l'élan
@@ -513,10 +532,19 @@ export class Player extends Actor {
       this.startAttack(heavy);
       return 0;
     }
-    // Élan vers l'avant
+    // Élan vers l'avant (+ rapprochement de la cible visée)
     const lunge = clip.lunge || 0;
     const lk = t > 0.1 && t < clip.hit[1] ? 1 : 0;
-    return lk * lunge * 2.6 * this.attackSpeed;
+    let speed = lk * lunge * 2.6 * this.attackSpeed;
+    const tg = this.attackTarget;
+    if (tg && tg.alive && t < clip.hit[0] + 0.05) {
+      this.faceTowards(tg.pos.x, tg.pos.z, 14, dt);
+      const reach = this.stats.weapon.reach;
+      const d = this.distTo(tg) - tg.radius;
+      if (d > reach * 0.7) speed = Math.max(speed, Math.min(6, (d - reach * 0.6) * 5));
+      else if (d < reach * 0.35) speed = 0;
+    }
+    return speed;
   }
 
   _endAttack() {
@@ -539,7 +567,7 @@ export class Player extends Actor {
       const dx = e.pos.x - this.pos.x;
       const dz = e.pos.z - this.pos.z;
       const d = Math.hypot(dx, dz);
-      if (d > reach + e.radius) continue;
+      if (d > reach + e.radius + 0.35) continue;
       const ey = e.pos.y + (e.hover || 0);
       if (ey > this.pos.y + 2.8 || ey + e.height < this.pos.y - 0.5) continue;
       const ang = Math.abs(angleDiff(yaw, Math.atan2(dx, dz)));
@@ -591,7 +619,7 @@ export class Player extends Actor {
       if (w.element === 'lightning' && Math.random() < 0.3) status.shock = 1;
     }
     const res = g.combat.hit(e, {
-      amount, element: elem > 0 ? w.element : 'physical', source: this, crit, poise: w.poise * st.poiseMul * (this.heavy ? 2 : 1) * mul, kind: 'melee', knock: this.heavy ? 5 : 2.5,
+      amount, element: elem > 0 ? w.element : 'physical', source: this, crit, poise: w.poise * st.poiseMul * (this.heavy ? 2 : 1) * mul, kind: 'melee', knock: this.heavy ? 4.5 : comboLast ? 2.5 : 0.8,
       status, statusDps: elem * 0.3, preResisted: true, bonusVs: w.bonusVs, dirX: e.pos.x - this.pos.x, dirZ: e.pos.z - this.pos.z,
       lifesteal: st.lifesteal + (w.element === 'shadow' ? 0.03 : 0),
     });

@@ -31,6 +31,7 @@ export class Touch {
     this.lookId = null;
     this.sprintT = 0;
     if (!this.enabled) return;
+    document.body.classList.add('touch');
     this.build();
     settings.onChange(() => this.applySettings());
     this.applySettings();
@@ -254,12 +255,14 @@ export class Touch {
       b.style[side] = `calc(${24}px + var(--safe-${left ? 'l' : 'r'}))`;
     };
     // Pause/vue/carte : colonne sous la mini-carte
+    // Pause / vue / carte : rangée en haut, à gauche de la mini-carte
+    const mm = document.getElementById('minimap');
+    const mmW = (mm && mm.offsetWidth) || 110;
     [this.pauseBtn, this.camBtn, this.mapBtn].forEach((b, i) => {
       b.style.width = b.style.height = 40 * s + 'px';
-      b.style.top = `calc(${8 + i * 48 * s}px + var(--safe-t))`;
-      b.style.right = '';
+      b.style.top = `calc(10px + var(--safe-t))`;
       b.style.left = '';
-      b.style[left ? 'right' : 'left'] = `calc(${50 + 250 * 0}px + 45vw)`;
+      b.style.right = `calc(${mmW + 30 + i * 48 * s}px + var(--safe-r))`;
     });
     void top;
     this.refresh();

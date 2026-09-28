@@ -205,7 +205,7 @@ button { font-family: 'Cinzel', serif; }
 #menu.title .veil { background: linear-gradient(90deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.35) 45%, transparent 70%); }
 .m-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, 92vw); max-height: 92vh; overflow-y: auto; padding: 26px 30px; }
 .m-left { position: absolute; left: calc(7% + var(--safe-l)); top: 50%; transform: translateY(-50%); width: min(380px, 80vw); }
-.logo { font-family: 'Cinzel Decorative', serif; font-size: 58px; line-height: 1; color: var(--gold-bright); text-shadow: 0 0 25px rgba(154, 77, 255, 0.9), 0 0 60px rgba(57, 255, 154, 0.25), 0 4px 0 #000; letter-spacing: 2px; margin-bottom: 4px; }
+.logo { font-family: 'Cinzel', serif; font-weight: 700; font-size: 58px; line-height: 1; color: var(--gold-bright); text-shadow: 0 0 25px rgba(154, 77, 255, 0.9), 0 0 60px rgba(57, 255, 154, 0.25), 0 4px 0 #000; letter-spacing: 2px; margin-bottom: 4px; }
 .logo small { display: block; font-size: 22px; color: var(--text); letter-spacing: 8px; margin-top: 8px; font-family: 'Cinzel', serif; }
 .logo-sub { font-style: italic; color: var(--text-dim); font-size: 19px; margin-bottom: 26px; }
 .m-title { font-family: 'Cinzel Decorative', serif; font-size: 30px; color: var(--gold-bright); text-align: center; margin: 0 0 14px; text-shadow: 0 0 16px rgba(154, 77, 255, 0.6); }
@@ -340,3 +340,13 @@ textarea.code { width: 100%; height: 90px; background: #0a0610; color: var(--tex
   #toast, #prompt { bottom: calc(40% - 20px); }
   #phase-msg { bottom: 40%; }
 }
+
+/* Disposition tactile : suivi de quête à gauche, notifications en haut au centre */
+body.touch #tracker { position: fixed; left: calc(18px + var(--safe-l)); top: calc(118px + var(--safe-t)); text-align: left; width: 230px; }
+body.touch #notifs { left: 50%; transform: translateX(-50%); top: calc(46px + var(--safe-t)); width: 320px; align-items: center; text-align: center; }
+body.touch .notif { border-left: none; border-top: 2px solid var(--gold); background: linear-gradient(180deg, rgba(10, 6, 18, 0.85), rgba(10, 6, 18, 0)); }
+body.touch .notif.side { border-color: #8ad0ff; }
+body.touch .notif.item { border-color: #7affd0; }
+body.touch #shards { top: calc(92px + var(--safe-t)); bottom: auto; left: calc(18px + var(--safe-l)); right: auto; font-size: 16px; }
+body.touch #powers { display: none; }
+body.touch #flasks .key, body.touch .pslot .key { display: none; }
