@@ -346,7 +346,7 @@ export class Renderer {
     c.tBloom.value = useBloom ? (t.up[0] || t.down[0]).texture : null;
     c.useBloom.value = useBloom;
     c.bloomStrength.value = s.bloomStrength * 0.55;
-    c.exposure.value = this.grade.exposure;
+    c.exposure.value = this.grade.exposure * 1.15;
     c.vignette.value = s.vignette;
     c.grain.value = s.grain ? 0.045 : 0;
     c.chroma.value = s.chroma ? 1 : 0;
@@ -386,7 +386,11 @@ export class Renderer {
   }
 
   // Effets plein écran pilotés par le jeu (décroissance automatique)
-  updateFx(dt) {
+  updateFx() {
+    // Décroissance en temps réel (indépendante des ralentis et des chutes d'images)
+    const now = performance.now();
+    const dt = Math.min(0.25, (now - (this._fxLast || now)) / 1000);
+    this._fxLast = now;
     this.fx.damage = Math.max(0, this.fx.damage - dt * 2.2);
     this.fx.flash = Math.max(0, this.fx.flash - dt * 3);
   }

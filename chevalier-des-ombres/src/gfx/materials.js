@@ -23,7 +23,7 @@ export function createCharMaterial(opts = {}) {
     uFlashColor: { value: new THREE.Color(1, 1, 1) },
     uDissolve: { value: 0 },
     uDissolveColor: { value: new THREE.Color(opts.dissolveColor || 0x9a4dff) },
-    uRim: { value: new THREE.Color(opts.rim || 0x000000) },
+    uRim: { value: new THREE.Color(opts.rim || 0x2a2440) },
   };
   mat.userData.u = u;
   mat.onBeforeCompile = (shader) => {
@@ -188,7 +188,7 @@ export const Mats = {
   lava: () =>
     cached('lava', () => {
       const t = Textures.lava();
-      const m = new THREE.MeshStandardMaterial({ map: t.map, emissiveMap: t.map, emissive: 0xffffff, emissiveIntensity: 2.2, roughness: 0.6 });
+      const m = new THREE.MeshStandardMaterial({ map: t.map, emissiveMap: t.map, emissive: 0xffffff, emissiveIntensity: 1.5, roughness: 0.6 });
       animated.push((dt) => {
         t.map.offset.x += dt * 0.01;
         t.map.offset.y += dt * 0.006;
@@ -201,7 +201,7 @@ export const Mats = {
       const n = t.normalMap.clone();
       n.needsUpdate = true;
       n.repeat.set(24, 24);
-      const m = new THREE.MeshStandardMaterial({ color, normalMap: n, normalScale: new THREE.Vector2(0.5, 0.5), roughness: 0.08, metalness: 0.6, transparent: true, opacity: 0.92 });
+      const m = new THREE.MeshStandardMaterial({ color, normalMap: n, normalScale: new THREE.Vector2(0.5, 0.5), roughness: 0.12, metalness: 0.3, transparent: true, opacity: 0.9, envMapIntensity: 0.35 });
       animated.push((dt) => {
         n.offset.x += dt * 0.02;
         n.offset.y += dt * 0.013;
@@ -220,7 +220,7 @@ export const Mats = {
           void main(){
             vec2 p = vec2(vUv.x * 40.0, vUv.y * 3.0 - uTime * 0.6);
             float v = n(p) * 0.6 + n(p * 2.3 + uTime * 0.2) * 0.4;
-            float a = v * smoothstep(1.0, 0.2, vUv.y) * smoothstep(0.0, 0.1, vUv.y) * 0.65;
+            float a = v * smoothstep(1.0, 0.2, vUv.y) * smoothstep(0.0, 0.1, vUv.y) * 0.42;
             gl_FragColor = vec4(uColor * (0.6 + v), a);
           }`,
         transparent: true,

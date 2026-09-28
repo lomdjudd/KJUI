@@ -24,13 +24,13 @@ float fbm(vec3 p){ float s = 0.0; float a = 0.5; for (int i = 0; i < 4; i++){ s 
 void main(){
   vec3 d = normalize(vDir);
   float y = d.y;
-  vec3 col = mix(horizon, top, smoothstep(-0.05, 0.6, y));
+  vec3 col = mix(horizon * 1.6, top * 2.2 + horizon * 0.25, smoothstep(-0.05, 0.7, y));
   // Nébuleuses
   float neb = fbm(d * 2.5 + vec3(0.0, time * 0.003, 0.0));
   float neb2 = fbm(d * 4.0 + vec3(13.0, 0.0, 7.0));
   float band = smoothstep(0.35, 0.0, abs(d.y - 0.35 + d.x * 0.25));
-  col += nebula * pow(neb, 3.0) * 1.8 * band;
-  col += nebula2 * pow(neb2, 4.0) * 1.2 * smoothstep(0.1, 0.5, y);
+  col += nebula * pow(neb, 2.5) * 3.2 * band;
+  col += nebula2 * pow(neb2, 3.0) * 2.2 * smoothstep(0.1, 0.5, y);
   // Étoiles
   if (stars > 0.0) {
     vec3 sp = d * 180.0;

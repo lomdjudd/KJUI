@@ -86,8 +86,8 @@ function paint(geo, color, mat, boneIndex) {
 
 // Préréglages de surfaces : [rugosité, métal, émission]
 export const SURF = {
-  metal: [0.35, 0.95, 0],
-  darkMetal: [0.5, 0.85, 0],
+  metal: [0.32, 0.78, 0],
+  darkMetal: [0.45, 0.7, 0],
   gold: [0.3, 1, 0],
   cloth: [0.95, 0, 0],
   leather: [0.75, 0.05, 0],

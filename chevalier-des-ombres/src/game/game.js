@@ -446,7 +446,6 @@ export class Game {
         audio.play('heartbeat');
       }
     }
-    this.renderer.updateFx(realDt);
     // Sauvegarde automatique
     const autoMin = settings.get('autosave');
     this.autosaveT += realDt;
@@ -495,6 +494,7 @@ export class Game {
   render(dt) {
     const fp = this.camRig.mode === 'first' && this.state === 'playing' && this.player.alive;
     this.renderer.overlay = fp ? { scene: this.viewModel.scene, camera: this.viewModel.camera } : null;
+    this.renderer.updateFx();
     this.renderer.render(this.scene, this.camera, dt);
   }
 

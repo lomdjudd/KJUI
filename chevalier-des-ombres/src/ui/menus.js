@@ -147,6 +147,7 @@ export class Menus {
   }
 
   _settingsHtml() {
+    if (!this.setTab) this.setTab = 'graphics';
     const cat = SETTINGS_SCHEMA.find((c) => c.id === this.setTab);
     const v = settings.values;
     const rows = cat.items

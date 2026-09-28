@@ -60,8 +60,8 @@ export class ViewModel {
     if (shieldDef && shieldDef.shape) {
       const s = buildShield(shieldDef, this.mat);
       s.castShadow = false;
-      s.position.set(0.02, 0.05, -0.06);
-      s.scale.setScalar(0.75);
+      s.position.set(0.0, 0.02, -0.04);
+      s.scale.setScalar(0.38);
       s.rotation.y = Math.PI;
       this.left.add(s);
       this.shield = s;
@@ -146,9 +146,9 @@ export class ViewModel {
     this.right.position.set(px + bobX + this.sway.x, py - bobY + this.sway.y, pz);
     this.right.rotation.set(rx, ry, rz);
     // Main gauche
-    let lx = -0.26;
-    let ly = -0.3;
-    let lz = -0.45;
+    let lx = -0.32;
+    let ly = -0.34;
+    let lz = -0.5;
     let lrx = 0;
     let lry = 0;
     if (st.blocking) {

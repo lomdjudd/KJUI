@@ -227,7 +227,7 @@ export class Effects {
   }
 
   // ---------- Traînée d'arme ----------
-  createTrail(color = 0xffffff, maxPoints = 14) {
+  createTrail(color = 0xffffff, maxPoints = 10) {
     const geo = new THREE.BufferGeometry();
     const pos = new Float32Array(maxPoints * 2 * 3);
     const alpha = new Float32Array(maxPoints * 2);
@@ -242,7 +242,7 @@ export class Effects {
     const mat = new THREE.ShaderMaterial({
       uniforms: { uColor: { value: new THREE.Color(color) }, uOpacity: { value: 1 } },
       vertexShader: `attribute float aAlpha; varying float vA; void main(){ vA = aAlpha; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-      fragmentShader: `uniform vec3 uColor; uniform float uOpacity; varying float vA; void main(){ gl_FragColor = vec4(uColor * 2.0, vA * uOpacity); }`,
+      fragmentShader: `uniform vec3 uColor; uniform float uOpacity; varying float vA; void main(){ gl_FragColor = vec4(uColor * 1.4, vA * uOpacity * 0.55); }`,
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,

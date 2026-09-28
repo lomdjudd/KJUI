@@ -22,8 +22,8 @@ export function makeEnvironment(renderer, pal) {
           float y = vP.y;
           vec3 c = y > 0.0 ? mix(mid, top, pow(y, 0.6)) : mix(mid, bot, pow(-y, 0.4));
           float band = exp(-abs(y) * 9.0);
-          c += accent * band * 0.8;
-          c += accent * 0.6 * pow(max(0.0, dot(vP, normalize(vec3(-0.4, 0.3, -0.8)))), 12.0);
+          c += accent * band * 0.22;
+          c += accent * 0.35 * pow(max(0.0, dot(vP, normalize(vec3(-0.4, 0.3, -0.8)))), 16.0);
           gl_FragColor = vec4(c * 3.5 + vec3(0.02), 1.0);
         }`,
     }),
@@ -37,8 +37,8 @@ export function makeEnvironment(renderer, pal) {
     scene.add(m);
   };
   addPanel(new THREE.Color(pal.moon || 0xd8d0ff).multiplyScalar(6), 4, 6, 4, 2.5);
-  addPanel(new THREE.Color(pal.accent || 0x7a3cff).multiplyScalar(3), -6, 1, -3, 3);
-  addPanel(new THREE.Color(pal.rim || 0x39ff9a).multiplyScalar(2), 3, 0.5, -6, 3);
+  addPanel(new THREE.Color(pal.accent || 0x7a3cff).multiplyScalar(1.5), -6, 1, -3, 2);
+  addPanel(new THREE.Color(pal.rim || 0x39ff9a).multiplyScalar(1.2), 3, 0.5, -6, 2);
   const pmrem = new THREE.PMREMGenerator(renderer);
   const rt = pmrem.fromScene(scene, 0.02);
   pmrem.dispose();

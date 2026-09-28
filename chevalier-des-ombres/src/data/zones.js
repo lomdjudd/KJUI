@@ -18,9 +18,9 @@ export const ZONES = {
   graveyard: {
     id: 'graveyard', name: 'Cimetière des Brumes', subtitle: 'Où les morts ne dorment plus', tier: 1, level: [1, 5], mood: 'graveyard',
     palette: {
-      skyTop: 0x05040c, horizon: 0x1c3a2c, ground: 0x08100a, fog: 0x1a3a2a, fogDensity: 0.028,
-      hemiSky: 0x4a7a6a, hemiGround: 0x14100c, hemi: 0.75, moon: 0xa8d8c8, moonI: 1.5, accent: 0x39ff9a, rim: 0x39ff9a,
-      nebula: 0x2a6a4a, nebula2: 0x4a2a6a, moonDisc: 0xd8ffe8, grade: { tint: 0xe0ffe8, lift: 0x020604, saturation: 0.95, contrast: 1.1, exposure: 1.05 },
+      skyTop: 0x06050e, horizon: 0x1c2a3a, ground: 0x08100a, fog: 0x18222e, fogDensity: 0.026,
+      hemiSky: 0x5a6a8a, hemiGround: 0x14100c, hemi: 0.75, moon: 0xb8c8e8, moonI: 1.5, accent: 0x39ff9a, rim: 0x39ff9a,
+      nebula: 0x2a6a4a, nebula2: 0x4a2a6a, moonDisc: 0xd8ffe8, grade: { tint: 0xeef8ff, lift: 0x020406, saturation: 1.0, contrast: 1.1, exposure: 1.1 },
     },
     terrain: { size: 240, height: 7, freq: 0.018, ground: 'dirt', border: 18 },
     ambient: 'fireflies', ambience: { wind: 0.3, rumble: 0.08 },
@@ -68,7 +68,7 @@ export const ZONES = {
       hemiSky: 0x6a8a4a, hemiGround: 0x10100a, hemi: 0.75, moon: 0xd8e8a8, moonI: 1.3, accent: 0xc8ff3a, rim: 0x9aff3a,
       nebula: 0x4a6a1a, nebula2: 0x2a4a3a, moonDisc: 0xf0ffd8, grade: { tint: 0xf0ffe0, lift: 0x040602, saturation: 0.9, contrast: 1.08, exposure: 1.05 },
     },
-    terrain: { size: 240, height: 4, freq: 0.022, ground: 'mud', border: 18, water: { level: 0.2, color: 0x14200c } },
+    terrain: { size: 240, height: 4, freq: 0.022, ground: 'mud', border: 18, water: { level: -0.6, color: 0x0c140a } },
     ambient: 'fireflies', ambience: { wind: 0.15, water: 0.2, rumble: 0.05 },
     props: [{ type: 'deadTree', density: 1.6 }, { type: 'reed', density: 3 }, { type: 'mushroom', density: 0.8 }, { type: 'stump', density: 0.8 }, { type: 'bones', density: 0.3 }],
     structures: 'swamp',
@@ -133,8 +133,8 @@ export const ZONES = {
   frost: {
     id: 'frost', name: 'Pics de Givre', subtitle: 'Le vent y chante des requiems', tier: 6, level: [21, 25], mood: 'frost',
     palette: {
-      skyTop: 0x060a18, horizon: 0x3a5a8a, ground: 0x2a3444, fog: 0x8aa0c8, fogDensity: 0.026,
-      hemiSky: 0x9ab8e8, hemiGround: 0x3a4454, hemi: 0.9, moon: 0xd8e8ff, moonI: 1.6, accent: 0x7ad4ff, rim: 0xa8e0ff,
+      skyTop: 0x060a18, horizon: 0x2a4a7a, ground: 0x2a3444, fog: 0x4a5a78, fogDensity: 0.026,
+      hemiSky: 0x8aa8d8, hemiGround: 0x2a3444, hemi: 0.6, moon: 0xd8e8ff, moonI: 1.6, accent: 0x7ad4ff, rim: 0xa8e0ff,
       nebula: 0x2a5a9a, nebula2: 0x4a8aba, moonDisc: 0xffffff, grade: { tint: 0xe8f0ff, lift: 0x02040a, saturation: 0.9, contrast: 1.08, exposure: 1.0 },
     },
     terrain: { size: 240, height: 16, freq: 0.014, ground: 'snow', border: 20 },
@@ -160,7 +160,7 @@ export const ZONES = {
       hemiSky: 0xaa4a2a, hemiGround: 0x1a0604, hemi: 0.8, moon: 0xff9a5a, moonI: 1.3, accent: 0xff5a0a, rim: 0xff7a2a,
       nebula: 0x8a2a0a, nebula2: 0x5a0a0a, moonDisc: 0xff6a2a, grade: { tint: 0xfff0e8, lift: 0x060202, saturation: 1.1, contrast: 1.12, exposure: 1.0 },
     },
-    terrain: { size: 240, height: 12, freq: 0.018, ground: 'ash', border: 18, lava: { level: -0.6 } },
+    terrain: { size: 240, height: 12, freq: 0.018, ground: 'ash', border: 18, lava: { level: -4.5 } },
     ambient: 'embers', ambience: { wind: 0.3, rumble: 0.3, crackle: 0.25 },
     props: [{ type: 'lavaRock', density: 1.4 }, { type: 'rock', density: 0.8 }, { type: 'deadTree', density: 0.6, burnt: true }, { type: 'bones', density: 0.5 }],
     structures: 'inferno',

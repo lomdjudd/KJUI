@@ -68,8 +68,8 @@ export class Player extends Actor {
     const look = st.outfit.look;
     const spec = { ...look, c: { ...(look.c || {}) }, extras: [...(look.extras || [])] };
     spec.thick = (look.thick || 1) * 1.12;
-    const mat = createCharMaterial({ rim: look.c && look.c.eyes ? look.c.eyes : 0x000000 });
-    mat.userData.u.uRim.value.multiplyScalar(0.25);
+    const mat = createCharMaterial({ rim: 0x5a4a8a });
+    mat.userData.u.uRim.value.multiplyScalar(0.7);
     const built = buildHumanoid(spec, mat);
     const keep = { yaw: this.yaw };
     this.setModel(built, { stance: st.weaponClass.stance, twoHanded: !!st.weaponClass.twoHanded });
@@ -488,6 +488,7 @@ export class Player extends Actor {
     if (t >= clip.hit[0] - 0.05 && !this.swung) {
       this.swung = true;
       audio.play('swing', { pos: this.pos, weight: this.stats.weaponClass.twoHanded ? 1.6 : 1 });
+      this.trail.pts.length = 0;
       this.trail.active = true;
     }
     if (t >= clip.hit[0] && t <= clip.hit[1]) this._meleeCheck();
