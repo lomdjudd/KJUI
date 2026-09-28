@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { native, storage } from './storage.js';
 import { isMobile, clamp } from './utils.js';
+import { soundbank } from './soundbank.js';
 
 const KEY = 'cdo_device_v1';
 
@@ -215,6 +216,7 @@ class Device {
     mb += (sm * sm * 4) / 1048576;
     mb += textureRegistry.totalMb();
     mb += game._geoMb || 0;
+    mb += soundbank.memoryMb();
     return Math.round(mb);
   }
 

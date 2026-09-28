@@ -839,10 +839,11 @@ export class Game {
     this.state = 'title';
     await this.loadZone('hub');
     this.state = 'title';
+    audio.setMood('title');
     // Chevalier agenouillé devant le feu
     const p = this.player;
     const look = this.profile;
-    look.outfit = 'order_knight';
+    look.outfit = 'squire';
     look.weapon = 'knight_sword';
     look.weapons.knight_sword = 0;
     look.shield = 'knight_shield';
