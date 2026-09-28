@@ -8,7 +8,7 @@ page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') 
 page.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
 const shot = async (name) => { await page.screenshot({ path: `${outDir}/${name}.png` }); };
 const wait = (ms) => page.waitForTimeout(ms);
-await page.goto(url);
+await page.goto(url + (url.includes('?') ? '&' : '?') + 'autoinstall');
 try {
   await page.waitForFunction(() => window.__game && document.querySelector('#menu.show'), null, { timeout: 120000 });
 } catch (e) { logs.push('TIMEOUT title'); }

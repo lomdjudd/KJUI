@@ -1,13 +1,22 @@
 // Textures procédurales (aucune image externe) : couleur + normal map générée depuis
 // une carte de hauteur. Toutes les textures sont raccordables (tileables) et mises en cache.
+// L'installation des données les génère une fois en haute résolution et les conserve
+// (WebP dans IndexedDB) : au lancement suivant elles sont simplement rechargées.
 import * as THREE from 'three';
 import { tileNoise, clamp, makeRng } from '../core/utils.js';
 import { settings } from '../core/settings.js';
+import { textureRegistry } from '../core/device.js';
 
 const cache = new Map();
+// Définitions : clé → { fn(u, v, out), strength }
+const DEFS = new Map();
+// Textures installées (ImageBitmap décodées) : clé → { map, normalMap }
+const preloaded = new Map();
+let installedSize = 0;
 
 function texSize() {
-  return settings.get('textureQuality') === 'low' ? 128 : 256;
+  const base = installedSize || 256;
+  return settings.get('textureQuality') === 'low' ? Math.max(128, base / 2) : base;
 }
 
 // Construit couleur + hauteur via une fonction par pixel (u, v dans [0,1[)
@@ -15,18 +24,20 @@ function generate(size, fn) {
   const col = new Uint8ClampedArray(size * size * 4);
   const hgt = new Float32Array(size * size);
   const out = { r: 0, g: 0, b: 0, h: 0 };
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      fn(x / size, y / size, out);
-      const i = y * size + x;
-      col[i * 4] = out.r * 255;
-      col[i * 4 + 1] = out.g * 255;
-      col[i * 4 + 2] = out.b * 255;
-      col[i * 4 + 3] = 255;
-      hgt[i] = out.h;
-    }
-  }
+  for (let y = 0; y < size; y++) genRow(y, size, fn, col, hgt, out);
   return { col, hgt };
+}
+
+function genRow(y, size, fn, col, hgt, out) {
+  for (let x = 0; x < size; x++) {
+    fn(x / size, y / size, out);
+    const i = y * size + x;
+    col[i * 4] = out.r * 255;
+    col[i * 4 + 1] = out.g * 255;
+    col[i * 4 + 2] = out.b * 255;
+    col[i * 4 + 3] = 255;
+    hgt[i] = out.h;
+  }
 }
 
 function normalFromHeight(hgt, size, strength) {
@@ -54,8 +65,7 @@ function normalFromHeight(hgt, size, strength) {
   return n;
 }
 
-function toTexture(data, size, srgb) {
-  const t = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+function setupTex(t, srgb) {
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.magFilter = THREE.LinearFilter;
   t.minFilter = THREE.LinearMipmapLinearFilter;
@@ -66,16 +76,75 @@ function toTexture(data, size, srgb) {
   return t;
 }
 
+function toTexture(data, size, srgb) {
+  return setupTex(new THREE.DataTexture(data, size, size, THREE.RGBAFormat), srgb);
+}
+
 function build(key, fn, normalStrength = 3) {
+  if (!DEFS.has(key)) DEFS.set(key, { fn, strength: normalStrength });
   if (cache.has(key)) return cache.get(key);
+  if (listing) return null;
+  if (preloaded.has(key)) {
+    const res = preloaded.get(key);
+    cache.set(key, res);
+    return res;
+  }
   const size = texSize();
   const { col, hgt } = generate(size, fn);
   const res = {
     map: toTexture(col, size, true),
     normalMap: toTexture(normalFromHeight(hgt, size, normalStrength * (size / 256)), size, false),
   };
+  textureRegistry.add('w:' + key, size, size);
+  textureRegistry.add('w:' + key + ':n', size, size);
   cache.set(key, res);
   return res;
+}
+
+// ----- API pour l'installation des données -----
+let listing = false;
+// Liste de toutes les textures du monde (chaque constructeur enregistre sa définition sans générer)
+export function worldTextureKeys() {
+  listing = true;
+  try {
+    Textures.stone(); Textures.tiles(); Textures.cobble(); Textures.rock(); Textures.bark(); Textures.wood();
+    Textures.metal(); Textures.detail(); Textures.lava(); Textures.water(); Textures.ice();
+    for (const k of ['dirt', 'grass', 'mud', 'snow', 'ash', 'void', 'sand']) Textures.ground(k);
+  } finally {
+    listing = false;
+  }
+  return [...DEFS.keys()];
+}
+
+// Génère une texture en rendant la main régulièrement (barre de progression fluide)
+export async function generateWorldTexture(key, size, yieldFn) {
+  const def = DEFS.get(key);
+  const col = new Uint8ClampedArray(size * size * 4);
+  const hgt = new Float32Array(size * size);
+  const out = { r: 0, g: 0, b: 0, h: 0 };
+  let t0 = performance.now();
+  for (let y = 0; y < size; y++) {
+    genRow(y, size, def.fn, col, hgt, out);
+    if (performance.now() - t0 > 24) {
+      await yieldFn(y / size);
+      t0 = performance.now();
+    }
+  }
+  const nrm = normalFromHeight(hgt, size, def.strength * (size / 256));
+  return { col, nrm };
+}
+
+// Enregistre les textures installées (décodées) avant tout usage
+export function setInstalledWorldTextures(size, entries) {
+  installedSize = size;
+  for (const [key, colBitmap, nrmBitmap] of entries) {
+    const map = setupTex(new THREE.Texture(colBitmap), true);
+    const normalMap = setupTex(new THREE.Texture(nrmBitmap), false);
+    map.flipY = normalMap.flipY = false;
+    textureRegistry.add('w:' + key, colBitmap.width, colBitmap.height);
+    textureRegistry.add('w:' + key + ':n', nrmBitmap.width, nrmBitmap.height);
+    preloaded.set(key, { map, normalMap });
+  }
 }
 
 const mixc = (a, b, t) => a + (b - a) * t;

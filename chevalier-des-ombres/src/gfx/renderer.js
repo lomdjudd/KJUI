@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import { settings } from '../core/settings.js';
 import { clamp, isMobile } from '../core/utils.js';
+import { device } from '../core/device.js';
 
 const QUAD_VS = /* glsl */ `
 varying vec2 vUv;
@@ -120,7 +121,7 @@ export class Renderer {
     r.shadowMap.enabled = true;
     r.shadowMap.type = THREE.PCFSoftShadowMap;
     r.info.autoReset = true;
-    this.maxDpr = isMobile ? 2 : 2;
+    this.maxDpr = device.rec.maxDpr || 2;
     this.dynScale = 1;
     this.frameTimes = [];
     this.lastResize = 0;
@@ -180,7 +181,7 @@ export class Renderer {
     this.targets = null;
     this.applySettings();
     settings.onChange((k) => {
-      if (k === '*' || ['renderScale', 'aa', 'bloom', 'shadows', 'preset', 'dynamicRes'].includes(k)) this.applySettings();
+      if (k === '*' || ['renderScale', 'aa', 'bloom', 'shadows', 'preset', 'dynamicRes', 'powerSave'].includes(k)) this.applySettings();
     });
     window.addEventListener('resize', () => this.resize(true));
   }
@@ -212,7 +213,7 @@ export class Renderer {
 
   get pixelRatio() {
     const dpr = Math.min(window.devicePixelRatio || 1, this.maxDpr);
-    return dpr * settings.get('renderScale') * this.dynScale;
+    return dpr * settings.get('renderScale') * this.dynScale * (settings.get('powerSave') ? 0.8 : 1);
   }
 
   resize(force = false) {
@@ -285,7 +286,7 @@ export class Renderer {
     if (this.frameTimes.length < 45) return;
     const avg = this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length;
     this.frameTimes.length = 0;
-    const limit = settings.get('fpsLimit') || 60;
+    const limit = settings.get('powerSave') ? 30 : settings.get('fpsLimit') || 60;
     const target = 1 / Math.min(limit, 60);
     const now = performance.now();
     if (now - this.lastResize < 1500) return;

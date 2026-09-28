@@ -189,7 +189,7 @@ export const BOSSES = [
     lore: 'Décapité par sa propre hache lors d’une révolte, le bourreau continue sa besogne.',
   },
   {
-    id: 'horned_knight', name: 'Le Chevalier Cornu', title: 'Gardien des Catacombes', zone: 'catacombs', tier: 4, stars: 4, guardian: true,
+    id: 'horned_knight', glb: { model: 'knight', variant: 'obsidian', glow: 3.2 }, name: 'Le Chevalier Cornu', title: 'Gardien des Catacombes', zone: 'catacombs', tier: 4, stars: 4, guardian: true,
     rig: 'humanoid', kind: 'metal', scale: 1.9,
     model: { torso: 'armor', head: 'helm_horned', arms: 'armor', legs: 'armor', bulk: 1.25, extras: ['spikes', 'cape'], c: { main: 0x4a3a6a, trim: 0x2a2040, cape: 0x1a1024, eyes: 0xff2020, glow: 0x9a4dff } },
     weapon: { type: 'greatsword', look: { blade: 0x3a2a5a, guard: 0x2a2040, glow: 0x9a4dff } }, stance: '2h', twoHanded: true,
@@ -207,7 +207,7 @@ export const BOSSES = [
   },
   // ======================= CHÂTEAU DE NOCTHAR =======================
   {
-    id: 'valdric', name: 'Sire Valdric', title: 'le Déchu', zone: 'castle', tier: 5, stars: 4,
+    id: 'valdric', glb: { model: 'knight', variant: 'gold', glow: 2.4 }, name: 'Sire Valdric', title: 'le Déchu', zone: 'castle', tier: 5, stars: 4,
     rig: 'humanoid', kind: 'metal', scale: 1.5,
     model: { torso: 'tabard', head: 'helm_plume', extras: ['cape'], c: { main: 0x6a6a78, trim: 0xc8a050, cloth: 0x3a1050, cape: 0x1a0a24, eyes: 0xff3030 } },
     weapon: { type: 'sword', look: { blade: 0x9a9aa8, glow: 0xff3030 } }, shield: { shape: 'heater', look: { face: 0x3a1050, rim: 0xc8a050, emblem: 0x9a8a50 } }, stance: '1h',
@@ -387,7 +387,7 @@ export const BOSSES = [
     lore: 'Xal’Thuun est ce qui reste des dieux anciens après que le Néant les a digérés.',
   },
   {
-    id: 'void_champion', name: 'Le Champion Maudit', title: 'Votre Reflet', zone: 'void', tier: 8, stars: 5,
+    id: 'void_champion', glb: { model: 'knight', variant: 'void', glow: 2.6 }, name: 'Le Champion Maudit', title: 'Votre Reflet', zone: 'void', tier: 8, stars: 5,
     rig: 'humanoid', kind: 'metal', scale: 1.25, mirror: true,
     model: { torso: 'tabard', head: 'helm_great', extras: ['cape'], c: { main: 0x14101c, trim: 0x9a3cff, cloth: 0x0a0612, cape: 0x0a0612, eyes: 0xc06aff } },
     weapon: { type: 'sword', look: { blade: 0x1a1022, glow: 0xc06aff } }, shield: { shape: 'kite', look: { face: 0x120a1a, rim: 0x6a2a9a, emblem: 0x9a3cff, glow: 0xc06aff } }, stance: '1h',

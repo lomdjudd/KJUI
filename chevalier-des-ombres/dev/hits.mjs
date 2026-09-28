@@ -4,7 +4,7 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 const page = await browser.newPage({ viewport: { width: 640, height: 360 } });
 const logs = [];
 page.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.message));
-await page.goto(url);
+await page.goto(url + (url.includes('?') ? '&' : '?') + 'autoinstall');
 await page.waitForFunction(() => window.__game && document.querySelector('#menu.show'), null, { timeout: 120000 });
 await page.evaluate(async () => { const g = window.__game; g.menus.close(); await g.newGame('1', 'knight'); g.menus.close(); await g.travel('graveyard'); });
 await page.waitForFunction(() => window.__game.state === 'playing', null, { timeout: 120000 });

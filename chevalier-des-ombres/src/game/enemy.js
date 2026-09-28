@@ -6,6 +6,7 @@ import { Actor } from './actor.js';
 import { buildHumanoid, buildQuadruped, buildSpider, buildBat, buildBlob, buildSerpent, buildWisp, buildEye, buildTentacle, buildMimic, buildDragon } from '../actors/models.js';
 import { H_CLIPS } from '../actors/anims.js';
 import { createCharMaterial, createSpectralMaterial } from '../gfx/materials.js';
+import { createGlbCharacter, hasModel } from '../actors/glb.js';
 import { tierStats } from '../data/enemies.js';
 import { settings } from '../core/settings.js';
 import { audio } from '../core/audio.js';
@@ -16,6 +17,14 @@ const _v = new THREE.Vector3();
 const _w = new THREE.Vector3();
 
 export function buildModelFor(def) {
+  // Modèle 3D texturé (données installées) quand il existe pour ce type d'ennemi
+  if (def.glb && settings.get('charModel') !== 'classic' && hasModel(def.glb.model)) {
+    const built = createGlbCharacter(def.glb.model, def.glb.variant, { rim: def.rim || 0x1a1428, glow: def.glb.glow || 1.6, height: 1.92 });
+    if (built) {
+      built.weaponMat = createCharMaterial({ rim: def.rim || 0x000000 });
+      return built;
+    }
+  }
   const spec = { ...(def.model || {}) };
   if (def.extras) spec.extras = [...(spec.extras || []), ...def.extras];
   const mat = def.spectral ? createSpectralMaterial(def.spectral, { fadeLow: def.hover ? 0.5 : 0.1 }) : createCharMaterial({ rim: def.rim || 0x000000 });
@@ -147,6 +156,16 @@ export class Enemy extends Actor {
     if (this.mesh) this.mesh.visible = !far;
     if (far) {
       if (this.state !== 'idle' && this.state !== 'dormant') this._setState('idle');
+      return;
+    }
+    // En veille (hors du budget d'ennemis actifs) : animation au ralenti, pas d'IA
+    if (this.sleeping) {
+      this.sleepT = (this.sleepT || 0) + dt;
+      if (this.sleepT > 0.12) {
+        this.anim.update(this.sleepT, { speed: 0 });
+        this.updateVisual(this.sleepT);
+        this.sleepT = 0;
+      }
       return;
     }
     this.updateStatus(dt);

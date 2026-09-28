@@ -76,77 +76,77 @@ export const SHIELDS = [
 // Tenues : apparence (spec humanoïde) + statistiques
 export const OUTFITS = [
   {
-    id: 'squire', name: 'Tenue d’écuyer', price: 0, rarity: 'common', def: 8, res: {}, bonus: {},
+    id: 'squire', glb: 'shadow', name: 'Tenue d’écuyer', price: 0, rarity: 'common', def: 8, res: {}, bonus: {},
     look: { torso: 'leather', head: 'helm_open', arms: 'leather', legs: 'leather', c: { main: 0x6a6a70, leather: 0x4a3222, cloth: 0x3a2a1c, dark: 0x1a1410, skin: 0xc8a080 } },
     desc: 'Cuir et maille. Mieux que rien.',
   },
   {
-    id: 'order_knight', name: 'Chevalier de l’Ordre', price: 600, rarity: 'common', def: 16, res: { shadow: 0.1 }, bonus: { hp: 20 },
+    id: 'order_knight', glb: 'royal', name: 'Chevalier de l’Ordre', price: 600, rarity: 'common', def: 16, res: { shadow: 0.1 }, bonus: { hp: 20 },
     look: { torso: 'tabard', head: 'helm_great', extras: ['cape'], c: { main: 0x7a7a88, trim: 0xc8a050, cloth: 0x4a1060, cape: 0x2a0a3a, eyes: 0x9a4dff } },
     desc: 'L’armure violette de l’Ordre de l’Aube. +20 PV.',
   },
   {
-    id: 'black_guard', name: 'Garde Noire', price: 1400, rarity: 'rare', def: 24, res: { shadow: 0.2 }, bonus: { hp: 30 },
+    id: 'black_guard', glb: 'obsidian', name: 'Garde Noire', price: 1400, rarity: 'rare', def: 24, res: { shadow: 0.2 }, bonus: { hp: 30 },
     look: { torso: 'armor', head: 'helm_bascinet', extras: ['cape'], c: { main: 0x2a2a32, trim: 0x5a5a66, cape: 0x0a0a0e, eyes: 0xff3030 } },
     desc: 'Plates noircies. Résistance à l’ombre.',
   },
   {
-    id: 'scarlet', name: 'Croisé Écarlate', price: 2000, rarity: 'rare', def: 22, res: { fire: 0.25 }, bonus: { dmg: 0.08 },
+    id: 'scarlet', glb: 'crimson', name: 'Croisé Écarlate', price: 2000, rarity: 'rare', def: 22, res: { fire: 0.25 }, bonus: { dmg: 0.08 },
     look: { torso: 'tabard', head: 'helm_plume', extras: ['cape'], c: { main: 0x9a9aa8, trim: 0xd8b050, cloth: 0x8a1020, cape: 0x5a0a14, eyes: null } },
     desc: '+8 % de dégâts. Résiste au feu.',
   },
   {
-    id: 'mist_ranger', name: 'Rôdeur des Brumes', price: 1800, rarity: 'rare', def: 14, res: { poison: 0.3 }, bonus: { stamina: 30, speed: 0.08 },
+    id: 'mist_ranger', glb: 'emerald', name: 'Rôdeur des Brumes', price: 1800, rarity: 'rare', def: 14, res: { poison: 0.3 }, bonus: { stamina: 30, speed: 0.08 },
     look: { torso: 'leather', head: 'hood', arms: 'leather', legs: 'leather', extras: ['cape'], c: { cloth: 0x2a3a2a, leather: 0x3a2a1c, cape: 0x1a2a1a, eyes: 0x7affd0 } },
     desc: 'Léger : +30 endurance, +8 % vitesse.',
   },
   {
-    id: 'spellblade', name: 'Lame-Mage', price: 2600, rarity: 'rare', def: 12, res: { lightning: 0.2, frost: 0.2 }, bonus: { mana: 40, magic: 0.2 },
+    id: 'spellblade', glb: 'frost', name: 'Lame-Mage', price: 2600, rarity: 'rare', def: 12, res: { lightning: 0.2, frost: 0.2 }, bonus: { mana: 40, magic: 0.2 },
     look: { torso: 'robe', head: 'hood', arms: 'robe', legs: 'robe', c: { cloth: 0x1a2a5a, trim: 0x8ac8ff, eyes: 0x4dd8ff } },
     desc: '+40 mana, +20 % puissance magique.',
   },
   {
-    id: 'dawn_paladin', name: 'Paladin de l’Aube', price: 4800, rarity: 'epic', def: 32, res: { holy: 0.4, shadow: 0.25 }, bonus: { hp: 40, regen: 1 },
+    id: 'dawn_paladin', glb: 'gold', name: 'Paladin de l’Aube', price: 4800, rarity: 'epic', def: 32, res: { holy: 0.4, shadow: 0.25 }, bonus: { hp: 40, regen: 1 },
     look: { torso: 'armor', head: 'helm_crown', extras: ['cape', 'halo'], c: { main: 0xe0dcd0, trim: 0xffc84a, cape: 0xe8e0c8, glow: 0xffe89a, eyes: 0xffe89a } },
     desc: 'Régénère lentement la vie. +40 PV.',
   },
   {
-    id: 'horned_knight', name: 'Chevalier Cornu', price: 0, rarity: 'epic', def: 36, res: { shadow: 0.35, fire: 0.15 }, bonus: { dmg: 0.12, hp: 30 },
+    id: 'horned_knight', glb: 'obsidian', name: 'Chevalier Cornu', price: 0, rarity: 'epic', def: 36, res: { shadow: 0.35, fire: 0.15 }, bonus: { dmg: 0.12, hp: 30 },
     look: { torso: 'armor', head: 'helm_horned', extras: ['spikes'], bulk: 1.08, c: { main: 0x4a3a6a, trim: 0x2a2040, glow: 0x9a4dff, eyes: 0xff2020 } },
     desc: 'L’armure maudite du Chevalier Cornu. +12 % dégâts.', source: 'boss:horned_knight',
   },
   {
-    id: 'bone_armor', name: 'Armure d’Os', price: 0, rarity: 'epic', def: 28, res: { poison: 0.3, shadow: 0.2 }, bonus: { poise: 0.3, hp: 20 },
+    id: 'bone_armor', glb: 'bone', name: 'Armure d’Os', price: 0, rarity: 'epic', def: 28, res: { poison: 0.3, shadow: 0.2 }, bonus: { poise: 0.3, hp: 20 },
     look: { torso: 'armor', head: 'skull', extras: ['shoulderSkulls', 'hunchSpikes'], c: { main: 0xcfc6a8, trim: 0x5a4a3a, bone: 0xe0d8c0, helmet: 0x5a5046, eyes: 0x39ff9a } },
     desc: 'Taillée dans le Colosse. Stabilité accrue.', source: 'boss:bone_colossus',
   },
   {
-    id: 'green_specter', name: 'Voile de la Dame en Vert', price: 0, rarity: 'epic', def: 20, res: { poison: 0.5, shadow: 0.3 }, bonus: { mana: 40, lifesteal: 0.03 },
+    id: 'green_specter', glb: 'emerald', name: 'Voile de la Dame en Vert', price: 0, rarity: 'epic', def: 20, res: { poison: 0.5, shadow: 0.3 }, bonus: { mana: 40, lifesteal: 0.03 },
     look: { torso: 'tattered', head: 'hood', arms: 'robe', legs: 'robe', extras: ['cape'], c: { cloth: 0x1a4a3a, trim: 0x39ff9a, cape: 0x0a3a2a, eyes: 0x39ff9a } },
     desc: 'Vol de vie 3 %. Les spectres vous tiennent pour l’un des leurs.', source: 'boss:green_lady',
   },
   {
-    id: 'vampire_lord', name: 'Manteau du Seigneur Vampire', price: 0, rarity: 'legendary', def: 26, res: { shadow: 0.3, blood: 0.5 }, bonus: { lifesteal: 0.06, speed: 0.06 },
+    id: 'vampire_lord', glb: 'crimson', name: 'Manteau du Seigneur Vampire', price: 0, rarity: 'legendary', def: 26, res: { shadow: 0.3, blood: 0.5 }, bonus: { lifesteal: 0.06, speed: 0.06 },
     look: { torso: 'leather', head: 'vampire', arms: 'leather', legs: 'leather', extras: ['cape'], c: { leather: 0x1a0a10, cloth: 0x3a0a14, cape: 0x4a0a18, skin: 0xd8d0d8, dark: 0x0a0a0a, eyes: 0xff1030 } },
     desc: 'Vol de vie 6 %, +6 % vitesse.', source: 'boss:draven',
   },
   {
-    id: 'lich_regalia', name: 'Parure du Roi-Liche', price: 0, rarity: 'legendary', def: 24, res: { frost: 0.5, shadow: 0.4 }, bonus: { mana: 60, magic: 0.35 },
+    id: 'lich_regalia', glb: 'frost', name: 'Parure du Roi-Liche', price: 0, rarity: 'legendary', def: 24, res: { frost: 0.5, shadow: 0.4 }, bonus: { mana: 60, magic: 0.35 },
     look: { torso: 'robe', head: 'lich', arms: 'robe', legs: 'robe', extras: ['orbs'], c: { cloth: 0x14141e, trim: 0x5a7a9a, skin: 0x5a7a9a, glow: 0x7ad4ff, eyes: 0xff1a1a } },
     desc: '+35 % magie, +60 mana. Le froid ne vous atteint plus.', source: 'boss:lich_king',
   },
   {
-    id: 'frost_plate', name: 'Armure de l’Hiver Éternel', price: 0, rarity: 'legendary', def: 40, res: { frost: 0.6, fire: -0.1 }, bonus: { hp: 60 },
+    id: 'frost_plate', glb: 'frost', name: 'Armure de l’Hiver Éternel', price: 0, rarity: 'legendary', def: 40, res: { frost: 0.6, fire: -0.1 }, bonus: { hp: 60 },
     look: { torso: 'armor', head: 'helm_winged', extras: ['iceSpikes', 'cape'], c: { main: 0xa8c8e8, trim: 0xe8f4ff, cape: 0x2a4a6a, glow: 0x7ad4ff, eyes: 0x7ad4ff } },
     desc: '+60 PV, immunité quasi totale au givre.', source: 'boss:winter_queen',
   },
   {
-    id: 'infernal_plate', name: 'Armure Infernale', price: 0, rarity: 'legendary', def: 42, res: { fire: 0.6, frost: -0.1 }, bonus: { dmg: 0.15 },
+    id: 'infernal_plate', glb: 'ember', name: 'Armure Infernale', price: 0, rarity: 'legendary', def: 42, res: { fire: 0.6, frost: -0.1 }, bonus: { dmg: 0.15 },
     look: { torso: 'armor', head: 'demon', extras: ['spikes', 'flameHead'], bulk: 1.1, c: { main: 0x2a1410, trim: 0xff6a1a, skin: 0x3a1a14, dark: 0x0a0505, glow: 0xff5a0a, eyes: 0xffb020 } },
     desc: '+15 % dégâts, résiste aux flammes.', source: 'boss:asmoroth',
   },
   {
-    id: 'void_knight', name: 'Chevalier du Néant', price: 0, rarity: 'legendary', def: 48, res: { shadow: 0.5, holy: 0.2, fire: 0.2, frost: 0.2 }, bonus: { dmg: 0.15, magic: 0.15, hp: 50 },
+    id: 'void_knight', glb: 'void', name: 'Chevalier du Néant', price: 0, rarity: 'legendary', def: 48, res: { shadow: 0.5, holy: 0.2, fire: 0.2, frost: 0.2 }, bonus: { dmg: 0.15, magic: 0.15, hp: 50 },
     look: { torso: 'armor', head: 'helm_crown', extras: ['cape', 'halo'], c: { main: 0x14101c, trim: 0x9a3cff, cape: 0x0a0612, glow: 0xc06aff, eyes: 0xc06aff } },
     desc: 'L’armure du Roi Sans Visage. Tout est plus puissant.', source: 'boss:faceless_king',
   },

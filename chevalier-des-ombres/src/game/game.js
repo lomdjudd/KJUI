@@ -17,6 +17,7 @@ import { powerById } from '../data/skills.js';
 import { Input } from '../core/input.js';
 import { audio } from '../core/audio.js';
 import { settings } from '../core/settings.js';
+import { device } from '../core/device.js';
 import { Player } from './player.js';
 import { Enemy } from './enemy.js';
 import { Boss, cloneDefFromBoss } from './boss.js';
@@ -90,6 +91,7 @@ export class Game {
     settings.onChange((k) => {
       if (k === 'shadows' || k === 'preset' || k === '*') this.applyShadowSettings();
       if (k === 'drawDistance' || k === 'preset' || k === '*') this.applyFog();
+      if (k === 'charModel' && this.player.mesh) this.player.rebuild();
       if (k === 'camMode') {
         this.camRig.mode = settings.get('camMode');
         this.player.updateFirstPerson();
@@ -97,6 +99,90 @@ export class Game {
     });
     this.last = performance.now();
     this._loop = this._loop.bind(this);
+    // Perte du contexte graphique (mémoire saturée, appli en arrière-plan) : pause puis reprise
+    canvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      device.lost = true;
+      if (this.state === 'playing' && this.player.alive && !this.activeBoss) this.autosave();
+      if (this.hud) this.hud.toast('Récupération graphique…', true);
+    });
+    canvas.addEventListener('webglcontextrestored', () => {
+      device.lost = false;
+      this.renderer.applySettings();
+      if (settings.get('autoQuality')) this._degrade('mémoire graphique');
+      if (this.hud) this.hud.toast('Affichage rétabli');
+    });
+  }
+
+  // Surveille la fluidité et la mémoire estimée ; baisse la qualité si nécessaire
+  _perfGuard(realDt) {
+    const g = this._guard || (this._guard = { t: 0, frames: 0, low: 0, cooldown: 4 });
+    g.t += realDt;
+    g.frames++;
+    g.cooldown -= realDt;
+    if (g.t < 2) return;
+    const fps = g.frames / g.t;
+    g.t = 0;
+    g.frames = 0;
+    this.memUsageMb = device.estimateUsage(this);
+    if (!settings.get('autoQuality') || g.cooldown > 0) return;
+    if (this.memUsageMb > device.budgetMb) {
+      this._degrade('mémoire');
+      g.cooldown = 6;
+      return;
+    }
+    const target = settings.get('powerSave') ? 30 : settings.get('fpsLimit') || 60;
+    if (fps < Math.min(24, target * 0.7)) {
+      g.low++;
+      if (g.low >= 3 && (!settings.get('dynamicRes') || this.renderer.dynScale <= 0.6)) {
+        this._degrade('fluidité');
+        g.low = 0;
+        g.cooldown = 10;
+      }
+    } else g.low = 0;
+  }
+
+  _degrade(reason) {
+    const s = settings.values;
+    const order = ['ultra', 'high', 'medium', 'low'];
+    const i = order.indexOf(s.preset);
+    if (s.shadows === 'ultra') settings.set('shadows', 'high');
+    else if (!s.dynamicRes) settings.set('dynamicRes', true);
+    else if (s.renderScale > 0.65) settings.set('renderScale', Math.max(0.6, Math.round((s.renderScale - 0.1) * 100) / 100));
+    else if (i >= 0 && i < 3) settings.set('preset', order[i + 1]);
+    else if (s.shadows !== 'off') settings.set('shadows', 'off');
+    else if (s.charTexture > 512) settings.set('charTexture', 512);
+    else return;
+    if (this.hud) this.hud.toast(`Qualité ajustée automatiquement (${reason})`);
+  }
+
+  // Seuls les N ennemis les plus proches (et ceux déjà au combat) sont pleinement actifs
+  _updateActiveSet(realDt) {
+    this._activeT = (this._activeT || 0) - realDt;
+    if (this._activeT > 0) return;
+    this._activeT = 0.5;
+    const max = settings.get('maxEnemies') || 16;
+    const p = this.player.pos;
+    const list = this.enemies.filter((e) => e.alive);
+    list.sort((a, b) => (a.pos.x - p.x) ** 2 + (a.pos.z - p.z) ** 2 - ((b.pos.x - p.x) ** 2 + (b.pos.z - p.z) ** 2));
+    list.forEach((e, i) => {
+      e.sleeping = i >= max && !e.isBoss && e.state !== 'chase' && e.state !== 'attack';
+    });
+  }
+
+  // Poids approximatif des géométries de la scène (pour le budget mémoire)
+  _measureGeometry() {
+    const seen = new Set();
+    let bytes = 0;
+    this.scene.traverse((o) => {
+      const g = o.geometry;
+      if (!g || seen.has(g)) return;
+      seen.add(g);
+      for (const k in g.attributes) bytes += g.attributes[k].array.byteLength;
+      if (g.index) bytes += g.index.array.byteLength;
+      if (o.isInstancedMesh) bytes += o.instanceMatrix.array.byteLength;
+    });
+    this._geoMb = bytes / 1048576;
   }
 
   // Branche l'interface (créée après le jeu)
@@ -197,6 +283,7 @@ export class Game {
     this.state = prev === 'title' ? 'title' : 'playing';
     // Pré-compilation des shaders pour éviter les saccades
     this.renderer.renderer.compile(this.scene, this.camera);
+    this._measureGeometry();
   }
 
   _clearEntities() {
@@ -357,8 +444,9 @@ export class Game {
   _loop(now) {
     requestAnimationFrame(this._loop);
     let elapsed = (now - this.last) / 1000;
-    const limit = settings.get('fpsLimit');
+    const limit = settings.get('powerSave') ? 30 : settings.get('fpsLimit');
     if (limit && elapsed < 1 / limit - 0.002) return;
+    if (device.lost) return;
     this.last = now;
     elapsed = Math.min(elapsed, 0.1);
     this.fps = this.fps * 0.95 + (1 / Math.max(0.001, elapsed)) * 0.05;
@@ -417,6 +505,8 @@ export class Game {
     this.camRig.applyLook(look, realDt);
     if (this.camRig.mode === 'first') this.viewModel.addSway(look.x, look.y);
     // Entités
+    this._perfGuard(realDt);
+    this._updateActiveSet(realDt);
     this.player.update(dt, input);
     for (const e of this.enemies) e.update(dt);
     for (const a of this.allies) a.update(dt);

@@ -6,7 +6,7 @@ const page = await ctx.newPage();
 const logs = [];
 page.on('console', (m) => { if (m.type() === 'error') logs.push('error: ' + m.text()); });
 page.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.message));
-await page.goto(url);
+await page.goto(url + (url.includes('?') ? '&' : '?') + 'autoinstall');
 await page.waitForFunction(() => window.__game && document.querySelector('#menu.show'), null, { timeout: 180000 });
 await page.waitForTimeout(1500);
 await page.screenshot({ path: `${outDir}/mob1_title.png` });

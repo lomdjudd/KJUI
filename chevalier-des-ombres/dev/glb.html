@@ -1,0 +1,16 @@
+<!doctype html><html><body style="margin:0;background:#222"><canvas id="c" width="1200" height="600"></canvas>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+const r = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
+r.outputColorSpace = THREE.SRGBColorSpace;
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x303038);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x404050, 1.5));
+const d = new THREE.DirectionalLight(0xffffff, 2); d.position.set(2, 3, 4); scene.add(d);
+const gltf = await new GLTFLoader().loadAsync('/assets/models/knight.glb');
+const views = [];
+for (let i = 0; i < 2; i++) { const m = i === 0 ? gltf.scene : (await new GLTFLoader().loadAsync('/assets/models/knight.glb')).scene; m.position.x = (i - 0.5) * 1.2; m.rotation.y = i * Math.PI * 0.8; scene.add(m); }
+const cam = new THREE.PerspectiveCamera(35, 2, 0.1, 100); cam.position.set(0, 0.62, 2.3); cam.lookAt(0, 0.55, 0);
+r.render(scene, cam);
+window.done = true;
+</script></body></html>

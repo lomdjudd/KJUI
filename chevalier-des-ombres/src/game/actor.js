@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { Animator } from '../actors/anims.js';
 import { buildWeapon, buildShield } from '../actors/models.js';
+import { attachToSocket } from '../actors/glb.js';
 import { angleDiff, dampAngle } from '../core/utils.js';
 
 let NEXT_ID = 1;
@@ -44,8 +45,9 @@ export class Actor {
     this.built = built;
     this.mesh = built.mesh;
     this.mat = built.mesh.material;
+    this.weaponMat = built.weaponMat || null;
     this.anim = new Animator(built, animOpts);
-    this.mesh.scale.setScalar(this.scale);
+    this.mesh.scale.setScalar(this.scale * (built.normScale || 1));
     this.game.scene.add(this.mesh);
     this.mesh.position.copy(this.pos);
     this.mesh.rotation.y = this.yaw;
@@ -55,10 +57,12 @@ export class Actor {
     if (!this.mesh) return;
     this.game.scene.remove(this.mesh);
     this.mesh.traverse((o) => {
-      if (o.geometry) o.geometry.dispose();
+      if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose();
       if (o.isSkinnedMesh) o.skeleton.dispose();
     });
     if (this.mat && this.mat.dispose) this.mat.dispose();
+    if (this.weaponMat && this.weaponMat !== this.mat) this.weaponMat.dispose();
+    this.weaponMat = null;
     this.mesh = null;
   }
 
@@ -68,9 +72,13 @@ export class Actor {
       this.weaponMesh.geometry.dispose();
     }
     if (!def) return null;
-    const w = buildWeapon(def, material || this.mat);
+    const w = buildWeapon(def, material || this.weaponMat || this.mat);
     w.rotation.x = Math.PI / 2;
-    if (def.type === 'bow') {
+    if (this.built.sockets) {
+      // Personnage texturé : la poignée se place au creux de la main
+      if (def.type === 'bow') attachToSocket(this.built, 'handL', w, [0, -0.07, 0], [0, 0, 0]);
+      else attachToSocket(this.built, 'handR', w, [0, -0.07, 0.01], [Math.PI / 2, 0, 0]);
+    } else if (def.type === 'bow') {
       w.rotation.set(0, 0, 0);
       this.built.bones.handL.add(w);
     } else this.built.bones.handR.add(w);
@@ -85,10 +93,13 @@ export class Actor {
       this.shieldMesh = null;
     }
     if (!def || !def.shape) return null;
-    const s = buildShield(def, material || this.mat);
-    s.position.set(0.04, -0.3, 0);
-    s.rotation.set(Math.PI / 2, 0, 0);
-    this.built.bones.foreL.add(s);
+    const s = buildShield(def, material || this.weaponMat || this.mat);
+    if (this.built.sockets) attachToSocket(this.built, 'foreL', s, [0.07, -0.16, 0], [Math.PI / 2, 0, 0]);
+    else {
+      s.position.set(0.04, -0.3, 0);
+      s.rotation.set(Math.PI / 2, 0, 0);
+      this.built.bones.foreL.add(s);
+    }
     this.shieldMesh = s;
     return s;
   }
@@ -173,6 +184,13 @@ export class Actor {
       }
       u.uFlash.value = f;
       u.uDissolve.value = this.dissolve;
+      // L'arme (matériau séparé sur les modèles texturés) clignote et se dissout avec le porteur
+      const w = this.weaponMat && this.weaponMat !== this.mat && this.weaponMat.userData.u;
+      if (w) {
+        w.uFlash.value = f;
+        w.uFlashColor.value.copy(u.uFlashColor.value);
+        w.uDissolve.value = this.dissolve;
+      }
     }
   }
 }

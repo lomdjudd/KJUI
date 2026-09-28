@@ -5,6 +5,8 @@ import { Hud } from './ui/hud.js';
 import { Menus } from './ui/menus.js';
 import { Touch } from './ui/touch.js';
 import { audio } from './core/audio.js';
+import { installer } from './core/installer.js';
+import { runInstallScreen } from './ui/install.js';
 
 function fail(err) {
   console.error(err);
@@ -16,6 +18,18 @@ function fail(err) {
 
 async function boot() {
   const canvas = document.getElementById('game');
+  const loading = document.getElementById('loading');
+  const tip = loading.querySelector('.tip');
+  // Données du jeu : installation obligatoire au premier lancement (ou après une mise à jour)
+  await installer.init();
+  if (!installer.upToDate) {
+    loading.classList.remove('show');
+    await runInstallScreen();
+    loading.classList.add('show');
+  }
+  if (tip) tip.textContent = 'Chargement des données installées…';
+  await installer.load();
+  if (tip) tip.textContent = 'Forge des ténèbres en cours…';
   const game = new Game(canvas);
   const hud = new Hud(game);
   const menus = new Menus(game);

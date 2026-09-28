@@ -5,7 +5,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 const logs = [];
 page.on('console', (m) => logs.push(m.type() + ': ' + m.text()));
 page.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.message));
-await page.goto(url);
+await page.goto(url + (url.includes('?') ? '&' : '?') + 'autoinstall');
 try { await page.waitForFunction(() => window.__done, null, { timeout: 60000 }); } catch (e) { logs.push('TIMEOUT'); }
 await page.screenshot({ path: out });
 console.log(logs.slice(0, 30).join('\n'));

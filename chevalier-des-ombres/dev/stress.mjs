@@ -5,7 +5,7 @@ const page = await browser.newPage({ viewport: { width: 480, height: 270 } });
 const errs = [];
 page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text().slice(0, 300)); });
 page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
-await page.goto(url);
+await page.goto(url + (url.includes('?') ? '&' : '?') + 'autoinstall');
 await page.waitForFunction(() => window.__game && document.querySelector('#menu.show'), null, { timeout: 120000 });
 await page.evaluate(async () => { const g = window.__game; g.menus.close(); await g.newGame('1', 'knight'); g.menus.close(); });
 const zones = (process.env.ZONES || 'graveyard,forest,swamp,catacombs,castle,frost,inferno,void').split(',');

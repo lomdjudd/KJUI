@@ -5,6 +5,8 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 export default defineConfig({
   base: './',
   plugins: [viteSingleFile()],
+  // Modèles 3D embarqués dans le paquet de données (décodés à l'installation)
+  assetsInclude: ['**/*.glb'],
   build: {
     target: 'es2020',
     chunkSizeWarningLimit: 4000,

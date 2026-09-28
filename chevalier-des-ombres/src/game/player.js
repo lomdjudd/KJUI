@@ -5,6 +5,7 @@ import { Actor } from './actor.js';
 import { buildHumanoid } from '../actors/models.js';
 import { H_CLIPS } from '../actors/anims.js';
 import { createCharMaterial } from '../gfx/materials.js';
+import { createGlbCharacter, hasModel } from '../actors/glb.js';
 import { computeStats, xpForLevel } from './state.js';
 import { settings } from '../core/settings.js';
 import { audio } from '../core/audio.js';
@@ -70,7 +71,13 @@ export class Player extends Actor {
     spec.thick = (look.thick || 1) * 1.12;
     const mat = createCharMaterial({ rim: 0x5a4a8a });
     mat.userData.u.uRim.value.multiplyScalar(0.7);
-    const built = buildHumanoid(spec, mat);
+    // Modèle 3D haute définition (données installées) ou modèle procédural classique
+    let built = null;
+    if (settings.get('charModel') !== 'classic' && hasModel('knight')) {
+      built = createGlbCharacter('knight', st.outfit.glb || 'shadow', { rim: 0x3a2e5a, glow: 1.8, height: 1.92 });
+      if (built) built.weaponMat = mat;
+    }
+    if (!built) built = buildHumanoid(spec, mat);
     const keep = { yaw: this.yaw };
     this.setModel(built, { stance: st.weaponClass.stance, twoHanded: !!st.weaponClass.twoHanded });
     this.yaw = keep.yaw;
@@ -129,8 +136,9 @@ export class Player extends Actor {
   }
 
   headPosition(out) {
-    if (this.built && this.built.bones.head) {
-      this.built.bones.head.getWorldPosition(out);
+    const head = this.built && (this.built.headBone || this.built.bones.head);
+    if (head) {
+      head.getWorldPosition(out);
       out.y += 0.12;
       return out;
     }

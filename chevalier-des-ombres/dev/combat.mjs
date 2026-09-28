@@ -8,7 +8,7 @@ page.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.message + '\n' + (e.stac
 const shot = (n) => page.screenshot({ path: `${outDir}/${n}.png` });
 const wait = (ms) => page.waitForTimeout(ms);
 const ev = async (fn, a) => { try { return await page.evaluate(fn, a); } catch (e) { logs.push('EVAL: ' + e.message); } };
-await page.goto(url);
+await page.goto(url + (url.includes('?') ? '&' : '?') + 'autoinstall');
 await page.waitForFunction(() => window.__game && document.querySelector('#menu.show'), null, { timeout: 120000 });
 await ev(async () => { const g = window.__game; g.menus.close(); await g.newGame('1', 'knight'); g.menus.close(); g.profile.zonesUnlocked.push('graveyard'); await g.travel('graveyard'); });
 await page.waitForFunction(() => window.__game.state === 'playing', null, { timeout: 120000 });

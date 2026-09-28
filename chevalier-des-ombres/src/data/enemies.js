@@ -161,7 +161,7 @@ export const ENEMIES = [
   },
   // ===================== CATACOMBES POURPRES (palier 4) =====================
   {
-    id: 'skeleton_knight', name: 'Chevalier squelette', rig: 'humanoid', kind: 'bone', undead: true, hpMul: 1.7, dmgMul: 1.2, speed: 3, poise: 45, ai: 'tank', blocks: 0.5,
+    id: 'skeleton_knight', glb: { model: 'knight', variant: 'bone' }, name: 'Chevalier squelette', rig: 'humanoid', kind: 'bone', undead: true, hpMul: 1.7, dmgMul: 1.2, speed: 3, poise: 45, ai: 'tank', blocks: 0.5,
     model: { torso: 'armor', head: 'skull', arms: 'bone', legs: 'bone', c: { main: 0x4a4a52, trim: 0x6a5a3a, helmet: 0x4a4a52, eyes: 0xb04dff } }, weapon: { type: 'sword', look: { blade: 0x8a8a90 } }, shield: { shape: 'kite', look: { face: 0x3a2a4a, rim: 0x6a5a3a, emblem: 0x5a1a2a } }, stance: '1h',
     attacks: [A.slash, A.overhead, { anim: 'bashL', type: 'melee', range: 2, arc: 1, dmg: 0.8, cd: 4, knock: 7 }], resist: { poison: 0.8 }, weak: ['holy'],
     desc: 'Bloque vos coups de face. Contournez-le ou brisez sa garde.',
@@ -185,7 +185,7 @@ export const ENEMIES = [
     desc: 'Tout coffre n’est pas un trésor. Celui-ci a des dents.',
   },
   {
-    id: 'living_armor', name: 'Armure vivante', rig: 'humanoid', kind: 'metal', hpMul: 2, dmgMul: 1.3, speed: 2.6, poise: 60, ai: 'tank',
+    id: 'living_armor', glb: { model: 'knight', variant: 'ash' }, name: 'Armure vivante', rig: 'humanoid', kind: 'metal', hpMul: 2, dmgMul: 1.3, speed: 2.6, poise: 60, ai: 'tank',
     model: { torso: 'armor', head: 'helm_great', c: { main: 0x5a5a6a, trim: 0x3a3a44, eyes: 0x9a4dff } }, weapon: { type: 'greatsword', look: { blade: 0x9a9aa8 } }, stance: '2h', twoHanded: true,
     attacks: [A.sweep, A.slam, { ...A.overhead, dmg: 1.6 }], resist: { physical: 0.3, poison: 1, shadow: 0.3 }, weak: ['lightning'],
     desc: 'Vide à l’intérieur. Seule la foudre l’ébranle vraiment.',
@@ -198,13 +198,13 @@ export const ENEMIES = [
   },
   // ===================== CHÂTEAU DE NOCTHAR (palier 5) =====================
   {
-    id: 'fallen_knight', name: 'Chevalier déchu', rig: 'humanoid', kind: 'metal', hpMul: 1.8, dmgMul: 1.2, speed: 3.4, poise: 45, ai: 'melee', parries: 0.25,
+    id: 'fallen_knight', glb: { model: 'knight', variant: 'obsidian' }, name: 'Chevalier déchu', rig: 'humanoid', kind: 'metal', hpMul: 1.8, dmgMul: 1.2, speed: 3.4, poise: 45, ai: 'melee', parries: 0.25,
     model: { torso: 'tabard', head: 'helm_bascinet', extras: ['cape'], c: { main: 0x3a3a44, trim: 0x6a5a3a, cloth: 0x2a2a1a, cape: 0x1a1a14, eyes: 0xff3030 } }, weapon: { type: 'sword', look: { blade: 0x6a6a74 } }, shield: { shape: 'heater', look: { face: 0x2a2a30, rim: 0x5a4a2a } }, stance: '1h',
     attacks: [A.slash, A.slash2, A.overhead, A.thrust], weak: ['holy'],
     desc: 'Autrefois frère d’armes. Il pare parfois vos attaques.',
   },
   {
-    id: 'horned_knight_minion', name: 'Chevalier cornu', rig: 'humanoid', kind: 'metal', hpMul: 2.2, dmgMul: 1.4, speed: 3.2, poise: 55, ai: 'tank',
+    id: 'horned_knight_minion', glb: { model: 'knight', variant: 'crimson' }, name: 'Chevalier cornu', rig: 'humanoid', kind: 'metal', hpMul: 2.2, dmgMul: 1.4, speed: 3.2, poise: 55, ai: 'tank',
     model: { torso: 'armor', head: 'helm_horned', bulk: 1.1, c: { main: 0x4a3a6a, trim: 0x2a2040, eyes: 0xff2020, glow: 0x9a4dff } }, weapon: { type: 'greataxe', look: { blade: 0x5a4a7a, glow: 0x9a4dff } }, stance: '2h', twoHanded: true,
     attacks: [A.sweep, A.slam, { anim: 'overhead', type: 'melee', range: 2.8, arc: 0.8, dmg: 1.7, cd: 3, element: 'shadow' }], resist: { shadow: 0.5 }, weak: ['holy'],
     desc: 'La garde personnelle du Roi-Liche, aux yeux de braise.',
@@ -253,7 +253,7 @@ export const ENEMIES = [
     desc: 'Il lance des blocs de glace gros comme un homme.',
   },
   {
-    id: 'frozen_revenant', name: 'Revenant gelé', rig: 'humanoid', kind: 'bone', undead: true, hpMul: 1.5, dmgMul: 1.2, speed: 3.2, poise: 35, ai: 'melee', revives: 1,
+    id: 'frozen_revenant', glb: { model: 'knight', variant: 'frost' }, name: 'Revenant gelé', rig: 'humanoid', kind: 'bone', undead: true, hpMul: 1.5, dmgMul: 1.2, speed: 3.2, poise: 35, ai: 'melee', revives: 1,
     model: { torso: 'armor', head: 'skull', arms: 'bone', legs: 'bone', extras: ['iceSpikes'], c: { main: 0x6a8aaa, trim: 0xc8e8ff, glow: 0x7ad4ff, helmet: 0x8aaaca, eyes: 0x7ad4ff } }, weapon: { type: 'greataxe', look: { blade: 0xa8d8ff, glow: 0x7ad4ff } }, stance: '2h', twoHanded: true,
     attacks: [A.sweep, { ...A.overhead, element: 'frost' }], resist: { frost: 0.9, poison: 1 }, weak: ['fire', 'holy'],
     desc: 'Se relève une fois après avoir été abattu. Brûlez ses restes.',
@@ -303,7 +303,7 @@ export const ENEMIES = [
     desc: 'Enraciné dans le sol. Ne restez pas à sa portée.',
   },
   {
-    id: 'void_knight', name: 'Chevalier du Néant', rig: 'humanoid', kind: 'metal', hpMul: 2.2, dmgMul: 1.4, speed: 3.8, poise: 55, ai: 'melee', parries: 0.3,
+    id: 'void_knight', glb: { model: 'knight', variant: 'void' }, name: 'Chevalier du Néant', rig: 'humanoid', kind: 'metal', hpMul: 2.2, dmgMul: 1.4, speed: 3.8, poise: 55, ai: 'melee', parries: 0.3,
     model: { torso: 'armor', head: 'helm_crown', extras: ['cape'], c: { main: 0x14101c, trim: 0x9a3cff, cape: 0x0a0612, glow: 0xc06aff, eyes: 0xc06aff } }, weapon: { type: 'greatsword', look: { blade: 0x1a1022, glow: 0xc06aff } }, stance: '2h', twoHanded: true,
     attacks: [A.sweep, { ...A.slam, element: 'shadow' }, { anim: 'thrust', type: 'melee', range: 3.2, arc: 0.6, dmg: 1.3, cd: 2.5 }], resist: { shadow: 0.7 }, weak: ['holy'],
     desc: 'Des chevaliers qui ont juré fidélité au vide.',

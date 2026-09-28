@@ -4,6 +4,8 @@
 import { settings, SETTINGS_SCHEMA, DIFFICULTY } from '../core/settings.js';
 import { audio } from '../core/audio.js';
 import { listGamepads } from '../core/input.js';
+import { device, TIER_LABEL } from '../core/device.js';
+import { installer } from '../core/installer.js';
 import { native } from '../core/storage.js';
 import { el, escapeHtml, formatTime, formatNumber, clamp } from '../core/utils.js';
 import { SLOTS, slotInfo, slotLabel, loadProfile, deleteSlot, mostRecentSlot, exportCode, importCode, saveProfile } from '../game/save.js';
@@ -150,10 +152,47 @@ export class Menus {
     this._show('settings', `<div class="m-center frame" style="width:min(820px,94vw)"><h2 class="m-title">Paramètres</h2>${this._settingsHtml()}<button class="btn" data-act="back">Retour</button></div>`);
   }
 
+  // Onglet « Appareil & données » : profil, budget mémoire, données installées
+  _deviceHtml() {
+    const p = device.profile || {};
+    const m = installer.meta;
+    const used = this.game.memUsageMb || device.estimateUsage(this.game);
+    const budget = device.budgetMb;
+    const ratio = Math.min(1, used / Math.max(1, budget));
+    const line = (a, b) => `<div class="statline"><span>${a}</span><b>${b}</b></div>`;
+    const date = m ? new Date(m.date).toLocaleString('fr-FR') : '—';
+    return `<div class="dev-panel">
+      <h3 class="cinzel" style="color:var(--gold)">Profil de l’appareil</h3>
+      ${line('Mémoire vive', `${String(p.ramGb ?? '?').replace('.', ',')} Go (${escapeHtml(p.ramSource || '')})`)}
+      ${line('Processeur graphique', escapeHtml((p.gpu || 'inconnu').slice(0, 60)))}
+      ${line('Cœurs du processeur', p.cores ?? '?')}
+      ${line('Score graphique / calcul', `${p.gpuScore != null ? p.gpuScore.toLocaleString('fr-FR') : 'non mesuré'} / ${p.cpuScore ?? '?'}`)}
+      ${line('Palier recommandé', `<span style="color:var(--gold-bright)">${TIER_LABEL[device.tier]}</span>`)}
+      <div class="statline"><span>Mémoire graphique estimée</span><b>${used} / ${budget} Mo</b></div>
+      <div class="mem-bar"><div style="width:${(ratio * 100).toFixed(0)}%;background:${ratio > 0.9 ? '#ff5a4a' : ratio > 0.7 ? '#ffc84a' : '#7affb0'}"></div></div>
+      <p class="muted" style="font-size:13px">Avec la qualité automatique, le jeu baisse lui-même les réglages si cette mémoire approche du budget ou si les images par seconde chutent, pour éviter les ralentissements et les plantages.</p>
+      <button class="btn small" data-act="devApply">Appliquer les réglages recommandés</button>
+      <button class="btn small" data-act="devAnalyze">Relancer l’analyse</button>
+      <h3 class="cinzel" style="color:var(--gold);margin-top:14px">Données installées</h3>
+      ${m ? `${line('Version des données', m.version)}${line('Installées le', date)}${line('Taille', (m.bytes / 1048576).toFixed(1).replace('.', ',') + ' Mo')}${line('Textures des personnages', m.charSize + ' px')}${line('Textures du monde', m.worldSize + ' px')}${line('Qualité audio installée', { low: 'Légère', medium: 'Normale', high: 'Haute' }[m.audioQuality] || m.audioQuality)}${line('Stockage permanent', m.persistent ? 'oui' : 'non (préparées à chaque lancement)')}` : '<p class="muted">Aucune donnée installée.</p>'}
+      <p class="muted" style="font-size:13px" id="dev-storage"></p>
+      <button class="btn small" data-act="dataReinstall">Réinstaller les données</button>
+      <button class="btn small danger" data-act="dataDelete">Supprimer les données</button>
+    </div>`;
+  }
+
   _settingsHtml() {
     if (!this.setTab) this.setTab = 'graphics';
     const cat = SETTINGS_SCHEMA.find((c) => c.id === this.setTab);
     const v = settings.values;
+    if (cat.custom) {
+      device.storageEstimate().then((e) => {
+        const el2 = this.root.querySelector('#dev-storage');
+        if (el2 && e) el2.textContent = `Stockage utilisé par le navigateur : ${e.usageMb} Mo sur ${e.quotaMb} Mo disponibles.`;
+      });
+      return `<div class="set-tabs">${SETTINGS_SCHEMA.map((c) => `<button class="btn small ${c.id === this.setTab ? 'on' : ''}" data-act="setTab" data-v="${c.id}">${c.icon} ${c.label}</button>`).join('')}</div>
+      <div id="set-rows">${this._deviceHtml()}</div>`;
+    }
     const rows = cat.items
       .map((it) => {
         let ctl = '';
@@ -633,6 +672,27 @@ export class Menus {
       case 'setReset':
         settings.reset(this.setTab);
         return this._refreshSettings();
+      case 'devApply':
+        settings.applyRecommended();
+        g.hud.toast(`Réglages du palier ${TIER_LABEL[device.tier]} appliqués`);
+        return this._refreshSettings();
+      case 'devAnalyze':
+        device.analyze(g.renderer.renderer);
+        if (settings.get('autoQuality')) settings.applyRecommended();
+        g.hud.toast(`Analyse terminée : palier ${TIER_LABEL[device.tier]}`);
+        return this._refreshSettings();
+      case 'dataReinstall':
+        return this.confirm('Réinstaller les données du jeu ? Vos sauvegardes sont conservées. Le jeu va redémarrer.', async () => {
+          if (g.state === 'playing') g.autosave();
+          await installer.uninstall();
+          location.reload();
+        });
+      case 'dataDelete':
+        return this.confirm('Supprimer les données installées ? Vos sauvegardes sont conservées, mais l’installation sera redemandée au prochain lancement.', async () => {
+          if (g.state === 'playing') g.autosave();
+          await installer.uninstall();
+          location.reload();
+        });
       case 'ptab':
         if (v === 'resume') return this.close();
         this.pauseTab = v;

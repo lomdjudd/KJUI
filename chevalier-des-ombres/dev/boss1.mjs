@@ -3,7 +3,7 @@ const [,, url, zone] = process.argv;
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 480, height: 270 } });
 page.on('pageerror', (e) => console.log('PAGEERROR ' + e.message));
-await page.goto(url);
+await page.goto(url + (url.includes('?') ? '&' : '?') + 'autoinstall');
 await page.waitForFunction(() => window.__game && document.querySelector('#menu.show'), null, { timeout: 120000 });
 const r = await page.evaluate(async (zone) => {
   const g = window.__game; const p = g.player; g.menus.close(); await g.newGame('1', 'knight'); g.menus.close();

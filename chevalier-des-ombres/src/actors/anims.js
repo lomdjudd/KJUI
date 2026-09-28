@@ -364,6 +364,7 @@ export class Animator {
     this.rootOffset = 0;
     this.extraYaw = 0;
     this.lidOpen = 0;
+    this.retarget = built.retarget || null;
     for (const name in this.b) this.cur[name] = [0, 0, 0];
   }
 
@@ -412,7 +413,9 @@ export class Animator {
     if (this.hitT > 0) this.hitT -= dt;
     switch (this.rig) {
       case 'humanoid':
-        return this._humanoid(dt, s);
+        this._humanoid(dt, s);
+        if (this.retarget) this.retarget.apply();
+        return;
       case 'quad':
         return this._quad(dt, s);
       case 'spider':

@@ -356,3 +356,24 @@ body.touch #zone-name { display: none; }
 @media (max-width: 960px) {
   body.touch #compass { display: none; }
 }
+
+/* ----- Installation des données ----- */
+#install { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; overflow-y: auto; padding: calc(16px + var(--safe-t)) 16px calc(16px + var(--safe-b));
+  background: radial-gradient(ellipse at 50% 30%, #1e0f33 0%, #07040c 70%); }
+#install .inst-box { width: min(640px, 100%); padding: 22px 26px; margin: auto; }
+#install .logo { font-size: 38px; margin-bottom: 4px; }
+#install p { line-height: 1.45; }
+#install .inst-dev { margin: 10px 0; padding: 8px 12px; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--gold-dim); }
+#install .statline b { font-weight: normal; text-align: right; }
+#install .inst-step { font-family: 'Cinzel', serif; color: var(--gold-bright); letter-spacing: 1px; margin-top: 10px; }
+#install .inst-bar { height: 14px; margin: 8px 0 4px; border: 1px solid var(--gold-dim); background: rgba(0, 0, 0, 0.5); overflow: hidden; }
+#install #inst-fill { height: 100%; width: 0; background: linear-gradient(90deg, #5a2a9a, #b07aff, #f0d48a); box-shadow: 0 0 12px rgba(176, 122, 255, 0.8); transition: width 0.15s linear; }
+#install .inst-detail { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--text-dim); min-height: 18px; }
+#install .warn { color: #ff9a7a; }
+#install .ok { color: #9affc8; }
+#install .btn { margin-top: 12px; }
+@media (max-height: 520px) { #install .logo { font-size: 26px; } #install .inst-box { padding: 12px 16px; } #install p { font-size: 14px; margin: 6px 0; } }
+
+.dev-panel .statline b { font-weight: normal; text-align: right; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mem-bar { height: 8px; border: 1px solid var(--gold-dim); background: rgba(0, 0, 0, 0.5); margin: 2px 0 8px; }
+.mem-bar div { height: 100%; }
