@@ -893,17 +893,18 @@ export class Flight {
     this.hemi.groundColor.copy(light.ground).addScalar(0.015);
     this.hemi.intensity = mode2d ? 1.1 : 0.9;
     this.hemi.position.set(up[0], up[1], 0);
+    // horizon brumeux : la diffusion multiple blanchit le ciel bas (reflets et brouillard)
+    const hz = light.horizon;
+    const hzLum = hz.r * 0.2126 + hz.g * 0.7152 + hz.b * 0.0722;
+    const haze = new THREE.Color(0.74, 0.82, 0.94).multiplyScalar(hzLum * 3.2 + 0.004).lerp(hz, 0.2);
     // réflexions
-    const envTex = this.envLight.update(dt, { skyTop: light.skyTop.clone().lerp(new THREE.Color(light.skyTop.r + light.skyTop.g + light.skyTop.b).multiplyScalar(0.34), 0.4), horizon: light.horizon, ground: light.ground, sunDir, sunColor: light.sunColor.clone().multiplyScalar(light.sunI * 0.4), up: new THREE.Vector3(up[0], up[1], 0) });
+    const envTex = this.envLight.update(dt, { skyTop: light.skyTop.clone().lerp(new THREE.Color(light.skyTop.r + light.skyTop.g + light.skyTop.b).multiplyScalar(0.34), 0.4), horizon: haze, ground: light.ground, sunDir, sunColor: light.sunColor.clone().multiplyScalar(light.sunI * 0.4), up: new THREE.Vector3(up[0], up[1], 0) });
     this.scene.environment = envTex;
     this.scene.environmentIntensity = 0.55;
     // brouillard dans l'atmosphère
     if (!mode2d && b.atmosphere && v.altitude < b.atmosphere.height) {
       const dens = b.density(Math.max(0, v.altitude)) / b.atmosphere.rho0;
-      // brume : horizon désaturé et éclairci (la diffusion multiple blanchit le lointain)
-      const hz = light.horizon;
-      const lum = hz.r * 0.2126 + hz.g * 0.7152 + hz.b * 0.0722;
-      this.fog.color.setRGB(0.74, 0.82, 0.94).multiplyScalar(lum * 3.2 + 0.004).lerp(hz, 0.2);
+      this.fog.color.copy(haze);
       this.fog.density = (3.5e-5 * Math.sqrt(Math.max(0, dens))) / Math.max(0.3, b.atmosphere.H / 5600) * (b.atmosphere.density || 1);
       this.scene.fog = this.fog;
     } else this.scene.fog = null;
@@ -1009,7 +1010,7 @@ export class Flight {
     if (c.mode === 'ground' && this.liftoffT != null && v.body === this.sys.home && v.altitude < 40000) {
       // caméra au sol, téléobjectif qui suit la fusée
       if (!this.groundCam) {
-        const off = east.clone().multiplyScalar(-420).add(north.clone().multiplyScalar(-650)).add(upV.clone().multiplyScalar(-v.terrainAltitude(this.sim.ut) + 3));
+        const off = east.clone().multiplyScalar(-420).add(north.clone().multiplyScalar(-650)).add(upV.clone().multiplyScalar(-v.terrainAltitude(this.sim.ut) + 8));
         this.groundCam = { x: v.x + off.x, y: v.y + off.y, z: off.z, bodyRot: v.body.rotationAt(this.sim.ut) };
       }
       const g = this.groundCam;
@@ -1090,6 +1091,13 @@ export class Flight {
       const dusk = Math.exp(-(elev * elev) / 0.02) * thick;
       out.horizon.copy(sky).multiplyScalar(0.75 * thick * day).lerp(new THREE.Color(1.0, 0.45, 0.15), dusk * 0.6);
       out.ground.lerp(planetCol.clone().multiplyScalar(0.3 * day), thick);
+      // près du sol : lumière renvoyée par le terrain local (forêt, désert…) et non la teinte moyenne de l'astre
+      const nearGround = clamp(1 - v.altitude / 25000, 0, 1);
+      if (nearGround > 0 && b.hasSurface && this.app.tex) {
+        const lonV = Math.atan2(v.y, v.x) - b.rotationAt(this.sim ? this.sim.ut : 0);
+        const c = this.app.tex.sampleColor(b.id, lonV, 0);
+        if (c) out.ground.lerp(new THREE.Color(c[0], c[1], c[2]).convertSRGBToLinear().multiplyScalar(0.35 * day), nearGround);
+      }
       // transmittance vers le Soleil (couchers de soleil orangés)
       const airmass = 1 / Math.max(0.04, elev + 0.06);
       const tau = 0.12 * dens * Math.min(airmass, 38) * (a.density || 1);

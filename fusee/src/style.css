@@ -265,7 +265,7 @@ body.is-touch .ap-panel { bottom: calc(110px + var(--safe-b)); }
 .toggle-chip kbd { font-family: var(--f-mono); font-size: 10px; color: var(--dim); margin-left: 4px; }
 
 /* Carte */
-#flight.map-on .hud-tl, #flight.map-on .hud-left, #flight.map-on .hud-right, #flight.map-on .hud-mini, #flight.map-on .sas-row, #flight.map-on .hud-tr, #flight.map-on .touch { display: none; }
+#flight.map-on .hud-tl, #flight.map-on .hud-left, #flight.map-on .hud-right, #flight.map-on .hud-mini, #flight.map-on .sas-row, #flight.map-on .hud-tr, #flight.map-on .touch, #flight.map-on .hud-bottom { display: none; }
 #flight.map-on .hud-top { left: auto; right: calc(10px + var(--safe-r)); transform: none; }
 .map-info { position: absolute; left: calc(10px + var(--safe-l)); top: calc(62px + var(--safe-t)); width: 250px; padding: 10px 12px; pointer-events: auto; display: flex; flex-direction: column; gap: 6px; }
 .map-info h4 { margin: 0; font-family: var(--f-display); letter-spacing: 0.08em; font-size: 16px; text-transform: uppercase; }
@@ -341,6 +341,14 @@ body.is-touch .touch { display: flex; }
 .t-rot button.act { border-color: var(--amber); color: var(--amber); }
 body.is-touch .hud-mini { bottom: calc(96px + var(--safe-b)); }
 
+@media (max-width: 1150px) {
+  .tape { width: 172px; }
+  .navball-wrap { width: 172px; height: 172px; }
+  .sas-row { bottom: calc(192px + var(--safe-b)); }
+  .hud-mini { max-width: 214px; }
+  .tape .lf { display: none; }
+  .tape .ls { display: inline; }
+}
 @media (max-width: 1100px) {
   .b-palette { width: 270px; }
   .b-insp { width: 250px; }

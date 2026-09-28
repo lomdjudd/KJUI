@@ -46,7 +46,7 @@ function mats() {
   });
   M.steelRed = new THREE.MeshStandardMaterial({ color: '#b8452c', roughness: 0.6, metalness: 0.45 });
   M.steelGrey = new THREE.MeshStandardMaterial({ color: '#6d737b', roughness: 0.5, metalness: 0.6 });
-  M.white = new THREE.MeshStandardMaterial({ color: '#e8e8e2', roughness: 0.5, metalness: 0.1 });
+  M.white = new THREE.MeshStandardMaterial({ color: '#dedbd3', roughness: 0.82, metalness: 0, envMapIntensity: 0.5 });
   M.dark = new THREE.MeshStandardMaterial({ color: '#222428', roughness: 0.7, metalness: 0.3 });
   M.glass = new THREE.MeshStandardMaterial({ color: '#10141c', roughness: 0.1, metalness: 0.5, emissive: new THREE.Color('#ffd89a'), emissiveIntensity: 0 });
   M.lamp = new THREE.MeshStandardMaterial({ color: '#fff', emissive: new THREE.Color('#fff1d6'), emissiveIntensity: 0 });
@@ -66,7 +66,8 @@ function mats() {
   M.asphalt.map.wrapS = M.asphalt.map.wrapT = THREE.RepeatWrapping;
   M.paintLine = new THREE.MeshStandardMaterial({ color: '#e9e6d8', roughness: 0.8 });
   M.trunk = new THREE.MeshStandardMaterial({ color: '#4a3526', roughness: 0.95 });
-  M.leaves = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9, flatShading: true });
+  M.leaves = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9, flatShading: true, envMapIntensity: 0.35 });
+  M.trunk.envMapIntensity = 0.35;
   M.lz = new THREE.MeshStandardMaterial({
     map: canvasTex(1024, 1024, (ctx, w, h) => {
       ctx.fillStyle = '#6f6e6a';
@@ -192,6 +193,9 @@ export class LaunchSite {
       const r = 150 + Math.pow(rnd(), 0.7) * 1150;
       const x = Math.cos(a) * r, z = Math.sin(a) * r;
       if (blocked(x, z)) continue;
+      // couloir dégagé vers la caméra au sol du décollage (420 m à l'ouest, 650 m au sud)
+      const tc = Math.max(0, Math.min(1, (x * 420 - z * 650) / (420 * 420 + 650 * 650)));
+      if (Math.hypot(x - 420 * tc, z + 650 * tc) < 45 + 30 * tc) continue;
       // lisière de forêt : clairières et bosquets denses
       const clump = Math.sin(x * 0.009) * Math.cos(z * 0.011) + 0.6 * Math.sin((x - z) * 0.0045) + (r - 260) / 300;
       if (clump < 0 && rnd() < 0.92) continue;
