@@ -11,15 +11,18 @@ const _s = new THREE.Vector3();
 const _c = new THREE.Color();
 
 // ---------- Primitives ----------
+// Tessellation minimale (arrondis plus doux ; réduite en qualité d'effets « sobre »)
+export const DETAIL = { seg: 1 };
+const seg = (n) => Math.max(3, Math.round(n * DETAIL.seg));
 export const G = {
   box: (w, h, d) => new THREE.BoxGeometry(w, h, d),
-  cyl: (rt, rb, h, seg = 8, open = false) => new THREE.CylinderGeometry(rt, rb, h, seg, 1, open),
-  sphere: (r, ws = 10, hs = 8) => new THREE.SphereGeometry(r, ws, hs),
+  cyl: (rt, rb, h, s = 8, open = false) => new THREE.CylinderGeometry(rt, rb, h, seg(Math.max(s, s >= 6 ? 10 : s)), 1, open),
+  sphere: (r, ws = 10, hs = 8) => new THREE.SphereGeometry(r, seg(Math.max(ws, ws >= 8 ? 14 : ws)), seg(Math.max(hs, hs >= 6 ? 10 : hs))),
   sphereP: (r, ws, hs, ps, pl, ts, tl) => new THREE.SphereGeometry(r, ws, hs, ps, pl, ts, tl),
   cylP: (rt, rb, h, seg, ts, tl) => new THREE.CylinderGeometry(rt, rb, h, seg, 1, false, ts, tl),
   hemi: (r, ws = 10, hs = 5) => new THREE.SphereGeometry(r, ws, hs, 0, Math.PI * 2, 0, Math.PI / 2),
   cone: (r, h, seg = 8) => new THREE.ConeGeometry(r, h, seg),
-  capsule: (r, len, seg = 6) => new THREE.CapsuleGeometry(r, len, 3, seg),
+  capsule: (r, len, s = 6) => new THREE.CapsuleGeometry(r, len, 4, seg(Math.max(s, 10))),
   torus: (r, t, rs = 6, ts = 12, arc = Math.PI * 2) => new THREE.TorusGeometry(r, t, rs, ts, arc),
   ico: (r, d = 0) => new THREE.IcosahedronGeometry(r, d),
   octa: (r) => new THREE.OctahedronGeometry(r),
@@ -59,18 +62,20 @@ function paint(geo, color, mat, boneIndex) {
   if (!geo.attributes.uv) geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 2), 2));
   const n = geo.attributes.position.count;
   const col = new Float32Array(n * 3);
-  const am = new Float32Array(n * 3);
+  const am = new Float32Array(n * 4);
   _c.set(color);
+  const kind = mat[3] ?? (mat[2] > 0.3 ? 0 : mat[1] > 0.5 ? 1 : 0);
   for (let i = 0; i < n; i++) {
     col[i * 3] = _c.r;
     col[i * 3 + 1] = _c.g;
     col[i * 3 + 2] = _c.b;
-    am[i * 3] = mat[0];
-    am[i * 3 + 1] = mat[1];
-    am[i * 3 + 2] = mat[2];
+    am[i * 4] = mat[0];
+    am[i * 4 + 1] = mat[1];
+    am[i * 4 + 2] = mat[2];
+    am[i * 4 + 3] = kind;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  geo.setAttribute('aMat', new THREE.BufferAttribute(am, 3));
+  geo.setAttribute('aMat', new THREE.BufferAttribute(am, 4));
   if (boneIndex !== undefined) {
     const si = new Uint16Array(n * 4);
     const sw = new Float32Array(n * 4);
@@ -85,20 +90,24 @@ function paint(geo, color, mat, boneIndex) {
 }
 
 // Préréglages de surfaces : [rugosité, métal, émission]
+// 4e valeur : type de surface (motif procédural du shader) — 0 aucun, 1 métal, 2 tissu,
+// 3 cuir, 4 peau, 5 os, 6 pierre, 7 bois, 8 cristal, 9 fourrure, 10 écailles
 export const SURF = {
-  metal: [0.32, 0.78, 0],
-  darkMetal: [0.45, 0.7, 0],
-  gold: [0.3, 1, 0],
-  cloth: [0.95, 0, 0],
-  leather: [0.75, 0.05, 0],
-  skin: [0.7, 0, 0],
-  bone: [0.6, 0, 0],
-  stone: [0.9, 0.05, 0],
-  wood: [0.85, 0, 0],
-  glow: [1, 0, 1],
-  glowSoft: [1, 0, 0.45],
-  wet: [0.25, 0.1, 0],
-  crystal: [0.15, 0.3, 0.5],
+  metal: [0.32, 0.78, 0, 1],
+  darkMetal: [0.45, 0.7, 0, 1],
+  gold: [0.3, 1, 0, 1],
+  cloth: [0.95, 0, 0, 2],
+  leather: [0.75, 0.05, 0, 3],
+  skin: [0.7, 0, 0, 4],
+  bone: [0.6, 0, 0, 5],
+  stone: [0.9, 0.05, 0, 6],
+  wood: [0.85, 0, 0, 7],
+  glow: [1, 0, 1, 0],
+  glowSoft: [1, 0, 0.45, 0],
+  wet: [0.25, 0.1, 0, 4],
+  crystal: [0.15, 0.3, 0.5, 8],
+  fur: [0.88, 0, 0, 9],
+  scales: [0.42, 0.12, 0, 10],
 };
 
 export class RigBuilder {

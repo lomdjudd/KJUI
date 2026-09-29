@@ -2,7 +2,7 @@
 
 Action-RPG **dark fantasy en 3D**, dans l'esprit des jeux Xbox 360 : un chevalier maudit, des cimetières noyés de brume verte, des châteaux gothiques sous un ciel violet étoilé, des spectres, des liches et des chevaliers cornus. Jouable **à la troisième ou à la première personne**, sur **Android (APK)**, sur PC dans le navigateur ou à la manette.
 
-Tous les graphismes (modèles, textures, ciel, effets) et tous les sons (effets et musique) sont **générés par le code** : aucun fichier externe, le jeu tient dans un seul fichier HTML d'environ 1,2 Mo et fonctionne hors ligne.
+Le chevalier est un **modèle 3D HD** (fichier GLB fourni, animé par le jeu) ; tout le reste — monstres, décors, textures, ciel, effets, bruitages et musique — est **généré par le code**. Le jeu tient dans un seul fichier HTML d'environ 2,6 Mo et fonctionne hors ligne.
 
 ## 🌐 Jouer en ligne (sans rien installer)
 
@@ -14,7 +14,7 @@ Le jeu est publié sous forme de page web : **https://claude.ai/artifact/3aMX1wq
 2. Ouvre-le, puis autorise **« Installer des applis inconnues »** si Android le demande.
 3. Lance **Chevalier des Ombres** : le jeu s'ouvre en plein écran, en mode paysage.
 
-L'APK fait environ 480 Ko, ne demande aucune permission réseau (seulement la vibration) et enregistre les sauvegardes dans le stockage privé de l'application. Il faut un téléphone compatible WebGL 2 (quasiment tous les appareils depuis 2016).
+L'APK fait environ 1,3 Mo, ne demande aucune permission réseau (seulement la vibration) et enregistre les sauvegardes dans le stockage privé de l'application. Il faut un téléphone compatible WebGL 2 (quasiment tous les appareils depuis 2016).
 
 ## 🖥️ Jouer sur PC
 
@@ -27,10 +27,12 @@ Ouvre [`dist/index.html`](dist/index.html) dans Chrome, Edge ou Firefox (double-
 | Se déplacer / caméra | ZQSD ou WASD / souris | stick gauche / stick droit | joystick à gauche / glisser à droite |
 | Sprint | Maj | L3 | joystick poussé à fond |
 | Attaque légère (combo) | clic gauche ou J | X | bouton ⚔ ou toucher rapide à droite |
-| Attaque lourde | K | Y ou RT | ⚒ |
-| Roulade (invulnérable) | Alt ou C | B | ↻ |
-| Garde / parade (au bon moment) | clic droit ou Q | LB ou LT | ⛨ (maintenu) |
-| Saut | Espace | A | ⇧ |
+| Attaque lourde (maintenir = charger, 3 niveaux) | K | Y ou RT | ⚒ |
+| Esquive (roulade, pas de côté, glissade, ruée aérienne) | Alt ou C | B | ↻ |
+| Garde / parade (au bon moment) | clic droit ou Q | LB | ⛨ (maintenu) |
+| Saut (deux fois = double saut) | Espace | A | ⇧ |
+| Art d'arme | G | LT | ✧ |
+| Mode furtif | Ctrl | L3 à l'arrêt | ◐ |
 | Pouvoirs | 1 à 4 | RB (croix ←/→ pour changer) | ✦ et ⟳ |
 | Verrouiller une cible | T ou clic molette | R3 | ◎ |
 | Fiole de vie / de mana | R / X | croix ↑ / ↓ | ⚱ |
@@ -40,6 +42,39 @@ Ouvre [`dist/index.html`](dist/index.html) dans Chrome, Edge ou Firefox (double-
 
 Sur Android, le bouton **retour** ouvre la pause et revient en arrière dans les menus.
 
+### ⚔️ Techniques
+
+| Technique | Comment |
+|---|---|
+| Esquive parfaite — « Temps des Ombres » | esquiver au tout dernier moment : le monde ralentit, le chevalier non |
+| Contre-attaque | attaquer juste après une esquive |
+| Pas de côté / glissade / ruée aérienne | esquiver avec une cible verrouillée / en sprintant / en l'air |
+| Attaque en course, attaque glissée | attaquer en sprintant ou pendant une glissade |
+| Attaque plongeante | attaquer en l'air, en hauteur : onde de choc à l'impact |
+| Coup de pied | attaque lourde en tenant la garde : brise les boucliers |
+| Exécution | attaquer un ennemi étourdi (après une parade ou un coup de pied) |
+| Assassinat | en mode furtif, attaquer un ennemi de dos |
+| Arts d'arme (mana) | Lame tourbillonnante (épée), Fracas tellurique (deux mains), Percée spectrale (hast), Danse des lames (dagues), Onde arcane (bâton) |
+
+## 💾 Installation des données (premier lancement)
+
+Au premier démarrage, un écran **« Installation des données »** prépare tout le contenu une fois pour toutes, puis le stocke sur l'appareil (IndexedDB, stockage persistant) :
+
+1. **Analyse de l'appareil** : mémoire vive, processeur graphique, nombre de cœurs, plus un court test de performance CPU/GPU → palier Faible, Moyen, Élevé ou Ultra.
+2. **Modèles** : le chevalier HD et ses 11 variantes de couleurs (ombre, néant, pourpre, cendre, givre, or, braise, os, émeraude, royal, obsidienne), en textures adaptées au palier (512 à 2048 px).
+3. **Textures du monde** en haute définition (256 à 1024 px selon le palier).
+4. **Banque de sons** : instruments (chœurs, cordes, violoncelle, cuivres, orgue, harpe, luth, piano, boîte à musique, cloches, timbales, taikos…) et plus de 50 bruitages avec variantes, calculés une fois (22, 32 ou 44 kHz selon le palier).
+
+Compter environ 5 à 15 secondes. Les lancements suivants démarrent directement. **Pause → Paramètres → Appareil & données** permet de relancer l'analyse, de réinstaller ou de supprimer les données.
+
+## 🧠 Profil de l'appareil et stabilité
+
+- **Qualité automatique** : les réglages sont choisis d'après le palier détecté, puis ajustés en jeu si les images par seconde chutent ou si la mémoire estimée approche du budget.
+- **Budget mémoire** calculé à partir de la mémoire vive (12 % sur téléphone, 20 % sur PC) : textures, ombres, cibles de rendu, géométries et sons sont comptabilisés et affichés dans l'onglet **Appareil & données**.
+- **Nombre d'ennemis actifs limité** selon le palier (10 à 32) ; les ennemis lointains sont mis en veille.
+- **Récupération graphique** : si Android reprend la mémoire du GPU, la partie est sauvegardée, puis l'affichage est rétabli avec une qualité réduite.
+- Paramètres graphiques dédiés : modèle du chevalier (HD / classique), taille des textures, qualité des effets, distorsion, images rémanentes, ralentis, nombre d'ennemis, mode économie d'énergie, qualité audio et réverbération.
+
 ## 📜 Contenu
 
 - **Un monde en 9 régions** : Havre-des-Cendres (village-refuge), Cimetière des Brumes, Forêt Maudite, Marais Putride, Catacombes Pourpres, Château de Nocthar, Pics de Givre, Abîme Infernal et Citadelle du Néant. Chacune a son ambiance, sa lumière, sa musique, sa météo et ses feux de camp (points de voyage rapide).
@@ -48,7 +83,10 @@ Sur Android, le bouton **retour** ouvre la pause et revient en arrière dans les
 - **45 quêtes** : une quête principale en 14 étapes, des quêtes secondaires et des contrats de chasse, 5 personnages avec dialogues et boutiques (forge, armurerie, marchand mystique, intendant).
 - **27 armes** en 5 styles de combat (épée à une main + bouclier, arme à deux mains, arme d'hast, dagues, bâton), avec éléments (feu, givre, foudre, poison, ombre, sacré) et améliorations à la forge ; **7 boucliers** ; **15 tenues** qui changent l'apparence et les statistiques.
 - **32 compétences** dans 4 branches et **18 pouvoirs** (boule de feu, nova de givre, chaîne d'éclairs, loups spectraux, bouclier sacré, etc.).
-- **Combat exigeant et lisible** : endurance, roulade avec invulnérabilité, parade puis riposte, combos, attaques lourdes, verrouillage de cible, altérations d'état (brûlure, poison, gel, ralentissement, étourdissement, choc), gel d'image à l'impact, tremblements de caméra.
+- **Combat exigeant et lisible** : endurance, esquives contextuelles avec invulnérabilité, esquive parfaite et Temps des Ombres, parade puis riposte, combos, attaques chargées, coups de pied, exécutions, assassinats furtifs, arts d'arme, verrouillage de cible, altérations d'état (brûlure, poison, gel, ralentissement, étourdissement, choc).
+- **Effets** : traînées d'armes lissées, images rémanentes du chevalier, ondes de choc qui déforment l'écran, étalonnage violet du Temps des Ombres, flou radial, fissures au sol, éclats d'impact par élément.
+- **Personnages** : chevalier HD (joueur, chevaliers déchus, armures vivantes, chevaliers du Néant, et 3 boss) ; monstres procéduraux avec détails de surface calculés par le shader (métal martelé et rayé, tissu, cuir, os fissuré, fourrure, écailles, pierre) et spectres parcourus de volutes animées.
+- **Audio** : musique dark fantasy composée par le jeu à partir d'instruments enregistrés à l'installation, avec un thème principal (valse en ré mineur), des ambiances par région et des couches exploration / combat / boss qui s'enchaînent ; bruitages spatialisés avec réverbération.
 - **Sauvegardes** : 3 emplacements + sauvegarde automatique, et un code d'export pour transférer sa partie d'un appareil à l'autre.
 - **Paramètres (plus de 40 options)** : préréglages graphiques (bas → ultra), échelle de rendu et résolution dynamique, ombres, bloom, anticrénelage, grain, champ de vision, sensibilité, inversion des axes, difficulté (Écuyer → Cauchemar), aide à la visée, sous-titres, modes daltoniens, volumes séparés, taille/opacité/disposition gaucher des commandes tactiles, vibrations…
 
@@ -75,12 +113,14 @@ Le dossier [`dev/`](dev) contient les scripts de test automatisés (Playwright) 
 
 ```
 src/
-  core/     moteur : entrées, audio procédural, paramètres, stockage
+  core/     moteur : entrées, audio (banque de sons, musique), paramètres, stockage,
+            profil de l'appareil, installation des données
   gfx/      rendu : post-traitement HDR, textures et matériaux procéduraux, particules, effets
-  actors/   modèles 3D générés, squelettes, animations
+  actors/   modèles 3D générés, chevalier GLB et reciblage des animations, squelettes, animations
   world/    terrain, ciel, décors, bâtiments, collisions
   data/     armes, tenues, compétences, pouvoirs, ennemis, boss, régions, quêtes
   game/     joueur, combat, IA des ennemis et des boss, quêtes, sauvegardes
   ui/       interface, menus, carte, commandes tactiles
+assets/     modèle 3D du chevalier (GLB)
 android/    enveloppe Android et script de construction de l'APK
 ```

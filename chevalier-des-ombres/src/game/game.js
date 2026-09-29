@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { Renderer } from '../gfx/renderer.js';
 import { Particles, AmbientField } from '../gfx/particles.js';
 import { Effects } from '../gfx/effects.js';
-import { updateMaterials, createCharMaterial, Mats } from '../gfx/materials.js';
+import { updateMaterials, createCharMaterial, setCharDetail, Mats } from '../gfx/materials.js';
 import { makeEnvironment } from '../gfx/envmap.js';
 import { World, fogMul } from '../world/world.js';
 import { Sky } from '../world/sky.js';
@@ -30,7 +30,7 @@ import { newProfile, initialQuests } from './state.js';
 import { saveProfile } from './save.js';
 import { buildHumanoid } from '../actors/models.js';
 import { Animator } from '../actors/anims.js';
-import { PropBuilder, G, xf, SURF } from '../actors/rig.js';
+import { PropBuilder, G, xf, SURF, DETAIL } from '../actors/rig.js';
 import { rand, dist2, clamp, makeRng, hashString } from '../core/utils.js';
 
 const _v = new THREE.Vector3();
@@ -90,8 +90,10 @@ export class Game {
     this.player = new Player(this);
     this.propMaterial = createCharMaterial();
     this.applyShadowSettings();
+    this.applyDetail();
     settings.onChange((k) => {
       if (k === 'shadows' || k === 'preset' || k === '*') this.applyShadowSettings();
+      if (k === 'fxQuality' || k === 'preset' || k === '*') this.applyDetail();
       if (k === 'drawDistance' || k === 'preset' || k === '*') this.applyFog();
       if (k === 'charModel' && this.player.mesh) this.player.rebuild();
       if (k === 'camMode') {
@@ -114,6 +116,13 @@ export class Game {
       if (settings.get('autoQuality')) this._degrade('mémoire graphique');
       if (this.hud) this.hud.toast('Affichage rétabli');
     });
+  }
+
+  // Détail des personnages : motifs de surface et finesse des maillages (nouveaux modèles)
+  applyDetail() {
+    const q = settings.get('fxQuality');
+    setCharDetail(q !== 'low');
+    DETAIL.seg = q === 'low' ? 0.75 : 1;
   }
 
   // Surveille la fluidité et la mémoire estimée ; baisse la qualité si nécessaire

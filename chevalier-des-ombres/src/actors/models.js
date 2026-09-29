@@ -168,9 +168,9 @@ function torsoParts(rb, type, c, B, T) {
       break;
     }
     case 'fur': {
-      rb.add('chest', xf(G.cyl(0.26 * B, 0.18 * B, 0.42, 8), [0, 0.12, 0], [0, 0, 0], [1, 1, 0.8]), c.skin, SURF.leather);
-      rb.add('spine', xf(G.cyl(0.17 * B, 0.2 * B, 0.24, 8), [0, 0.02, 0], [0, 0, 0], [1, 1, 0.85]), c.skin, SURF.leather);
-      for (let i = 0; i < 6; i++) rb.add('chest', xf(G.cone(0.05, 0.16, 5), [((i % 3) - 1) * 0.1, 0.3 - Math.floor(i / 3) * 0.12, -0.16 * B], [-2.2, 0, 0]), c.dark, SURF.leather);
+      rb.add('chest', xf(G.cyl(0.26 * B, 0.18 * B, 0.42, 8), [0, 0.12, 0], [0, 0, 0], [1, 1, 0.8]), c.skin, SURF.fur);
+      rb.add('spine', xf(G.cyl(0.17 * B, 0.2 * B, 0.24, 8), [0, 0.02, 0], [0, 0, 0], [1, 1, 0.85]), c.skin, SURF.fur);
+      for (let i = 0; i < 6; i++) rb.add('chest', xf(G.cone(0.05, 0.16, 5), [((i % 3) - 1) * 0.1, 0.3 - Math.floor(i / 3) * 0.12, -0.16 * B], [-2.2, 0, 0]), c.dark, SURF.fur);
       rb.add('hips', xf(G.cyl(0.19 * B, 0.22 * B, 0.18, 8), [0, -0.05, 0]), c.cloth, SURF.cloth);
       break;
     }
@@ -466,9 +466,9 @@ function armParts(rb, type, c, T, A, side) {
       break;
     }
     case 'fur': {
-      rb.add(arm, xf(G.cyl(0.08 * T, 0.065 * T, ua, 7), [0, -ua / 2, 0]), c.skin, SURF.leather);
-      rb.add(fore, xf(G.cyl(0.07 * T, 0.055 * T, fa, 7), [0, -fa / 2, 0]), c.skin, SURF.leather);
-      rb.add(hand, xf(G.box(0.1 * T, 0.1, 0.1 * T), [0, -0.04, 0]), c.skin, SURF.leather);
+      rb.add(arm, xf(G.cyl(0.08 * T, 0.065 * T, ua, 7), [0, -ua / 2, 0]), c.skin, SURF.fur);
+      rb.add(fore, xf(G.cyl(0.07 * T, 0.055 * T, fa, 7), [0, -fa / 2, 0]), c.skin, SURF.fur);
+      rb.add(hand, xf(G.box(0.1 * T, 0.1, 0.1 * T), [0, -0.04, 0]), c.skin, SURF.fur);
       for (let i = 0; i < 3; i++) rb.add(hand, xf(G.cone(0.016, 0.14, 4), [(i - 1) * 0.03, -0.15, 0.03], [PI + 0.35, 0, 0]), c.bone, SURF.bone);
       break;
     }
@@ -529,7 +529,7 @@ function legParts(rb, type, c, T, L, side, B) {
     case 'fur':
     case 'leather': {
       const col = type === 'leather' ? c.leather : type === 'fur' ? c.skin : c.cloth;
-      rb.add(th, xf(G.cyl(0.07 * T, 0.058 * T, tl, 7), [0, -tl / 2, 0]), col, type === 'fur' ? SURF.leather : SURF.cloth);
+      rb.add(th, xf(G.cyl(0.07 * T, 0.058 * T, tl, 7), [0, -tl / 2, 0]), col, type === 'fur' ? SURF.fur : type === 'leather' ? SURF.leather : SURF.cloth);
       rb.add(sh, xf(G.cyl(0.055 * T, 0.045 * T, sl, 7), [0, -sl / 2, 0]), type === 'flesh' ? c.skin : col, SURF.skin);
       rb.add(ft, xf(G.box(0.08 * T, 0.06, 0.18), [0, -0.035, 0.04]), type === 'fur' ? c.skin : c.dark, SURF.leather);
       if (type === 'fur') for (let i = 0; i < 3; i++) rb.add(ft, xf(G.cone(0.014, 0.07, 4), [(i - 1) * 0.025, -0.05, 0.14], [PI / 2, 0, 0]), c.bone, SURF.bone);
@@ -633,10 +633,11 @@ export function buildQuadruped(spec, material) {
     rb.add('body', xf(G.sphere(0.26, 10, 8), [0, -0.06, 0.18], [0, 0, 0], [1.1, 0.6, 1.1]), c.belly, SURF.wet);
     for (let i = 0; i < 8; i++) rb.add('body', xf(G.sphere(0.04, 5, 4), [Math.sin(i * 1.7) * 0.22, 0.2, 0.15 + Math.cos(i * 2.3) * 0.2]), c.glow, SURF.glowSoft);
   } else {
-    rb.add('body', xf(G.cyl(0.14 * W, 0.17 * W, bodyLen, 8), [0, 0, bodyLen * 0.5], [PI / 2, 0, 0], [1, 1, 0.85]), c.main, SURF.leather);
-    rb.add('chest', xf(G.sphere(0.19 * W, 8, 6), [0, 0, 0], [0, 0, 0], [1, 1.05, 1.1]), c.main, SURF.leather);
-    rb.add('body', xf(G.sphere(0.16 * W, 8, 6), [0, 0, 0]), c.main, SURF.leather);
-    if (t === 'wolf' || t === 'hound') for (let i = 0; i < 5; i++) rb.add('chest', xf(G.cone(0.04 * W, 0.14, 4), [0, 0.15 * W, -0.05 - i * 0.12], [-1.9, 0, 0]), c.dark, SURF.leather);
+    const hide = t === 'wolf' || t === 'hound' || t === 'rat' || t === 'bear' ? SURF.fur : SURF.leather;
+    rb.add('body', xf(G.cyl(0.14 * W, 0.17 * W, bodyLen, 8), [0, 0, bodyLen * 0.5], [PI / 2, 0, 0], [1, 1, 0.85]), c.main, hide);
+    rb.add('chest', xf(G.sphere(0.19 * W, 8, 6), [0, 0, 0], [0, 0, 0], [1, 1.05, 1.1]), c.main, hide);
+    rb.add('body', xf(G.sphere(0.16 * W, 8, 6), [0, 0, 0]), c.main, hide);
+    if (t === 'wolf' || t === 'hound') for (let i = 0; i < 5; i++) rb.add('chest', xf(G.cone(0.04 * W, 0.14, 4), [0, 0.15 * W, -0.05 - i * 0.12], [-1.9, 0, 0]), c.dark, SURF.fur);
     if (t === 'hound') for (let i = 0; i < 4; i++) rb.add('body', xf(G.box(0.02, 0.02, 0.18), [(i - 1.5) * 0.06, 0.12, 0.3]), c.glow, SURF.glow);
   }
   // Tête
@@ -768,11 +769,11 @@ export function buildSerpent(spec, material) {
   rb.bone('jaw', 'head', 0, -0.05, 0.05);
   for (let i = 0; i < segs; i++) {
     const r = 0.22 * (1 - (i / segs) * 0.75);
-    rb.add('seg' + i, xf(G.cyl(r, r * 0.92, 0.46, 8), [0, 0, -0.21], [PI / 2, 0, 0]), i % 2 ? c.main : c.mark, SURF.wet);
+    rb.add('seg' + i, xf(G.cyl(r, r * 0.92, 0.46, 8), [0, 0, -0.21], [PI / 2, 0, 0]), i % 2 ? c.main : c.mark, SURF.scales);
     rb.add('seg' + i, xf(G.box(r * 1.1, 0.03, 0.4), [0, -r * 0.9, -0.21]), c.belly, SURF.leather);
   }
-  rb.add('neck', xf(G.cyl(0.18, 0.22, 0.5, 8), [0, 0.18, 0.1], [0.5, 0, 0]), c.main, SURF.wet);
-  rb.add('head', xf(G.sphere(0.2, 10, 8), [0, 0, 0.08], [0, 0, 0], [1.2, 0.75, 1.5]), c.main, SURF.wet);
+  rb.add('neck', xf(G.cyl(0.18, 0.22, 0.5, 8), [0, 0.18, 0.1], [0.5, 0, 0]), c.main, SURF.scales);
+  rb.add('head', xf(G.sphere(0.2, 10, 8), [0, 0, 0.08], [0, 0, 0], [1.2, 0.75, 1.5]), c.main, SURF.scales);
   rb.add('jaw', xf(G.box(0.26, 0.05, 0.3), [0, -0.02, 0.12]), c.belly, SURF.leather);
   for (const s of [-1, 1]) {
     rb.add('head', xf(G.sphere(0.04, 6, 4), [s * 0.14, 0.07, 0.15]), c.eyes, SURF.glow);
@@ -901,8 +902,8 @@ export function buildDragon(spec, material) {
   for (const [n, par, x, z] of [['FL', 'chest', 0.4, 0], ['FR', 'chest', -0.4, 0], ['BL', 'body', 0.45, 0], ['BR', 'body', -0.45, 0]]) {
     rb.bone('leg' + n, par, x, -0.1, z);
     rb.bone('leg' + n + '2', 'leg' + n, 0, -0.6, 0.1);
-    rb.add('leg' + n, xf(G.cyl(0.16, 0.12, 0.65, 7), [0, -0.3, 0]), c.main, SURF.leather);
-    rb.add('leg' + n + '2', xf(G.cyl(0.11, 0.09, 0.6, 7), [0, -0.3, 0]), c.main, SURF.leather);
+    rb.add('leg' + n, xf(G.cyl(0.16, 0.12, 0.65, 7), [0, -0.3, 0]), c.main, SURF.scales);
+    rb.add('leg' + n + '2', xf(G.cyl(0.11, 0.09, 0.6, 7), [0, -0.3, 0]), c.main, SURF.scales);
     rb.add('leg' + n + '2', xf(G.box(0.26, 0.08, 0.36), [0, -0.6, 0.08]), c.horn, SURF.darkMetal);
   }
   for (const s of [1, -1]) {
@@ -914,16 +915,16 @@ export function buildDragon(spec, material) {
     rb.add(w + '2', xf(G.box(1.8, 0.025, 1.6), [s * 0.9, 0, -0.8], [0, s * 0.3, 0]), c.wing, SURF.leather);
     rb.add(w + '2', xf(G.cone(0.05, 0.3, 4), [s * 1.8, 0, 0.1], [0, 0, s * -PI / 2]), c.horn, SURF.bone);
   }
-  rb.add('body', xf(G.sphere(0.6, 12, 8), [0, 0, 0.3], [0, 0, 0], [1, 0.85, 1.4]), c.main, SURF.leather);
-  rb.add('chest', xf(G.sphere(0.62, 12, 8), [0, 0, 0], [0, 0, 0], [1, 0.95, 1.1]), c.main, SURF.leather);
+  rb.add('body', xf(G.sphere(0.6, 12, 8), [0, 0, 0.3], [0, 0, 0], [1, 0.85, 1.4]), c.main, SURF.scales);
+  rb.add('chest', xf(G.sphere(0.62, 12, 8), [0, 0, 0], [0, 0, 0], [1, 0.95, 1.1]), c.main, SURF.scales);
   rb.add('chest', xf(G.sphere(0.5, 10, 8), [0, -0.2, 0.1], [0, 0, 0], [1, 0.8, 1.1]), c.belly, SURF.leather);
   for (let i = 0; i < 7; i++) rb.add('body', xf(G.cone(0.08, 0.35, 4), [0, 0.52, 1 - i * 0.3], [-0.4, 0, 0]), c.horn, SURF.bone);
   for (let i = 0; i < 4; i++) {
-    rb.add('neck' + i, xf(G.cyl(0.26 - i * 0.03, 0.3 - i * 0.03, 0.5, 8), [0, 0.08, 0.15], [1.0, 0, 0]), c.main, SURF.leather);
+    rb.add('neck' + i, xf(G.cyl(0.26 - i * 0.03, 0.3 - i * 0.03, 0.5, 8), [0, 0.08, 0.15], [1.0, 0, 0]), c.main, SURF.scales);
     rb.add('neck' + i, xf(G.cone(0.05, 0.2, 4), [0, 0.28, 0.1], [-0.5, 0, 0]), c.horn, SURF.bone);
   }
-  rb.add('head', xf(G.box(0.4, 0.3, 0.6), [0, 0, 0.2]), c.main, SURF.leather);
-  rb.add('head', xf(G.box(0.3, 0.18, 0.4), [0, -0.02, 0.6]), c.main, SURF.leather);
+  rb.add('head', xf(G.box(0.4, 0.3, 0.6), [0, 0, 0.2]), c.main, SURF.scales);
+  rb.add('head', xf(G.box(0.3, 0.18, 0.4), [0, -0.02, 0.6]), c.main, SURF.scales);
   rb.add('jaw', xf(G.box(0.28, 0.08, 0.6), [0, -0.05, 0.4]), c.belly, SURF.leather);
   for (let i = 0; i < 6; i++) {
     rb.add('jaw', xf(G.cone(0.02, 0.08, 3), [0.1, 0.02, 0.2 + i * 0.1]), 0xf0f0e0, SURF.bone);
@@ -935,7 +936,7 @@ export function buildDragon(spec, material) {
   }
   for (let i = 0; i < 6; i++) {
     const r = 0.36 * (1 - i / 6.5);
-    rb.add('tail' + i, xf(G.cyl(r * 0.85, r, 0.6, 8), [0, 0, -0.28], [PI / 2, 0, 0]), c.main, SURF.leather);
+    rb.add('tail' + i, xf(G.cyl(r * 0.85, r, 0.6, 8), [0, 0, -0.28], [PI / 2, 0, 0]), c.main, SURF.scales);
     rb.add('tail' + i, xf(G.cone(0.05, 0.22, 4), [0, r, -0.28], [-0.4, 0, 0]), c.horn, SURF.bone);
   }
   rb.add('tail5', xf(G.octa(0.2), [0, 0, -0.65], [0, 0, 0], [0.4, 1, 1.4]), c.glow, SURF.glow);
