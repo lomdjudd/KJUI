@@ -25,30 +25,28 @@ claude mcp add kjui -- python -m kjui mcp       # Claude Code : outils brain_rec
 Claude interroge alors le cerveau **avant** de lire des fichiers (`brain_recall`, budget 1200 tokens max par défaut)
 et mémorise ce qu'il apprend (`brain_remember`). Sans MCP : `kjui recall "mots clés"` ou le bouton « Copier le contexte » de l'interface.
 
-## Tout est enregistré
+## Tout est enregistré (fichiers en original, en direct)
 
-`kjui gui` (et donc `LANCER.bat` / `LANCER.command`) capte **en direct** tes sessions Claude Code (`~/.claude/projects`), toutes les 5 s :
+**Tous les fichiers** (html, css, js, png, apk, zip, pdf… n'importe quel type) sont conservés **tels quels** dans
+`~/.kjui/files/` et téléchargeables depuis l'interface. Le texte/code est en plus découpé en blocs cherchables.
 
-| Ce qui est enregistré | Comment c'est stocké |
-|---|---|
-| chaque message envoyé (toi + Claude), en entier | un point par message |
-| les images collées/envoyées | fichier gardé dans `~/.kjui/files/` + aperçu dans l'interface |
-| les PDF / documents joints | fichier gardé, téléchargeable depuis l'interface |
-| les fichiers créés ou modifiés par Claude (Write/Edit) | contenu complet, cherchable |
+| Source | Capture | Comment |
+|---|---|---|
+| **Claude Code** (terminal, app desktop, IDE) | en direct (5 s) | `kjui gui` lit `~/.claude/projects` : messages, images, fichiers écrits par Claude |
+| Fichiers créés **par commande** (apk, png générés…) | en direct (30 s) | surveillance des dossiers de travail des sessions (fichiers des 30 derniers jours) |
+| **claude.ai** (site + app web) | en direct tant qu'un onglet est ouvert | extension navigateur, voir `extension/LISEZMOI.md` |
+| Historique claude.ai | ponctuel | `kjui ingest export.zip` (Paramètres → Confidentialité → Exporter) |
+| Tout ce que tu glisses dans la fenêtre / `kjui ingest chemin` | immédiat | fichier ou dossier, tout type |
 
-Import du passé et autres sources :
+Ignorés par sécurité : `.env`, clés (`.pem`, `.key`, `id_rsa`…), `node_modules`, `.git`, et les fichiers > 250 Mo.
 
-| Commande | Effet |
-|---|---|
-| `kjui sync` | import ponctuel de tout l'historique Claude Code |
-| `kjui ingest export-claude.zip` (ou `conversations.json`) | **claude.ai (site/app)** : messages, pièces jointes, artifacts. Export : Paramètres → Confidentialité → Exporter les données |
-| `kjui ingest fichier` / `dossier/` | texte, code, images, PDF… (tout type de fichier) |
-| `kjui add "fait" --pin` | mémorise un fait |
-| `kjui gui --no-watch` | désactive la capture en direct |
+Limites honnêtes :
+- **claude.ai en direct** = extension, qui utilise l'API interne non documentée du site : elle peut casser si le site change
+  (l'export officiel reste le plan B). Je n'ai pas pu la tester sur un vrai compte : la partie serveur est testée, pas la lecture du site.
+- **Claude sur téléphone** et Claude sans onglet ouvert ne peuvent pas être captés en direct.
+- Les *sorties* de commandes/lectures d'outils ne sont pas stockées (bruit) ; les fichiers eux, oui.
 
-Limites honnêtes : le chat du **site claude.ai / app** ne peut pas être capté en direct (Anthropic ne l'expose pas) — il faut
-importer l'export. Les *résultats* des outils (sorties de commandes, lectures de fichiers) ne sont pas stockés : ils
-noieraient la recherche sous du bruit.
+Autres commandes : `kjui sync` (import de l'historique Claude Code + dossiers), `kjui add "fait" --pin`, `kjui gui --no-watch`.
 
 ## Fichiers `.md` d'instructions
 

@@ -9,7 +9,7 @@
 Le navigateur s'ouvre tout seul sur le cerveau animé. Pour arrêter : ferme la fenêtre noire.
 
 ## Ce qui est enregistré tout seul
-Tant que la fenêtre noire est ouverte, tes sessions **Claude Code** (messages, images, fichiers créés par Claude) sont
-enregistrées automatiquement. Pour le chat du site claude.ai : exporte tes données (Paramètres → Confidentialité →
-Exporter) puis glisse le fichier avec `kjui ingest export.zip`.
-Tu peux aussi glisser n'importe quel fichier ou image dans la fenêtre du cerveau.
+Tant que la fenêtre noire est ouverte :
+- **Claude Code** : messages, images, et **tous les fichiers** que Claude crée (html, css, js, png, apk…), en original.
+- **claude.ai (site)** : installe l'extension du dossier `extension/` (voir `extension/LISEZMOI.md`, 4 étapes).
+Tu peux aussi glisser n'importe quel fichier dans la fenêtre du cerveau.
