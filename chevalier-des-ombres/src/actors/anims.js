@@ -591,8 +591,9 @@ export class Animator {
     // Garde
     for (const k of ['armR', 'foreR', 'handR', 'armL', 'foreL', 'handL']) pose[k] = st[k].slice();
     if (s.blocking) {
-      pose.armL = [-1.25, -0.5, 0.25];
-      pose.foreL = [-1.55, 0.5, 0];
+      // Avant-bras gauche en travers de la poitrine : le bouclier couvre le torse, face à l'ennemi
+      pose.armL = [-1.05, 0, 0.3];
+      pose.foreL = [-0.7, 0, -1.45];
       pose.armR = [-0.9, 0.3, -0.2];
       pose.foreR = [-1.3, 0, 0];
       pose.handR = [0.1, 0, -0.9];

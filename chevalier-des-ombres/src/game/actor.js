@@ -94,10 +94,13 @@ export class Actor {
     }
     if (!def || !def.shape) return null;
     const s = buildShield(def, material || this.weaponMat || this.mat);
-    if (this.built.sockets) attachToSocket(this.built, 'foreL', s, [0.07, -0.16, 0], [Math.PI / 2, 0, 0]);
+    // Sanglé sur l'extérieur de l'avant-bras : face vers l'extérieur (+X de l'os), haut du
+    // bouclier vers le dos de la main (+Z), centre au milieu de l'avant-bras
+    const rot = [Math.PI / 2, Math.PI / 2, 0];
+    if (this.built.sockets) attachToSocket(this.built, 'foreL', s, [0.1, -0.15, 0], rot);
     else {
-      s.position.set(0.04, -0.3, 0);
-      s.rotation.set(Math.PI / 2, 0, 0);
+      s.position.set(0.08, -0.16, 0);
+      s.rotation.set(...rot);
       this.built.bones.foreL.add(s);
     }
     this.shieldMesh = s;
