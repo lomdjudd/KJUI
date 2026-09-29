@@ -18,6 +18,14 @@ import { ZONES, ZONE_ORDER } from '../data/zones.js';
 import { computeStats, xpForLevel } from '../game/state.js';
 import { objectiveNeed } from '../game/quests.js';
 import { mapSymbols, drawSymbol, SYMBOL_STYLE } from './map.js';
+import { AUDIO_CREDITS } from '../data/audioCredits.js';
+
+// Où chaque musique enregistrée est jouée
+const TRACK_LABEL = {
+  title: 'Écran titre', town: 'Havre-des-Cendres', safe: 'Pics de Givre', unrest: 'Cimetière des Brumes', forest: 'Forêt Maudite',
+  magical: 'Marais Putride, Citadelle du Néant', dungeon: 'Catacombes, Abîme Infernal', overworld: 'Château de Nocthar', battle: 'Combats', boss: 'Boss',
+};
+const LICENSE_SHORT = { 'CC-BY-SA 3.0': 'CC BY-SA 3.0', 'CC-BY 3.0': 'CC BY 3.0', CC0: 'CC0 (domaine public)' };
 
 const RES_LABEL = { physical: 'Physique', fire: 'Feu', frost: 'Givre', lightning: 'Foudre', poison: 'Poison', shadow: 'Ombre', holy: 'Sacré', blood: 'Sang' };
 const pct = (v) => (v >= 0 ? '+' : '') + Math.round(v * 100) + ' %';
@@ -226,7 +234,7 @@ export class Menus {
     const p = this.game.profile;
     const tabs = [
       ['resume', 'Reprendre'], ['character', 'Personnage'], ['equipment', 'Équipement'], ['skills', 'Compétences' + (p.skillPoints ? '<span class="dot"></span>' : '')], ['powers', 'Pouvoirs'],
-      ['quests', 'Quêtes'], ['map', 'Carte'], ['bestiary', 'Bestiaire'], ['save', 'Sauvegarder', 'sep'], ['settings', 'Paramètres'], ['controls', 'Commandes'], ['quit', 'Menu principal'],
+      ['quests', 'Quêtes'], ['map', 'Carte'], ['bestiary', 'Bestiaire'], ['save', 'Sauvegarder', 'sep'], ['settings', 'Paramètres'], ['controls', 'Commandes'], ['credits', 'Crédits'], ['quit', 'Menu principal'],
     ];
     const html = `<div class="pause"><div class="p-nav frame">${tabs.map(([id, l, c]) => `<div class="tab ${c || ''} ${id === this.pauseTab ? 'on' : ''}" data-act="ptab" data-v="${id}">${l}</div>`).join('')}</div><div class="p-body frame" id="pbody"></div></div>`;
     this._show('pause', html);
@@ -241,7 +249,7 @@ export class Menus {
     const fn = {
       character: () => this._tabCharacter(), equipment: () => this._tabEquipment(), skills: () => this._tabSkills(), powers: () => this._tabPowers(),
       quests: () => this._tabQuests(), map: () => this._tabMap(), bestiary: () => this._tabBestiary(), save: () => this._tabSave(), settings: () => `<h2>Paramètres</h2>${this._settingsHtml()}`,
-      controls: () => this._tabControls(), quit: () => `<h2>Menu principal</h2><p>Revenir à l’écran titre ? Votre progression depuis la dernière sauvegarde sera perdue.</p><button class="btn small primary" data-act="saveQuit">Sauvegarder et quitter</button><button class="btn small danger" data-act="quitNoSave">Quitter sans sauvegarder</button>`,
+      controls: () => this._tabControls(), credits: () => this._tabCredits(), quit: () => `<h2>Menu principal</h2><p>Revenir à l’écran titre ? Votre progression depuis la dernière sauvegarde sera perdue.</p><button class="btn small primary" data-act="saveQuit">Sauvegarder et quitter</button><button class="btn small danger" data-act="quitNoSave">Quitter sans sauvegarder</button>`,
     }[t];
     body.innerHTML = fn ? fn() : '';
     if (t === 'map') this._drawBigMap();
@@ -432,6 +440,26 @@ export class Menus {
       <button class="btn small" data-act="loadFromPause">Charger une partie…</button>
       <h3>Code de sauvegarde</h3><p class="muted">Copiez ce code pour garder une copie de votre partie ou la transférer sur un autre appareil.</p>
       <textarea class="code" id="export-code" readonly></textarea><button class="btn small" data-act="exportCode">Générer le code</button><button class="btn small" data-act="copyCode">Copier</button>`;
+  }
+
+  // Crédits : auteurs et licences des musiques et bruitages enregistrés
+  _tabCredits() {
+    const music = AUDIO_CREDITS.filter((c) => c.kind === 'music');
+    const sfx = AUDIO_CREDITS.filter((c) => c.kind === 'sfx');
+    const byAuthor = new Map();
+    for (const it of sfx) {
+      for (const a of it.authors) {
+        const key = a.name + '|' + a.license;
+        if (!byAuthor.has(key)) byAuthor.set(key, { a, files: [] });
+        byAuthor.get(key).files.push(it.file.split('/').pop().replace('.ogg', ''));
+      }
+    }
+    const rows = (arr) => arr.map(([a, b]) => `<div class="statline"><span>${a}</span><b>${b}</b></div>`).join('');
+    return `<h2>Crédits</h2>
+      <p class="muted">Jeu, monstres sculptés, décors, effets et musique « composée » : générés par le code du jeu. Chevalier HD : modèle 3D fourni par le joueur.</p>
+      <h3>Musiques orchestrales</h3>${rows(music.map((m) => [escapeHtml(TRACK_LABEL[m.id] || m.id) + ' <span class="muted">(' + escapeHtml(m.file.split('/').pop().replace('.ogg', '')) + ')</span>', m.authors.map((a) => `${escapeHtml(a.name)} · ${LICENSE_SHORT[a.license] || escapeHtml(a.license)}`).join(', ')]))}
+      <h3>Bruitages</h3>${rows([...byAuthor.values()].map(({ a, files }) => [escapeHtml(a.name) + ' · ' + (LICENSE_SHORT[a.license] || escapeHtml(a.license)), '<span class="muted" style="font-weight:400">' + escapeHtml(files.join(', ')) + '</span>']))}
+      <p class="muted">Musiques et bruitages du jeu libre Flare (github.com/flareteam/flare-game), sous licences CC0 1.0, CC BY 3.0 (creativecommons.org/licenses/by/3.0) et CC BY-SA 3.0 (creativecommons.org/licenses/by-sa/3.0). Musiques réencodées en Opus ; bruitages non modifiés. Liste complète avec les liens : fichier CREDITS-AUDIO.md du projet.</p>`;
   }
 
   _tabControls() {

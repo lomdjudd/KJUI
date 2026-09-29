@@ -7,6 +7,7 @@ import { datastore, sizeOf } from './datastore.js';
 import { device, TIER_REC } from './device.js';
 import { settings } from './settings.js';
 import { soundbank } from './soundbank.js';
+import { recorded } from './recorded.js';
 import { PACK, decodeDataUrl } from '../data/pack.js';
 import { worldTextureKeys, generateWorldTexture, setInstalledWorldTextures } from '../gfx/textures.js';
 import { KNIGHT_VARIANTS, extractGlbImage, stripGlbImages, blobToPixels, recolorPixels, pixelsToBlob, registerModel, registerVariantTexture } from '../actors/glb.js';
@@ -21,7 +22,7 @@ import { NPCS } from '../data/quests.js';
 import { buildModelFor } from '../game/enemy.js';
 
 // À incrémenter quand le contenu des données change (force une réinstallation)
-export const DATA_VERSION = 2;
+export const DATA_VERSION = 3;
 
 // Toutes les créatures à sculpter (le chevalier texturé et ses variantes sont exclus)
 function sculptSources() {
@@ -155,10 +156,15 @@ export const installer = {
 
     // 4. Banque de sons (instruments et bruitages)
     const bank = await soundbank.render(settings.get('audioQuality'), async (f, detail) => {
-      stepProgress(3, f, 'Création de la banque de sons', detail);
+      stepProgress(3, f * 0.55, 'Création de la banque de sons', detail);
       await frame();
     });
     await datastore.put('audio:bank', bank);
+    // Musiques orchestrales et bruitages enregistrés
+    await recorded.install(async (f, detail) => {
+      stepProgress(3, 0.55 + f * 0.45, 'Installation des musiques et bruitages', detail);
+      if (Math.random() < 0.3) await frame();
+    });
     next(3);
 
     // 5. Sculpture des créatures et des boss (anatomie HD, en parallèle sur plusieurs cœurs)
@@ -276,6 +282,7 @@ export const installer = {
     // Sons
     const bank = await datastore.get('audio:bank');
     if (bank) soundbank.load(bank);
+    await recorded.load();
     onProgress(0.92);
     // Créatures sculptées
     const index = (await datastore.get('sculpt:index')) || [];

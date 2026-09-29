@@ -16,11 +16,11 @@ Le jeu est publié sous forme de page web : **https://claude.ai/artifact/3aMX1wq
 2. Ouvre-le, puis autorise **« Installer des applis inconnues »** si Android le demande.
 3. Lance **Chevalier des Ombres** : le jeu s'ouvre en plein écran, en mode paysage.
 
-L'APK fait environ 1,3 Mo, ne demande aucune permission réseau (seulement la vibration) et enregistre les sauvegardes dans le stockage privé de l'application. Il faut un téléphone compatible WebGL 2 (quasiment tous les appareils depuis 2016).
+L'APK fait environ 18 Mo (dont 17 Mo de musiques et bruitages), ne demande aucune permission réseau (seulement la vibration) et enregistre les sauvegardes dans le stockage privé de l'application. Il faut un téléphone compatible WebGL 2 (quasiment tous les appareils depuis 2016).
 
 ## 🖥️ Jouer sur PC
 
-Ouvre [`dist/index.html`](dist/index.html) dans Chrome, Edge ou Firefox (double-clic : ça marche hors ligne). Clavier/souris ou manette Xbox.
+Ouvre [`dist/index.html`](dist/index.html) dans Chrome, Edge ou Firefox. En double-clic (fichier local), le navigateur refuse de charger les musiques enregistrées : le jeu utilise alors ses sons de synthèse. Pour tout avoir, sers le dossier `dist/` avec un petit serveur (`npx vite preview` ou `python3 -m http.server` dans `dist/`). Clavier/souris ou manette Xbox.
 
 ## 🎮 Commandes
 
@@ -68,7 +68,7 @@ Au premier démarrage, un écran **« Installation des données »** prépare to
 1. **Analyse de l'appareil** : mémoire vive, processeur graphique, nombre de cœurs, plus un court test de performance CPU/GPU → palier Faible, Moyen, Élevé ou Ultra.
 2. **Modèles** : le chevalier HD et ses 11 variantes de couleurs (ombre, néant, pourpre, cendre, givre, or, braise, os, émeraude, royal, obsidienne), en textures adaptées au palier (512 à 2048 px).
 3. **Textures du monde** en haute définition (256 à 1024 px selon le palier).
-4. **Banque de sons** : instruments (chœurs, cordes, violoncelle, cuivres, orgue, harpe, luth, piano, boîte à musique, cloches, timbales, taikos…) et plus de 50 bruitages avec variantes, calculés une fois (22, 32 ou 44 kHz selon le palier).
+4. **Musiques et bruitages** : les 10 musiques orchestrales et les 58 bruitages enregistrés sont copiés dans le stockage de l'appareil ; la banque de sons de synthèse (instruments et bruitages de secours) est calculée une fois (22, 32 ou 44 kHz selon le palier).
 5. **Sculpture des créatures** : chaque monstre, boss et habitant reçoit une anatomie HD (muscles, crânes creusés, côtes, crocs, griffes, touffes de fourrure, plis de robes, plaques d'armure, fissures de lave lumineuses…). Les formes sont fusionnées en un maillage lisse aux articulations souples, calculé en parallèle sur plusieurs cœurs, avec un nombre de polygones adapté à l'appareil (4 500 à 13 000 sommets par créature, plus pour les boss).
 
 Compter environ 15 à 40 secondes selon l'appareil. Les lancements suivants démarrent directement. **Pause → Paramètres → Appareil & données** permet de relancer l'analyse, de réinstaller ou de supprimer les données.
@@ -93,7 +93,8 @@ Compter environ 15 à 40 secondes selon l'appareil. Les lancements suivants dém
 - **Endurance** : sprint presque gratuit en exploration (environ 45 s), environ 12 s en combat ; roulade 14 % de la barre, attaques et parades moins coûteuses ; récupération plus rapide hors combat, ralentie en garde. Barre vidée = épuisement (barre orange clignotante, plus de sprint jusqu'à 30 %).
 - **Effets** : traînées d'armes lissées, images rémanentes du chevalier, ondes de choc qui déforment l'écran, étalonnage violet du Temps des Ombres, flou radial, fissures au sol, éclats d'impact par élément.
 - **Personnages** : chevalier HD (joueur, chevaliers déchus, armures vivantes, chevaliers du Néant, et 3 boss) ; monstres procéduraux avec détails de surface calculés par le shader (métal martelé et rayé, tissu, cuir, os fissuré, fourrure, écailles, pierre) et spectres parcourus de volutes animées.
-- **Audio** : musique dark fantasy composée par le jeu à partir d'instruments enregistrés à l'installation, avec un thème principal (valse en ré mineur), des ambiances par région et des couches exploration / combat / boss qui s'enchaînent ; bruitages spatialisés avec réverbération.
+- **Audio** : 10 musiques orchestrales dark fantasy enregistrées (une par région, plus combat et boss, avec fondus enchaînés ; la musique de la région reprend où elle s'était arrêtée après un combat) et 58 bruitages enregistrés (lames, impacts d'os et de chair, parade, pas sur cuir, métal, tissu et dalles, sorts de feu, givre et foudre, cris et râles de monstres, voix du chevalier, coffres, pièces, portails). Bruitages spatialisés avec réverbération, sons ralentis pendant le Temps des Ombres. Au choix dans les paramètres : musique orchestrale ou musique composée en temps réel par le jeu.
+- **Crédits audio** : musiques de Remaxim et Brandon Morris (Augmentality), bruitages de plusieurs auteurs, issus du jeu libre [Flare](https://github.com/flareteam/flare-game) sous licences CC0, CC BY 3.0 et CC BY-SA 3.0. Détail fichier par fichier dans [`CREDITS-AUDIO.md`](CREDITS-AUDIO.md) et dans l'onglet **Crédits** du menu pause.
 - **Sauvegardes** : 3 emplacements + sauvegarde automatique, et un code d'export pour transférer sa partie d'un appareil à l'autre.
 - **Paramètres (plus de 40 options)** : préréglages graphiques (bas → ultra), échelle de rendu et résolution dynamique, ombres, bloom, anticrénelage, grain, champ de vision, sensibilité, inversion des axes, difficulté (Écuyer → Cauchemar), aide à la visée, sous-titres, modes daltoniens, volumes séparés, taille/opacité/disposition gaucher des commandes tactiles, vibrations…
 
@@ -115,6 +116,8 @@ npm run apk      # génère release/ChevalierDesOmbres.apk
 La construction de l'APK n'a besoin ni d'Android Studio ni de Gradle : le script [`android/build-apk.sh`](android/build-apk.sh) récupère aapt2, `android.jar`, d8 et apksigner la première fois, puis empaquette le jeu dans une WebView plein écran ([`MainActivity.java`](android/java/com/kjui/chevalier/MainActivity.java)) avec un pont natif pour les sauvegardes, les vibrations et la touche retour. Il faut Node.js, un JDK 17 ou plus récent, `python3` et `zip`.
 
 L'APK est signé avec la clé de test [`android/release.keystore`](android/release.keystore) (mot de passe `chevalier`). Pour une publication sur le Play Store, remplace-la par ta propre clé (`KS_PASS=… bash android/build-apk.sh`).
+
+Les musiques et bruitages enregistrés se trouvent dans `public/audio/` ; [`dev/import-audio.py`](dev/import-audio.py) les régénère depuis le dépôt de Flare (réencodage, sélection des fichiers aux crédits vérifiés, fichier de crédits).
 
 Le dossier [`dev/`](dev) contient les scripts de test automatisés (Playwright) : visite de toutes les régions, combats contre chaque ennemi et chaque boss, test tactile en mode téléphone, mesures de performance.
 

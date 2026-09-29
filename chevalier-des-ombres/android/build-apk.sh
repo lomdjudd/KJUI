@@ -10,8 +10,8 @@ ROOT="$(dirname "$DIR")"
 TOOLS="$DIR/.tools"
 BUILD="$DIR/build"
 OUT="$ROOT/release"
-VERSION_CODE="${VERSION_CODE:-5}"
-VERSION_NAME="${VERSION_NAME:-1.4}"
+VERSION_CODE="${VERSION_CODE:-6}"
+VERSION_NAME="${VERSION_NAME:-1.5}"
 KS="$DIR/release.keystore"
 KS_PASS="${KS_PASS:-chevalier}"
 ALIAS="chevalier"
@@ -45,6 +45,8 @@ fi
 rm -rf "$BUILD"
 mkdir -p "$BUILD/assets" "$BUILD/classes" "$BUILD/dex"
 cp "$ROOT/dist/index.html" "$BUILD/assets/index.html"
+# Musiques et bruitages enregistrés (servis par la WebView sous https://appassets.androidplatform.net/)
+if [ -d "$ROOT/dist/audio" ]; then cp -r "$ROOT/dist/audio" "$BUILD/assets/audio"; fi
 
 echo "→ Ressources (aapt2)…"
 "$TOOLS/aapt2" compile --dir "$DIR/res" -o "$BUILD/res.zip"

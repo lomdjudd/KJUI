@@ -1,10 +1,58 @@
-// Moteur audio : rejoue la banque de sons installée (instruments et bruitages rendus à
-// l'installation), compose en temps réel une musique dark fantasy nostalgique (thème
-// principal récurrent, harpe, chœurs, cordes, orgue, cloches) avec des couches exploration,
-// combat et boss, et gère ambiances, spatialisation, réverbération et ralentis.
+// Moteur audio : musiques orchestrales et bruitages enregistrés (données installées), avec en
+// secours la banque de sons de synthèse et une musique composée en temps réel (thème principal,
+// harpe, chœurs, cordes, orgue, cloches). Gère les fondus exploration / combat / boss, les
+// ambiances, la spatialisation, la réverbération et les ralentis.
 import { settings } from './settings.js';
 import { clamp } from './utils.js';
 import { soundbank } from './soundbank.js';
+import { recorded } from './recorded.js';
+import { AUDIO_MANIFEST } from '../data/audioCredits.js';
+
+// Musique enregistrée de chaque ambiance : [piste, vitesse] (vitesse < 1 : plus lente et plus grave)
+const REC_TRACKS = {
+  title: ['title', 1],
+  hub: ['town', 1],
+  graveyard: ['unrest', 1],
+  forest: ['forest', 1],
+  swamp: ['magical', 0.96],
+  catacombs: ['dungeon', 1],
+  castle: ['overworld', 1],
+  frost: ['safe', 1],
+  inferno: ['dungeon', 0.92],
+  void: ['magical', 0.86],
+};
+// Niveau des musiques enregistrées par rapport au bus musique (équilibré avec les bruitages)
+const REC_MUSIC_GAIN = 1.2;
+
+// Bruitages enregistrés : remplacent (ou complètent, mix) ceux de la banque de synthèse
+const steps = (k) => [1, 2, 3, 4].map((i) => k + i);
+const REC_VARIANTS = {
+  swing: { ids: ['swish'] },
+  swingHeavy: { ids: ['swish'] },
+  hitFlesh: { ids: ['hitFlesh'], mix: true },
+  hitBone: { ids: ['hitBone'], mix: true },
+  block: { ids: ['block'] },
+  stepDirt: { ids: steps('stepLeather') },
+  stepStone: { ids: steps('stepEcho') },
+  stepSnow: { ids: steps('stepCloth') },
+  armor: { ids: steps('stepMetal') },
+  drink: { ids: ['potion'] },
+  fire: { ids: ['fireball', 'burn'] },
+  frost: { ids: ['freeze'] },
+  lightning: { ids: ['shock', 'thunder'] },
+  arcane: { ids: ['teleport'] },
+  holy: { ids: ['heal', 'shield'] },
+  shadow: { ids: ['timestop'], mix: true },
+  slam: { ids: ['quake'], mix: true },
+  growl: { ids: ['zombieGrowl', 'zombiePhys', 'beastPhys'] },
+  screech: { ids: ['insect', 'wyvernMent'] },
+  wail: { ids: ['ghost'] },
+  roar: { ids: ['wyvernRoar', 'beastHit'] },
+  die: { ids: ['zombieDie', 'skeletonDie', 'squishDie', 'beastDie'] },
+  pickup: { ids: ['coins', 'gem'] },
+  chestOpen: { ids: ['chest'] },
+  portal: { ids: ['portal'] },
+};
 
 const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
 
@@ -105,8 +153,14 @@ export class AudioSys {
     this._timer = setInterval(() => this._schedule(), 60);
     document.addEventListener('visibilitychange', () => {
       if (!this.ctx) return;
-      if (document.hidden && settings.get('muteBackground')) this.ctx.suspend();
-      else if (!document.hidden) this.ctx.resume();
+      const R = this.recMusic;
+      if (document.hidden && settings.get('muteBackground')) {
+        this.ctx.suspend();
+        if (R && R.cur >= 0) R.decks[R.cur].el.pause();
+      } else if (!document.hidden) {
+        this.ctx.resume();
+        if (R && R.cur >= 0) R.decks[R.cur].el.play().catch(() => {});
+      }
     });
   }
 
@@ -143,6 +197,10 @@ export class AudioSys {
     this.musicSend = ctx.createGain();
     this.musicSend.gain.value = 0.55;
     this.musicBus.connect(this.musicSend).connect(this.reverb);
+    // Musiques enregistrées (lecteur à deux pistes pour les fondus enchaînés)
+    this.recBus = ctx.createGain();
+    this.recBus.gain.value = REC_MUSIC_GAIN;
+    this.recBus.connect(this.musicBus);
 
     this.ambBus = ctx.createGain();
     this.ambBus.connect(this.master);
@@ -170,6 +228,206 @@ export class AudioSys {
     this._loadBank();
     this._startAmbience();
     this.applyVolumes();
+    // Contexte temps réel uniquement (pas pour les rendus hors ligne des tests)
+    const offline = typeof OfflineAudioContext !== 'undefined' && ctx instanceof OfflineAudioContext;
+    if (!offline) {
+      this._initRecMusic();
+      this._loadRecordedSfx();
+    }
+  }
+
+  // ---------- Bruitages enregistrés ----------
+  async _loadRecordedSfx() {
+    const ctx = this.ctx;
+    const ids = Object.keys(AUDIO_MANIFEST.sfx);
+    const out = {};
+    await Promise.all(
+      ids.map(async (id) => {
+        try {
+          const b = await recorded.blob(AUDIO_MANIFEST.sfx[id]);
+          if (!b) return;
+          const buf = await ctx.decodeAudioData(await b.arrayBuffer());
+          out[id] = this._prepRec(buf);
+        } catch {
+          // format non pris en charge : le son de synthèse reste utilisé
+        }
+      }),
+    );
+    if (!Object.keys(out).length) return;
+    this.recSfx = out;
+    this._applyRecSfx();
+  }
+
+  // Retire le silence initial et normalise le niveau (les sons viennent d'auteurs différents)
+  _prepRec(buf) {
+    const nc = buf.numberOfChannels;
+    const n = buf.length;
+    const data = [];
+    for (let c = 0; c < nc; c++) data.push(buf.getChannelData(c));
+    let start = 0;
+    let peak = 0;
+    search: for (let i = 0; i < n; i++) {
+      for (let c = 0; c < nc; c++) {
+        if (Math.abs(data[c][i]) > 0.012) {
+          start = i;
+          break search;
+        }
+      }
+    }
+    for (let c = 0; c < nc; c++) for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(data[c][i]));
+    start = Math.max(0, start - Math.floor(buf.sampleRate * 0.004));
+    if (start > buf.sampleRate * 0.4) start = 0;
+    const g = peak > 0 ? Math.min(3, 0.89 / peak) : 1;
+    const out = this.ctx.createBuffer(nc, Math.max(1, n - start), buf.sampleRate);
+    for (let c = 0; c < nc; c++) {
+      const src = data[c].subarray(start);
+      const dst = out.getChannelData(c);
+      for (let i = 0; i < src.length; i++) dst[i] = src[i] * g;
+    }
+    return out;
+  }
+
+  _applyRecSfx() {
+    if (!this.recSfx || !this._procVariants) return;
+    this.sfxVariants = { ...this._procVariants };
+    for (const [name, spec] of Object.entries(REC_VARIANTS)) {
+      const rec = spec.ids.map((id) => this.recSfx[id]).filter(Boolean);
+      if (!rec.length) continue;
+      this.sfxVariants[name] = spec.mix ? [...rec, ...(this._procVariants[name] || [])] : rec;
+    }
+  }
+
+  // Joue un bruitage enregistré précis (voix du chevalier, fanfare…)
+  _rec(id, { gain = 1, rate = 1, delay = 0, out = null } = {}) {
+    const buf = this.recSfx && this.recSfx[id];
+    if (!buf) return false;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = rate * (0.97 + Math.random() * 0.06) * (this.slow ? 0.78 : 1);
+    const g = this.ctx.createGain();
+    g.gain.value = gain;
+    src.connect(g).connect(out || this.sfxBus);
+    src.start(this.ctx.currentTime + delay);
+    return true;
+  }
+
+  // ---------- Musiques enregistrées ----------
+  _initRecMusic() {
+    const ctx = this.ctx;
+    if (typeof ctx.createMediaElementSource !== 'function' || typeof Audio === 'undefined') return;
+    try {
+      const mk = () => {
+        const el = new Audio();
+        el.loop = true;
+        el.preload = 'auto';
+        const src = ctx.createMediaElementSource(el);
+        const g = ctx.createGain();
+        g.gain.value = 0;
+        src.connect(g).connect(this.recBus);
+        return { el, g };
+      };
+      this.recMusic = { decks: [mk(), mk()], cur: -1, track: null, want: null, rate: 1, pos: {}, urls: {}, combatT: 0, calmT: 99, last: 0, retryAt: 0 };
+    } catch {
+      this.recMusic = null;
+    }
+  }
+
+  _useRecordedMusic() {
+    return !!(this.recMusic && settings.get('musicSource') !== 'composed' && recorded.installed && recorded.canPlayMusic());
+  }
+
+  async _trackUrl(id) {
+    const R = this.recMusic;
+    if (R.urls[id]) return R.urls[id];
+    const path = AUDIO_MANIFEST.music[id];
+    if (!path) return null;
+    const b = await recorded.blob(path);
+    if (!b) return null;
+    R.urls[id] = URL.createObjectURL(b);
+    return R.urls[id];
+  }
+
+  // Choix de la piste : ambiance de la zone, combat (après quelques secondes) ou boss
+  _updateRecMusic(now, it) {
+    const R = this.recMusic;
+    const dt = Math.min(0.5, Math.max(0, now - (R.last || now)));
+    R.last = now;
+    if (it === 1) {
+      R.combatT += dt;
+      R.calmT = 0;
+    } else {
+      R.calmT += dt;
+      R.combatT = 0;
+    }
+    let want = REC_TRACKS[this.moodName] || REC_TRACKS.graveyard;
+    if (this.moodName !== 'title' && this.moodName !== 'hub') {
+      if (it >= 2) want = ['boss', 1];
+      else if (it === 1 && R.combatT > 1.2) want = ['battle', 1];
+      else if (R.track === 'battle' && R.calmT < 7) want = ['battle', 1];
+    }
+    if (want[0] !== R.want && now >= R.retryAt) this._switchTrack(want[0], want[1]);
+  }
+
+  async _switchTrack(id, rate = 1) {
+    const R = this.recMusic;
+    R.want = id;
+    const url = await this._trackUrl(id);
+    if (!url || R.want !== id) return;
+    const next = R.cur === 0 ? 1 : 0;
+    const deck = R.decks[next];
+    const prev = R.cur >= 0 ? R.decks[R.cur] : null;
+    if (prev && R.track) R.pos[R.track] = prev.el.currentTime;
+    deck.el.src = url;
+    deck.el.preservesPitch = false;
+    deck.el.mozPreservesPitch = false;
+    deck.el.webkitPreservesPitch = false;
+    deck.el.playbackRate = rate * (this.slow ? 0.8 : 1);
+    try {
+      // Les combats et les boss repartent du début ; les ambiances reprennent où elles en étaient
+      deck.el.currentTime = id === 'battle' || id === 'boss' ? 0 : R.pos[id] || 0;
+    } catch {
+      /* position non encore disponible */
+    }
+    try {
+      await deck.el.play();
+    } catch {
+      // lecture refusée (pas encore d'interaction) : nouvel essai un peu plus tard
+      R.want = null;
+      R.retryAt = this.ctx.currentTime + 1;
+      return;
+    }
+    if (R.want !== id) {
+      deck.el.pause();
+      return;
+    }
+    const t = this.ctx.currentTime;
+    const fast = id === 'boss' || id === 'battle';
+    deck.g.gain.cancelScheduledValues(t);
+    deck.g.gain.setTargetAtTime(1, t, fast ? 0.35 : 1.1);
+    if (prev) {
+      prev.g.gain.cancelScheduledValues(t);
+      prev.g.gain.setTargetAtTime(0, t, fast ? 0.5 : 1.2);
+      const old = prev.el;
+      setTimeout(() => {
+        if (R.decks[R.cur].el !== old) old.pause();
+      }, 6000);
+    }
+    R.cur = next;
+    R.track = id;
+    R.rate = rate;
+  }
+
+  _stopRecMusic() {
+    const R = this.recMusic;
+    if (!R || R.cur < 0) return;
+    const t = this.ctx.currentTime;
+    for (const d of R.decks) d.g.gain.setTargetAtTime(0, t, 0.8);
+    const decks = R.decks.map((d) => d.el);
+    setTimeout(() => decks.forEach((el) => el.pause()), 4000);
+    if (R.track) R.pos[R.track] = R.decks[R.cur].el.currentTime;
+    R.cur = -1;
+    R.track = null;
+    R.want = null;
   }
 
   // Rendu hors ligne de la musique d'une zone (tests, aperçu) → AudioBuffer stéréo
@@ -224,6 +482,8 @@ export class AudioSys {
       const name = key.split(':')[1];
       (this.sfxVariants[name] = this.sfxVariants[name] || []).push(this.buffers[key]);
     }
+    this._procVariants = { ...this.sfxVariants };
+    this._applyRecSfx();
     this.ready = true;
   }
 
@@ -268,6 +528,8 @@ export class AudioSys {
     const t = this.ctx.currentTime;
     this.slowFilter.frequency.setTargetAtTime(on ? 900 : 20000, t, on ? 0.05 : 0.3);
     this.musicSend.gain.setTargetAtTime(on ? 1.1 : 0.55, t, 0.2);
+    const R = this.recMusic;
+    if (R && R.cur >= 0) R.decks[R.cur].el.playbackRate = R.rate * (on ? 0.8 : 1);
   }
 
   // ---------- Ambiances ----------
@@ -414,6 +676,15 @@ export class AudioSys {
     this.crackle.g.gain.setTargetAtTime(a.crackle * (Math.random() < 0.3 ? 1.6 : 0.4), now, 0.03);
     this.water.g.gain.setTargetAtTime(a.water * (0.5 + Math.random() * 0.5), now, 0.2);
     this._ambOneShots(now);
+    if (this._useRecordedMusic()) {
+      this._updateRecMusic(now, it);
+      this.layerExplore.gain.setTargetAtTime(0, now, 0.8);
+      this.layerCombat.gain.setTargetAtTime(0, now, 0.8);
+      this.layerBoss.gain.setTargetAtTime(0, now, 0.8);
+      this._nextStep = now + 0.3;
+      return;
+    }
+    if (this.recMusic && this.recMusic.cur >= 0) this._stopRecMusic();
     if (!this.ready) return;
     // Pas de croche ; le combat et les boss accélèrent légèrement le tempo
     const bpm = this.mood.bpm * (it >= 2 ? 1.18 : it === 1 ? 1.08 : 1);
@@ -699,7 +970,9 @@ const SFX_MAP = {
     this._sample('crack', { out, gain: 0.4, delay: 0.05 });
   },
   shoot(out, o) {
-    if (o.kind === 'arrow') this._sample('dash', { out, gain: 0.35, rate: 1.6 });
+    if (o.kind === 'arrow') {
+      if (!this._rec('arrow', { out, gain: 0.55 })) this._sample('dash', { out, gain: 0.35, rate: 1.6 });
+    }
     else this._sample('arcane', { out, gain: 0.45 });
   },
   growl(out, o) {
@@ -717,8 +990,10 @@ const SFX_MAP = {
   playerHurt(out) {
     this._sample('hitFlesh', { out, gain: 0.8, rate: 0.85 });
     this._sample('armor', { out, gain: 0.25 });
+    if (Math.random() < 0.7) this._rec('playerHurt', { out, gain: 0.5, rate: 0.95 + Math.random() * 0.1 });
   },
   death(out) {
+    this._rec('playerDie', { gain: 0.7 });
     const k = this.mood.key;
     const t = this.t;
     this._note('bell', k, t, 6, 0.4, this.sfxBus);
@@ -727,7 +1002,8 @@ const SFX_MAP = {
   },
   levelUp(out) {
     const t = this.t;
-    [0, 4, 7, 12, 16].forEach((s, i) => this._note('harp', 62 + s, t + i * 0.08, 1.5, 0.35, this.sfxBus));
+    const rec = this._rec('levelUp', { gain: 0.75 });
+    [0, 4, 7, 12, 16].forEach((s, i) => this._note('harp', 62 + s, t + i * 0.08, 1.5, rec ? 0.18 : 0.35, this.sfxBus));
     for (const s of [0, 4, 7]) this._note('choirAh', 74 + s, t + 0.35, 2.2, 0.18, this.sfxBus, { attack: 0.2, release: 0.8 });
     this._note('bell', 62, t + 0.35, 4, 0.25, this.sfxBus);
   },
@@ -751,11 +1027,12 @@ const SFX_MAP = {
     this._sample('uiError', { gain: 0.3 });
   },
   buy(out) {
-    this._sample('pickup', { out, gain: 0.5 });
+    if (!this._rec('coins', { out, gain: 0.6 })) this._sample('pickup', { out, gain: 0.5 });
     this._sample('armor', { out, gain: 0.3, delay: 0.05 });
   },
   forge(out) {
     for (let i = 0; i < 3; i++) this._sample('hitMetal', { out, gain: 0.6, delay: i * 0.25 });
+    this._rec('heavyItem', { out, gain: 0.5, delay: 0.8 });
   },
   altar(out) {
     const t = this.t;
@@ -810,6 +1087,7 @@ const SFX_MAP = {
   },
   art(out) {
     this._sample('art', { out, gain: 0.75 });
+    this._rec('warcry', { out, gain: 0.45 });
   },
   dash(out) {
     this._sample('dash', { out, gain: 0.55 });

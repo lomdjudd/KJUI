@@ -5,6 +5,7 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.VibrationEffect;
@@ -14,9 +15,16 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Chevalier des Ombres : le jeu (HTML5 / WebGL) tourne dans une WebView plein écran.
@@ -24,6 +32,10 @@ import android.webkit.WebViewClient;
  * les informations sur l'appareil et la sortie de l'application.
  */
 public class MainActivity extends Activity {
+    // Les fichiers du jeu (page, musiques, bruitages) sont servis depuis les assets de l'APK
+    // sous une adresse https interne : le jeu peut ainsi charger ses fichiers audio.
+    private static final String HOST = "appassets.androidplatform.net";
+    private static final String BASE = "https://" + HOST + "/";
     private WebView web;
 
     @Override
@@ -57,11 +69,50 @@ public class MainActivity extends Activity {
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
         web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         web.setWebChromeClient(new WebChromeClient());
-        web.setWebViewClient(new WebViewClient());
+        web.setWebViewClient(new AssetClient(this));
         web.addJavascriptInterface(new Bridge(this), "AndroidBridge");
         setContentView(web);
         hideSystemUi();
-        web.loadUrl("file:///android_asset/index.html");
+        web.loadUrl(BASE + "index.html");
+    }
+
+    // Sert les fichiers des assets sous https://appassets.androidplatform.net/ (page, musiques, bruitages)
+    private static final class AssetClient extends WebViewClient {
+        private final Activity act;
+
+        AssetClient(Activity act) {
+            this.act = act;
+        }
+
+        @Override
+        public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
+            Uri u = req.getUrl();
+            if (!HOST.equals(u.getHost())) return null;
+            String path = u.getPath();
+            if (path == null || path.isEmpty() || path.equals("/")) path = "/index.html";
+            try {
+                InputStream in = act.getAssets().open(path.substring(1));
+                String mime = mimeOf(path);
+                WebResourceResponse r = new WebResourceResponse(mime, mime.startsWith("text/") ? "utf-8" : null, in);
+                Map<String, String> h = new HashMap<String, String>();
+                h.put("Access-Control-Allow-Origin", "*");
+                h.put("Cache-Control", "no-cache");
+                r.setResponseHeaders(h);
+                return r;
+            } catch (IOException e) {
+                return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found", new HashMap<String, String>(), null);
+            }
+        }
+    }
+
+    private static String mimeOf(String p) {
+        if (p.endsWith(".html")) return "text/html";
+        if (p.endsWith(".js")) return "text/javascript";
+        if (p.endsWith(".json")) return "application/json";
+        if (p.endsWith(".webm")) return "audio/webm";
+        if (p.endsWith(".ogg")) return "audio/ogg";
+        if (p.endsWith(".png")) return "image/png";
+        return "application/octet-stream";
     }
 
     @SuppressWarnings("deprecation")

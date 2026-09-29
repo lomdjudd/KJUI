@@ -107,6 +107,7 @@ export const SETTINGS_SCHEMA = [
     items: [
       { key: 'master', label: 'Volume général', type: 'slider', def: 0.8, min: 0, max: 1, step: 0.05, fmt: (v) => Math.round(v * 100) + ' %' },
       { key: 'music', label: 'Musique', type: 'slider', def: 0.6, min: 0, max: 1, step: 0.05, fmt: (v) => Math.round(v * 100) + ' %' },
+      { key: 'musicSource', label: 'Style de musique', type: 'select', def: 'recorded', options: [['recorded', 'Orchestrale (enregistrée)'], ['composed', 'Composée par le jeu']], desc: 'Musiques orchestrales enregistrées (voir Crédits) ou musique générée en temps réel.' },
       { key: 'sfx', label: 'Effets sonores', type: 'slider', def: 0.8, min: 0, max: 1, step: 0.05, fmt: (v) => Math.round(v * 100) + ' %' },
       { key: 'ambience', label: 'Ambiance', type: 'slider', def: 0.6, min: 0, max: 1, step: 0.05, fmt: (v) => Math.round(v * 100) + ' %' },
       { key: 'muteBackground', label: 'Couper en arrière-plan', type: 'toggle', def: true, options: onoff },
