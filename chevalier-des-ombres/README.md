@@ -10,7 +10,7 @@ Le jeu est publié sous forme de page web : **https://claude.ai/artifact/3aMX1wq
 
 ## 📱 Installer l'APK (Android 7.0 ou plus)
 
-1. Sur le téléphone, ouvre ce lien dans Chrome pour télécharger l'APK directement :
+1. Le plus simple : la page de téléchargement **https://claude.ai/artifact/LHXyqants5Wj9soswruMFg** (bouton d'enregistrement en ZIP depuis l'appli Claude, lien direct et lien miroir). Sinon, ouvre ce lien dans Chrome pour télécharger l'APK directement :
    **https://github.com/lomdjudd/KJUI/raw/ccr-110bd93c-1zf4sl/chevalier-des-ombres/release/ChevalierDesOmbres.apk**
    (ou copie [`release/ChevalierDesOmbres.apk`](release/ChevalierDesOmbres.apk) sur le téléphone).
 2. Ouvre-le, puis autorise **« Installer des applis inconnues »** si Android le demande.
