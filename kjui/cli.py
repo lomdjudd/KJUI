@@ -48,14 +48,15 @@ def main(argv: list[str] | None = None) -> int:
     g = sub.add_parser("gui", help="ouvre le cerveau animé")
     g.add_argument("--port", type=int, default=8765)
     g.add_argument("--no-browser", action="store_true")
-    g.add_argument("--watch", action="store_true", help="capte en direct les sessions Claude Code")
+    g.add_argument("--no-watch", action="store_true", help="ne pas capter les sessions Claude Code en direct")
+    g.add_argument("--watch", action="store_true", help=argparse.SUPPRESS)
     a = sub.add_parser("add", help="mémoriser un fait")
     a.add_argument("text")
     a.add_argument("-t", "--title", default="")
     a.add_argument("--tags", default="")
     a.add_argument("--kind", default="memory")
     a.add_argument("--pin", action="store_true")
-    i = sub.add_parser("ingest", help="importer un .md/.txt, un dossier, ou conversations.json")
+    i = sub.add_parser("ingest", help="importer un fichier, un dossier, conversations.json ou l'export .zip de claude.ai")
     i.add_argument("path")
     i.add_argument("--instruction", action="store_true", help="traiter comme instructions épinglées")
     r = sub.add_parser("recall", help="afficher le pack de contexte pour une requête")
@@ -75,7 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
     if not args.cmd:
         args.cmd = "gui"
-        args.port, args.no_browser, args.watch = 8765, False, False
+        args.port, args.no_browser, args.no_watch = 8765, False, False
     brain = Brain(args.db)
     if args.cmd != "mcp" and not brain.meta_get("seeded"):
         seed_builtin(brain)
@@ -86,14 +87,14 @@ def main(argv: list[str] | None = None) -> int:
     elif args.cmd == "gui":
         from .web import run
 
-        run(brain, args.port, not args.no_browser, args.watch)
+        run(brain, args.port, not args.no_browser, not args.no_watch)
     elif args.cmd == "add":
         n, new = brain.add(args.text, args.title, args.kind, args.tags, "cli", pinned=args.pin)
         print(f"#{n} {'créé' if new else 'déjà connu'}")
     elif args.cmd == "ingest":
         path = Path(args.path).expanduser()
-        if path.name == "conversations.json":
-            print(f"✔ {ingest_claude_export(brain, path)} conversations mémorisées")
+        if path.name == "conversations.json" or path.suffix.lower() == ".zip":
+            print(f"✔ {ingest_claude_export(brain, path)} messages/fichiers mémorisés")
         else:
             res = ingest_path(brain, path, "instruction" if args.instruction else None, True if args.instruction else None)
             print(f"✔ {res['files']} fichier(s) → {res['chunks']} blocs ({res['created']} nouveaux)")

@@ -57,7 +57,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:rgba(0,0,0,.28);border
   <div id="logo" class="glass">🧠 <b>KJUI</b> BRAIN</div>
   <div id="search" class="glass"><span>⌕</span><input id="q" placeholder="Interroger le cerveau… (Entrée = rappel complet)" autocomplete="off"></div>
   <button class="btn" id="add">+ Souvenir</button>
-  <label class="btn" style="cursor:pointer">⬆ Fichiers .md<input id="file" type="file" accept=".md,.markdown,.txt" multiple hidden></label>
+  <label class="btn" style="cursor:pointer">⬆ Fichiers / images<input id="file" type="file" multiple hidden></label>
   <label class="chk glass" style="padding:9px 12px"><input type="checkbox" id="asInstr"> instructions épinglées</label>
 </div>
 <div id="stats">
@@ -68,12 +68,12 @@ pre{white-space:pre-wrap;word-break:break-word;background:rgba(0,0,0,.28);border
 </div>
 <div id="legend" class="glass">
   <span><i style="color:var(--cy)"></i>souvenir</span><span><i style="color:var(--am)"></i>instruction</span>
-  <span><i style="color:var(--vi)"></i>conversation</span><span><i style="color:var(--gr)"></i>fichier</span>
+  <span><i style="color:var(--vi)"></i>conversation</span><span><i style="color:var(--gr)"></i>fichier</span><span><i style="color:#ff6eaa"></i>image</span>
 </div>
 <div id="side" class="glass"></div>
 <div id="tip" class="glass"></div>
 <div id="empty"><div style="font-size:18px;color:var(--tx)">Cerveau vide</div>Ajoute un souvenir, dépose un .md, ou lance <code>kjui demo</code></div>
-<div id="drop">Dépose tes fichiers .md pour les mémoriser</div>
+<div id="drop">Dépose tes fichiers, images, PDF… pour les mémoriser</div>
 <div id="toast" class="glass"></div>
 <div id="modal"><div class="box glass">
   <h3 style="margin-top:0">Nouveau souvenir</h3>
@@ -87,8 +87,8 @@ pre{white-space:pre-wrap;word-break:break-word;background:rgba(0,0,0,.28);border
 <script>
 "use strict";
 const $=s=>document.querySelector(s);
-const KC={memory:[56,224,255],instruction:[255,179,71],conversation:[181,123,255],file:[93,255,168]};
-const KN={memory:'souvenir',instruction:'instruction',conversation:'conversation',file:'fichier'};
+const KC={memory:[56,224,255],instruction:[255,179,71],conversation:[181,123,255],file:[93,255,168],image:[255,110,170]};
+const KN={memory:'souvenir',instruction:'instruction',conversation:'conversation',file:'fichier',image:'image'};
 const rgb=(c,a=1)=>`rgba(${c[0]},${c[1]},${c[2]},${a})`;
 const fmt=n=>Number(n).toLocaleString('fr-FR');
 
@@ -221,8 +221,12 @@ function frame(){
     const g=ctx.createLinearGradient(PX[a],PY[a],x,y);g.addColorStop(0,'rgba(255,226,122,0)');g.addColorStop(1,`rgba(255,226,122,${.85*fade})`);
     ctx.strokeStyle=g;ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(PX[a],PY[a]);ctx.lineTo(x,y);ctx.stroke()}
   // souvenirs
-  const order=nodes.map(n=>[n,slotOf.get(n.id)]).sort((p,q)=>PZ[p[1]]-PZ[q[1]]);
+  const heavy=nodes.length>2500,order=nodes.map(n=>[n,slotOf.get(n.id)]);
+  if(!heavy)order.sort((p,q)=>PZ[p[1]]-PZ[q[1]]);
+  const recent=nodes.length?nodes[Math.max(0,nodes.length-1200)].id:0;
   for(const [n,s] of order){
+    if(heavy&&n.id<recent&&!active.has(n.id)&&selected!==n.id&&hover!==n.id){const c=KC[n.kind]||KC.memory,z=Math.max(1.6,2.4*PS[s]);
+      ctx.fillStyle=rgb(c,focusOn?.25:.75);ctx.fillRect(PX[s]-z/2,PY[s]-z/2,z,z);continue}
     const col=KC[n.kind]||KC.memory,act=active.get(n.id),isSel=selected===n.id,isHov=hover===n.id;
     const depth=.55+.45*((PZ[s]+.75)/1.5);
     let base=(3.2+Math.min(3,Math.log1p(n.hits)*.9)+(n.pinned?1.6:0))*PS[s];
@@ -273,6 +277,8 @@ async function openMemory(id){
       el('span',{class:'badge',style:`color:${rgb(col)};border-color:${rgb(col,.5)}`},KN[m.kind]||m.kind),
       el('span',{class:'badge'},'#'+m.id),el('span',{class:'badge'},fmt(m.tokens)+' tokens'),el('span',{class:'badge'},m.hits+' rappels'),
       ...(m.pinned?[el('span',{class:'badge'},'📌 épinglé')]:[]),...(m.tags?m.tags.split(' ').map(t=>el('span',{class:'badge'},'#'+t)):[])),
+    ...(m.blob&&/^image\/(png|jpeg|gif|webp)$/.test(m.mime)?[el('img',{src:'/files/'+m.blob,style:'max-width:100%;border-radius:10px;border:1px solid var(--line)'})]:[]),
+    ...(m.blob?[el('a',{class:'btn',href:'/files/'+m.blob,target:'_blank',download:m.title,style:'display:inline-block;text-decoration:none;margin:6px 0'},'⬇ Ouvrir / télécharger le fichier')]:[]),
     el('pre',{},m.content),
     el('div',{class:'meta'},el('span',{class:'badge'},'source : '+(m.source||'—').slice(-60))),
     el('div',{class:'row'},
@@ -313,15 +319,21 @@ $('#m-cancel').onclick=()=>modal.classList.remove('open');
 $('#m-save').onclick=async()=>{const c=$('#m-content').value.trim();if(!c)return;
   await api('/api/remember',{method:'POST',body:JSON.stringify({title:$('#m-title').value,content:c,kind:$('#m-kind').value,tags:$('#m-tags').value,pinned:$('#m-pin').checked})});
   for(const i of['#m-title','#m-content','#m-tags'])$(i).value='';modal.classList.remove('open');await load(true);toast('Souvenir mémorisé')};
+const TXT=/\.(md|markdown|txt|py|js|ts|tsx|jsx|json|csv|tsv|html|css|ya?ml|toml|xml|sh|bat|log|ini|cfg|sql|java|c|h|cpp|cs|go|rs|rb|php|swift|kt|lua|rst)$/i;
+const b64=f=>new Promise((ok,ko)=>{const r=new FileReader();r.onload=()=>ok(r.result.split(',')[1]||'');r.onerror=ko;r.readAsDataURL(f)});
 async function upload(files){
-  let chunks=0;
-  for(const f of files){const text=await f.text();const r=await api('/api/upload',{method:'POST',body:JSON.stringify({name:f.name,text,kind:$('#asInstr').checked?'instruction':undefined,pinned:$('#asInstr').checked})});chunks+=r.chunks}
-  await load(true);toast(files.length+' fichier(s) → '+chunks+' blocs mémorisés');
+  let chunks=0;const instr=$('#asInstr').checked;
+  for(const f of files){
+    const body={name:f.name,kind:instr?'instruction':undefined,pinned:instr};
+    if(TXT.test(f.name))body.text=await f.text();else body.b64=await b64(f);
+    try{chunks+=(await api('/api/upload',{method:'POST',body:JSON.stringify(body)})).chunks}catch(e){toast('Échec : '+f.name+' ('+e.message+')')}
+  }
+  await load(true);toast(files.length+' fichier(s) mémorisé(s) ('+chunks+' blocs)');
 }
 $('#file').onchange=e=>{upload([...e.target.files]);e.target.value=''};
 addEventListener('dragover',e=>{e.preventDefault();$('#drop').style.display='flex'});
 addEventListener('dragleave',e=>{if(!e.relatedTarget)$('#drop').style.display='none'});
-addEventListener('drop',e=>{e.preventDefault();$('#drop').style.display='none';upload([...e.dataTransfer.files].filter(f=>/\.(md|markdown|txt)$/i.test(f.name)))});
+addEventListener('drop',e=>{e.preventDefault();$('#drop').style.display='none';upload([...e.dataTransfer.files])});
 
 load(false).then(()=>requestAnimationFrame(frame));
 </script>

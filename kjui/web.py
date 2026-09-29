@@ -9,11 +9,16 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
 from urllib.parse import parse_qs, urlparse
 
-from .ingest import ingest_markdown, sync_claude_code
+import base64
+import mimetypes
+import re
+
+from .ingest import ingest_bytes, sync_claude_code
 from .recall import recall
 from .store import KINDS, Brain
 
-MAX_BODY = 5_000_000
+MAX_BODY = 90_000_000
+SAFE_INLINE = {"image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"}
 
 
 def make_handler(brain: Brain, port_ref: list[int]):
@@ -56,6 +61,22 @@ def make_handler(brain: Brain, port_ref: list[int]):
             if u.path in ("/", "/index.html"):
                 html = resources.files("kjui").joinpath("static/index.html").read_bytes()
                 return self._send(200, html, "text/html")
+            if u.path.startswith("/files/"):
+                name = u.path[7:]
+                f = brain.files_dir / name
+                if not re.fullmatch(r"[0-9a-f]{40}\.[a-z0-9]{1,5}", name) or not f.is_file():
+                    return self._send(404, b"not found", "text/plain")
+                mime = mimetypes.guess_type(name)[0] or "application/octet-stream"
+                data = f.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", mime if mime in SAFE_INLINE else "application/octet-stream")
+                self.send_header("Content-Length", str(len(data)))
+                self.send_header("X-Content-Type-Options", "nosniff")
+                if mime not in SAFE_INLINE:
+                    self.send_header("Content-Disposition", "attachment")
+                self.end_headers()
+                self.wfile.write(data)
+                return
             if u.path == "/favicon.ico":
                 return self._send(204, b"", "text/plain")
             if u.path == "/api/graph":
@@ -90,10 +111,11 @@ def make_handler(brain: Brain, port_ref: list[int]):
                     )
                     return self._json({"id": i, "created": new})
                 if self.path == "/api/upload":
-                    r = ingest_markdown(
+                    data = base64.b64decode(b["b64"]) if "b64" in b else b.get("text", "").encode()
+                    r = ingest_bytes(
                         brain,
-                        b.get("text", ""),
                         b.get("name", "document.md"),
+                        data,
                         kind=b.get("kind") if b.get("kind") in KINDS else None,
                         pinned=True if b.get("pinned") else None,
                     )
@@ -101,7 +123,7 @@ def make_handler(brain: Brain, port_ref: list[int]):
                 if self.path.startswith("/api/pin/"):
                     brain.set_pinned(int(self.path.rsplit("/", 1)[1]), bool(b.get("pinned")))
                     return self._json({"ok": True})
-            except (ValueError, KeyError) as e:
+            except (ValueError, KeyError, TypeError) as e:
                 return self._json({"error": str(e)}, 400)
             self._send(404, b"not found", "text/plain")
 

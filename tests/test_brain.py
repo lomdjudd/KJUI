@@ -56,23 +56,54 @@ class BrainTest(unittest.TestCase):
         self.assertIn("Sujet3", out["pack"])
         self.assertEqual(self.brain.stats()["recalls"], 1)
 
-    def test_claude_export_and_transcript(self):
+    def test_claude_export_messages_and_attachments(self):
         p = Path(self.tmp.name) / "conversations.json"
         p.write_text(json.dumps([{"uuid": "u1", "name": "Chat", "chat_messages": [
-            {"sender": "human", "text": "Comment lancer les tests ?"},
-            {"sender": "assistant", "text": "Utilise pytest -q."}]}]))
-        self.assertEqual(ingest_claude_export(self.brain, p), 1)
+            {"sender": "human", "text": "Comment lancer les tests ?",
+             "attachments": [{"file_name": "notes.txt", "extracted_content": "contenu joint zorglub"}],
+             "files": [{"file_name": "photo.png"}]},
+            {"sender": "assistant", "text": "Utilise pytest -q.", "content": [
+                {"type": "text", "text": "Utilise pytest -q."},
+                {"type": "tool_use", "name": "artifacts", "input": {"title": "Script", "content": "print('salut')"}}]}]}]))
+        self.assertEqual(ingest_claude_export(self.brain, p), 5)
+        self.assertEqual(ingest_claude_export(self.brain, p), 0)  # idempotent
+        self.assertEqual(self.brain.search("zorglub")[0]["kind"], "file")
+
+    def test_transcript_every_message_image_and_written_file(self):
+        import base64
+
+        png = base64.b64encode(b"\x89PNG fake").decode()
         t = Path(self.tmp.name) / "s.jsonl"
         lines = [
             {"type": "user", "message": {"content": "Quel port pour le serveur ?"}},
             {"type": "assistant", "message": {"content": [{"type": "text", "text": "Le port 8765."}]}},
+            {"type": "user", "message": {"content": [
+                {"type": "text", "text": "voici la capture du bug"},
+                {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": png}}]}},
+            {"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "name": "Write", "input": {"file_path": "/x/app.py", "content": "print('hello licorne')"}}]}},
+            {"type": "user", "isMeta": True, "message": {"content": "ignoré"}},
         ]
         t.write_text("\n".join(map(json.dumps, lines)) + "\n")
         n, off = ingest_transcript(self.brain, t, 0)
-        self.assertEqual(n, 1)
-        # relecture depuis l'offset : pas de doublon
-        ingest_transcript(self.brain, t, off)
-        self.assertEqual(len(self.brain.search("port serveur")), 1)
+        self.assertEqual(n, 5)  # 3 messages texte + 1 image + 1 fichier écrit
+        img = self.brain.search("capture bug", kind="image")[0]
+        self.assertTrue((self.brain.files_dir / img["blob"]).is_file())
+        self.assertEqual(self.brain.search("licorne")[0]["kind"], "file")
+        self.assertEqual(ingest_transcript(self.brain, t, off)[0], 0)  # rien de neuf
+        # ligne à moitié écrite : on n'avance pas
+        with t.open("ab") as f:
+            f.write(b'{"type": "user", "message": {"content": "incompl')
+        n2, off2 = ingest_transcript(self.brain, t, off)
+        self.assertEqual((n2, off2), (0, off))
+
+    def test_ingest_bytes_binary_and_text(self):
+        from kjui.ingest import ingest_bytes
+
+        ingest_bytes(self.brain, "doc.pdf", b"%PDF-1.4 fake")
+        ingest_bytes(self.brain, "code.py", "# mon script\nprint('kiwi')".encode())
+        self.assertEqual(self.brain.search("doc.pdf")[0]["mime"], "application/pdf")
+        self.assertEqual(self.brain.search("kiwi")[0]["kind"], "file")
 
 
 if __name__ == "__main__":

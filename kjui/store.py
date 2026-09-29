@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-KINDS = ("memory", "instruction", "conversation", "file")
+KINDS = ("memory", "instruction", "conversation", "file", "image")
 
 _STOP = set(
     "le la les un une des du de d l et ou à a au aux en dans sur pour par avec sans ce cet cette ces "
@@ -40,6 +40,8 @@ class Brain:
         self.db = sqlite3.connect(self.path, check_same_thread=False)
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA journal_mode=WAL")
+        self.db.execute("PRAGMA synchronous=NORMAL")
+        self.files_dir = Path(self.path).parent / "files"
         self._init()
 
     def _init(self) -> None:
@@ -80,6 +82,24 @@ class Brain:
                 """
             )
 
+        cols = {r["name"] for r in self.db.execute("PRAGMA table_info(memories)")}
+        with self.db:
+            if "blob" not in cols:
+                self.db.execute("ALTER TABLE memories ADD COLUMN blob TEXT NOT NULL DEFAULT ''")
+            if "mime" not in cols:
+                self.db.execute("ALTER TABLE memories ADD COLUMN mime TEXT NOT NULL DEFAULT ''")
+
+    # ------------------------------------------------------------------ fichiers binaires
+    def save_blob(self, data: bytes, ext: str = "bin") -> str:
+        """Enregistre un fichier (image, pdf…) dans ~/.kjui/files/, nommé par son SHA-1. Retourne le nom."""
+        ext = re.sub(r"[^a-z0-9]", "", ext.lower())[:5] or "bin"
+        name = f"{hashlib.sha1(data).hexdigest()}.{ext}"
+        self.files_dir.mkdir(parents=True, exist_ok=True)
+        f = self.files_dir / name
+        if not f.exists():
+            f.write_bytes(data)
+        return name
+
     # ------------------------------------------------------------------ écriture
     def add(
         self,
@@ -91,6 +111,8 @@ class Brain:
         key: str | None = None,
         pinned: bool = False,
         doc_tokens: int = 0,
+        blob: str = "",
+        mime: str = "",
     ) -> tuple[int, bool]:
         """Ajoute (ou met à jour via `key`) un souvenir. Retourne (id, créé?)."""
         content = content.strip()
@@ -111,8 +133,8 @@ class Brain:
                     if row["hash"] != h:
                         self.db.execute(
                             "UPDATE memories SET kind=?,title=?,content=?,tags=?,source=?,hash=?,tokens=?,"
-                            "doc_tokens=?,pinned=?,updated=? WHERE id=?",
-                            (kind, title, content, tags, source, h, tk, doc_tokens or tk, int(pinned), now, row["id"]),
+                            "doc_tokens=?,pinned=?,updated=?,blob=?,mime=? WHERE id=?",
+                            (kind, title, content, tags, source, h, tk, doc_tokens or tk, int(pinned), now, blob, mime, row["id"]),
                         )
                     return row["id"], False
             else:
@@ -120,9 +142,9 @@ class Brain:
                 if row:
                     return row["id"], False
             cur = self.db.execute(
-                "INSERT INTO memories(kind,title,content,tags,source,key,hash,tokens,doc_tokens,pinned,created,updated)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                (kind, title, content, tags, source, key, h, tk, doc_tokens or tk, int(pinned), now, now),
+                "INSERT INTO memories(kind,title,content,tags,source,key,hash,tokens,doc_tokens,pinned,created,updated,blob,mime)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (kind, title, content, tags, source, key, h, tk, doc_tokens or tk, int(pinned), now, now, blob, mime),
             )
             return int(cur.lastrowid), True
 

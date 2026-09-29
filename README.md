@@ -25,16 +25,30 @@ claude mcp add kjui -- python -m kjui mcp       # Claude Code : outils brain_rec
 Claude interroge alors le cerveau **avant** de lire des fichiers (`brain_recall`, budget 1200 tokens max par défaut)
 et mémorise ce qu'il apprend (`brain_remember`). Sans MCP : `kjui recall "mots clés"` ou le bouton « Copier le contexte » de l'interface.
 
-## Stockage « en direct » de tes sessions Claude
+## Tout est enregistré
+
+`kjui gui` (et donc `LANCER.bat` / `LANCER.command`) capte **en direct** tes sessions Claude Code (`~/.claude/projects`), toutes les 5 s :
+
+| Ce qui est enregistré | Comment c'est stocké |
+|---|---|
+| chaque message envoyé (toi + Claude), en entier | un point par message |
+| les images collées/envoyées | fichier gardé dans `~/.kjui/files/` + aperçu dans l'interface |
+| les PDF / documents joints | fichier gardé, téléchargeable depuis l'interface |
+| les fichiers créés ou modifiés par Claude (Write/Edit) | contenu complet, cherchable |
+
+Import du passé et autres sources :
 
 | Commande | Effet |
 |---|---|
-| `kjui gui --watch` / `kjui watch` | capte en continu les sessions Claude Code (`~/.claude/projects/*.jsonl`) |
-| `kjui sync` | import ponctuel des sessions Claude Code |
-| `kjui ingest conversations.json` | import de l'export officiel claude.ai |
-| `kjui ingest fichier.md` / `dossier/` | importe des `.md`/`.txt`, découpés par titres en blocs ≤ ~350 tokens |
-| `kjui add "fait" --pin` | mémorise un fait (épinglé = toujours inclus) |
-| `kjui ls`, `kjui forget ID`, `kjui stats` | gestion et compteur de tokens économisés |
+| `kjui sync` | import ponctuel de tout l'historique Claude Code |
+| `kjui ingest export-claude.zip` (ou `conversations.json`) | **claude.ai (site/app)** : messages, pièces jointes, artifacts. Export : Paramètres → Confidentialité → Exporter les données |
+| `kjui ingest fichier` / `dossier/` | texte, code, images, PDF… (tout type de fichier) |
+| `kjui add "fait" --pin` | mémorise un fait |
+| `kjui gui --no-watch` | désactive la capture en direct |
+
+Limites honnêtes : le chat du **site claude.ai / app** ne peut pas être capté en direct (Anthropic ne l'expose pas) — il faut
+importer l'export. Les *résultats* des outils (sorties de commandes, lectures de fichiers) ne sont pas stockés : ils
+noieraient la recherche sous du bruit.
 
 ## Fichiers `.md` d'instructions
 
