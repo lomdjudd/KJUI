@@ -1,13 +1,16 @@
 """Stockage SQLite + recherche plein texte (FTS5/BM25) — 100 % local, zéro dépendance."""
 from __future__ import annotations
 
+import contextlib
 import hashlib
+import json
 import math
 import os
 import re
 import sqlite3
 import threading
 import time
+import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -18,8 +21,21 @@ _STOP = set(
     "que qui quoi est sont être avoir fait faire je tu il elle on nous vous ils elles mon ma mes ton ta "
     "tes son sa ses ne pas plus se y the a an and or of to in on for with is are be was were it this "
     "that these those i you he she we they my your his her our their not as at by from do does did how "
-    "what which who".split()
+    "what which who quel quelle quels quelles comment pourquoi quand où ou ecris écris peux peut veux voudrais "
+    "fais faire stp svp merci bonjour salut déjà deja encore aussi très tres".split()
 )
+
+
+def _plain(t: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFKD", t.lower()) if not unicodedata.combining(c))
+
+
+def coverage(query: str, text: str) -> tuple[int, int]:
+    """(mots de la requête retrouvés dans `text`, nombre de mots utiles de la requête) — accents/pluriels tolérés."""
+    words = set(re.findall(r"\w+", _plain(text)))
+    terms = [t for t in dict.fromkeys(re.findall(r"\w+", _plain(query))) if t not in {_plain(x) for x in _STOP} and len(t) > 2]
+    hit = sum(1 for t in terms if any(w.startswith(t[:5] if len(t) >= 6 else t) for w in words))
+    return hit, len(terms)
 
 
 def home_dir() -> Path:
@@ -37,6 +53,7 @@ class Brain:
     def __init__(self, path: str | Path | None = None):
         self.path = str(path or home_dir() / "brain.db")
         self._lock = threading.RLock()
+        self._tl = threading.local()
         self.db = sqlite3.connect(self.path, check_same_thread=False)
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA journal_mode=WAL")
@@ -88,6 +105,18 @@ class Brain:
                 self.db.execute("ALTER TABLE memories ADD COLUMN blob TEXT NOT NULL DEFAULT ''")
             if "mime" not in cols:
                 self.db.execute("ALTER TABLE memories ADD COLUMN mime TEXT NOT NULL DEFAULT ''")
+            for c in ("conv", "conv_title", "app"):
+                if c not in cols:
+                    self.db.execute(f"ALTER TABLE memories ADD COLUMN {c} TEXT NOT NULL DEFAULT ''")
+            self.db.executescript(
+                """
+                CREATE INDEX IF NOT EXISTS mem_conv ON memories(conv);
+                CREATE INDEX IF NOT EXISTS mem_blob ON memories(blob);
+                CREATE TABLE IF NOT EXISTS events(
+                  id INTEGER PRIMARY KEY, ts REAL NOT NULL, type TEXT NOT NULL,
+                  mem_id INTEGER, text TEXT NOT NULL DEFAULT '', data TEXT NOT NULL DEFAULT '{}');
+                """
+            )
 
     # ------------------------------------------------------------------ fichiers binaires
     def save_blob(self, data: bytes, ext: str = "bin") -> str:
@@ -99,6 +128,99 @@ class Brain:
         if not f.exists():
             f.write_bytes(data)
         return name
+
+    @contextlib.contextmanager
+    def ctx(self, conv: str = "", app: str = "", conv_title: str = ""):
+        """Contexte d'ingestion (propre au thread) : rattache les souvenirs créés à une conversation / une appli."""
+        old = getattr(self._tl, "c", None)
+        self._tl.c = (conv, app, conv_title)
+        try:
+            yield
+        finally:
+            self._tl.c = old
+
+    # ------------------------------------------------------------------ flux d'événements (« en direct »)
+    def log_event(self, type_: str, mem_id: int | None = None, text: str = "", data: dict | None = None) -> int:
+        with self._lock, self.db:
+            cur = self.db.execute(
+                "INSERT INTO events(ts,type,mem_id,text,data) VALUES (?,?,?,?,?)",
+                (time.time(), type_, mem_id, text[:300], json.dumps(data or {}, ensure_ascii=False)),
+            )
+            if cur.lastrowid % 500 == 0:  # garde les 20 000 derniers
+                self.db.execute("DELETE FROM events WHERE id < ?", (cur.lastrowid - 20000,))
+            return int(cur.lastrowid)
+
+    def events(self, since: int = 0, limit: int = 60) -> list[dict[str, Any]]:
+        """Événements > since (ordre croissant) ; si since=0 : les `limit` derniers."""
+        q = (
+            "SELECT e.id,e.ts,e.type,e.mem_id,e.text,e.data,m.kind,m.title,m.source,m.app,m.conv,m.mime,m.blob,m.tokens,"
+            "substr(m.content,1,260) AS preview FROM events e LEFT JOIN memories m ON m.id=e.mem_id "
+        )
+        with self._lock:
+            if since:
+                rows = self.db.execute(q + "WHERE e.id>? ORDER BY e.id LIMIT ?", (since, limit)).fetchall()
+            else:
+                rows = self.db.execute(q + "ORDER BY e.id DESC LIMIT ?", (limit,)).fetchall()[::-1]
+        out = []
+        for r in rows:
+            d = dict(r)
+            d["data"] = json.loads(d["data"] or "{}")
+            out.append(d)
+        return out
+
+    def last_event_id(self) -> int:
+        with self._lock:
+            return int(self.db.execute("SELECT COALESCE(MAX(id),0) FROM events").fetchone()[0])
+
+    def activity(self, minutes: int = 30) -> list[int]:
+        """Nombre d'événements par minute sur les dernières `minutes` minutes (pour la courbe d'activité)."""
+        now = time.time()
+        with self._lock:
+            rows = self.db.execute("SELECT ts FROM events WHERE ts>?", (now - minutes * 60,)).fetchall()
+        buckets = [0] * minutes
+        for (ts,) in rows:
+            buckets[min(minutes - 1, int((now - ts) // 60))] += 1
+        return buckets[::-1]
+
+    def last_claude_call(self) -> float:
+        with self._lock:
+            r = self.db.execute("SELECT MAX(ts) FROM events WHERE type='recall' AND (data LIKE '%\"via\": \"hook\"%' OR data LIKE '%\"via\": \"mcp\"%' "
+                "OR data LIKE '%\"via\": \"session\"%')").fetchone()
+        return float(r[0] or 0)
+
+    # ------------------------------------------------------------------ conversations & fichiers
+    def conversations(self, limit: int = 300) -> list[dict[str, Any]]:
+        with self._lock:
+            rows = self.db.execute(
+                "SELECT conv, MAX(app) app, COUNT(*) n, MAX(id) last_id, MAX(updated) updated, MIN(created) created, "
+                "MAX(conv_title) conv_title, "
+                "(SELECT title FROM memories m2 WHERE m2.conv=m.conv AND m2.tags LIKE 'toi%' ORDER BY id LIMIT 1) first_q, "
+                "SUM(kind IN ('file','image') AND blob!='') files "
+                "FROM memories m WHERE conv!='' GROUP BY conv ORDER BY last_id DESC LIMIT ?", (limit,)
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def conversation(self, conv: str, after_id: int = 0) -> list[dict[str, Any]]:
+        with self._lock:
+            rows = self.db.execute(
+                "SELECT id,kind,title,content,tags,source,app,mime,blob,tokens,created FROM memories "
+                "WHERE conv=? AND id>? ORDER BY id LIMIT 2000", (conv, after_id)
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def files(self, limit: int = 300) -> list[dict[str, Any]]:
+        with self._lock:
+            rows = self.db.execute(
+                "SELECT MIN(id) id, kind, title, mime, blob, source, app, MAX(created) created, SUM(tokens) tokens "
+                "FROM memories WHERE blob!='' GROUP BY blob ORDER BY MAX(id) DESC LIMIT ?", (limit,)
+            ).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            f = self.files_dir / d["blob"]
+            d["size"] = f.stat().st_size if f.exists() else 0
+            out.append(d)
+        return out
 
     # ------------------------------------------------------------------ écriture
     def add(
@@ -126,6 +248,7 @@ class Brain:
         h = hashlib.sha1(f"{kind}\0{title}\0{content}".encode()).hexdigest()
         now = time.time()
         tk = est_tokens(content)
+        conv, app, conv_title = getattr(self._tl, "c", None) or ("", "", "")
         with self._lock, self.db:
             if key:
                 row = self.db.execute("SELECT id,hash FROM memories WHERE key=?", (key,)).fetchone()
@@ -142,11 +265,17 @@ class Brain:
                 if row:
                     return row["id"], False
             cur = self.db.execute(
-                "INSERT INTO memories(kind,title,content,tags,source,key,hash,tokens,doc_tokens,pinned,created,updated,blob,mime)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (kind, title, content, tags, source, key, h, tk, doc_tokens or tk, int(pinned), now, now, blob, mime),
+                "INSERT INTO memories(kind,title,content,tags,source,key,hash,tokens,doc_tokens,pinned,created,updated,blob,mime,"
+                "conv,conv_title,app) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (kind, title, content, tags, source, key, h, tk, doc_tokens or tk, int(pinned), now, now, blob, mime,
+                 conv, conv_title, app),
             )
-            return int(cur.lastrowid), True
+            new_id = int(cur.lastrowid)
+            self.db.execute(
+                "INSERT INTO events(ts,type,mem_id,text,data) VALUES (?,?,?,?,?)",
+                (now, "add", new_id, title[:300], json.dumps({"app": app, "conv": conv})),
+            )
+            return new_id, True
 
     def forget(self, mem_id: int) -> bool:
         with self._lock, self.db:
@@ -191,7 +320,7 @@ class Brain:
         terms = [f'"{w}"*' if len(w) >= 3 else f'"{w}"' for w in dict.fromkeys(keep)]
         return " OR ".join(terms)
 
-    def search(self, query: str, limit: int = 8, kind: str | None = None) -> list[dict[str, Any]]:
+    def search(self, query: str, limit: int = 8, kind: str | None = None, exclude_conv: str = "") -> list[dict[str, Any]]:
         fq = self._fts_query(query)
         if not fq:
             return []
@@ -203,6 +332,9 @@ class Brain:
         if kind:
             sql += " AND m.kind=?"
             args.append(kind)
+        if exclude_conv:
+            sql += " AND m.conv!=?"
+            args.append(exclude_conv)
         sql += " ORDER BY rank LIMIT ?"
         args.append(limit * 3)
         with self._lock:
@@ -242,6 +374,7 @@ class Brain:
                 "SELECT COUNT(*) n, COALESCE(SUM(tokens),0) t, COALESCE(MAX(updated),0) u, COALESCE(MAX(id),0) mx "
                 "FROM memories"
             ).fetchone()
+            convs = self.db.execute("SELECT COUNT(DISTINCT conv) FROM memories WHERE conv!=''").fetchone()[0]
             kinds = {
                 x["kind"]: x["c"]
                 for x in self.db.execute("SELECT kind, COUNT(*) c FROM memories GROUP BY kind").fetchall()
@@ -250,6 +383,7 @@ class Brain:
         base = int(self.meta_get("baseline_tokens", "0"))
         return {
             "memories": r["n"],
+            "conversations": convs,
             "stored_tokens": r["t"],
             "kinds": kinds,
             "recalls": int(self.meta_get("recalls", "0")),

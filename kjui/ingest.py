@@ -284,25 +284,31 @@ def ingest_conversations(brain: Brain, convs: list[dict]) -> int:
     for conv in convs:
         uid = conv.get("uuid") or conv.get("name", "")
         src = conv.get("name") or uid
-        for i, msg in enumerate(conv.get("chat_messages", [])):
-            who = "Toi" if msg.get("sender") == "human" else "Claude"
-            key = f"conv:{uid}:{i}"
-            blocks = _blocks(msg.get("content")) or _blocks(msg.get("text", ""))
-            if not any(b.get("type") == "text" and b.get("text") for b in blocks) and msg.get("text"):
-                blocks = [{"type": "text", "text": msg["text"]}] + [b for b in blocks if b.get("type") != "text"]
-            total += _ingest_blocks(brain, who, blocks, src, key)
-            for a, att in enumerate(msg.get("attachments") or []):
-                if att.get("extracted_content"):
-                    total += brain.add(att["extracted_content"], title=f"Pièce jointe : {att.get('file_name', '?')}",
-                                       kind="file", tags="toi pièce-jointe", source=src, key=f"{key}:att{a}")[1]
-            for f, fl in enumerate(msg.get("files") or msg.get("files_v2") or []):
-                total += brain.add(f"[Fichier joint] {fl.get('file_name', '?')}", title=fl.get("file_name", "fichier"),
-                                   kind="file", source=src, key=f"{key}:file{f}")[1]
+        with brain.ctx(conv=uid, app="claude.ai", conv_title=src):
+            for i, msg in enumerate(conv.get("chat_messages", [])):
+                who = "Toi" if msg.get("sender") == "human" else "Claude"
+                key = f"conv:{uid}:{i}"
+                blocks = _blocks(msg.get("content")) or _blocks(msg.get("text", ""))
+                if not any(b.get("type") == "text" and b.get("text") for b in blocks) and msg.get("text"):
+                    blocks = [{"type": "text", "text": msg["text"]}] + [b for b in blocks if b.get("type") != "text"]
+                total += _ingest_blocks(brain, who, blocks, src, key)
+                for a, att in enumerate(msg.get("attachments") or []):
+                    if att.get("extracted_content"):
+                        total += brain.add(att["extracted_content"], title=f"Pièce jointe : {att.get('file_name', '?')}",
+                                           kind="file", tags="toi pièce-jointe", source=src, key=f"{key}:att{a}")[1]
+                for f, fl in enumerate(msg.get("files") or msg.get("files_v2") or []):
+                    total += brain.add(f"[Fichier joint] {fl.get('file_name', '?')}", title=fl.get("file_name", "fichier"),
+                                       kind="file", tags="toi pièce-jointe", source=src, key=f"{key}:file{f}")[1]
     return total
 
 
 def ingest_transcript(brain: Brain, path: Path, offset: int = 0) -> tuple[int, int]:
     """Transcript Claude Code (.jsonl), incrémental : chaque message, image, document et fichier écrit."""
+    with brain.ctx(conv=path.stem, app="Claude Code"):
+        return _ingest_transcript(brain, path, offset)
+
+
+def _ingest_transcript(brain: Brain, path: Path, offset: int) -> tuple[int, int]:
     n = 0
     pos = offset
     with path.open("rb") as f:
@@ -357,7 +363,8 @@ def scan_folder(brain: Brain, root: Path, since: float) -> int:
                 continue
             try:
                 rel = str(p.relative_to(root))
-                n += ingest_bytes(brain, fn, p.read_bytes(), source=f"{root.name}/{rel}")["created"]
+                with brain.ctx(app="Dossier"):
+                    n += ingest_bytes(brain, fn, p.read_bytes(), source=f"{root.name}/{rel}")["created"]
             except OSError:
                 continue
             brain.meta_set(k, sig)

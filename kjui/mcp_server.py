@@ -42,11 +42,12 @@ _first = [True]  # les instructions épinglées ne sont envoyées qu'une fois pa
 
 def _call(brain: Brain, name: str, args: dict) -> str:
     if name == "brain_recall":
-        r = recall(brain, args.get("query", ""), int(args.get("budget") or 1200), include_pinned=_first[0])
+        r = recall(brain, args.get("query", ""), int(args.get("budget") or 1200), include_pinned=_first[0], via="mcp")
         _first[0] = False
         return r["pack"] or "(rien de connu — cherche normalement puis utilise brain_remember)"
     if name == "brain_remember":
-        i, new = brain.add(args["text"], title=args.get("title", ""), tags=args.get("tags", ""), source="mcp")
+        with brain.ctx(app="Claude (MCP)"):
+            i, new = brain.add(args["text"], title=args.get("title", ""), tags=args.get("tags", ""), source="mcp")
         return f"souvenir #{i} {'créé' if new else 'déjà connu'}"
     raise ValueError(f"outil inconnu: {name}")
 
@@ -69,6 +70,12 @@ def serve(brain: Brain) -> None:
                     "protocolVersion": req.get("params", {}).get("protocolVersion", "2024-11-05"),
                     "capabilities": {"tools": {}},
                     "serverInfo": {"name": "kjui-brain", "version": __version__},
+                    "instructions": (
+                        "Cerveau local KJUI : tes conversations passées, fichiers et instructions. "
+                        "AVANT de lire des fichiers ou de chercher sur le web, appelle brain_recall (2-6 mots-clés). "
+                        "Si le résultat suffit, ne relis pas les sources (économie de tokens). "
+                        "Mémorise tout fait durable avec brain_remember (1-3 phrases)."
+                    ),
                 }
             elif method == "tools/list":
                 res = {"tools": TOOLS}

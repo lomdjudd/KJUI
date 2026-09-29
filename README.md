@@ -4,26 +4,31 @@ Un **cerveau local** pour Claude : il mémorise tes données (faits, conversatio
 que les quelques souvenirs pertinents, au lieu de le laisser relire des fichiers ou chercher dans le vide.
 Python 3.9+, **zéro dépendance**, 100 % hors-ligne (SQLite + recherche plein texte BM25).
 
-## Démarrage
+## Démarrage (un seul fichier à télécharger)
 
-```bash
-pip install -e .            # ou : python -m kjui ...
-kjui demo                   # (optionnel) quelques souvenirs d'exemple
-kjui gui                    # ouvre le cerveau animé : http://127.0.0.1:8765
 ```
-
-Chaque point lumineux du cerveau = un souvenir (couleur = type, taille = nombre de rappels, ✦ épinglé).
-Survole pour lire, clique pour ouvrir/épingler/oublier, tape une recherche pour voir les points concernés s'allumer et se relier.
-Glisse-dépose des `.md` dans la fenêtre pour les mémoriser.
-
-## Brancher le cerveau à Claude (économie réelle de tokens)
-
-```bash
-kjui claude-md                                  # affiche le bloc pour CLAUDE.md + la commande MCP
-claude mcp add kjui -- python -m kjui mcp       # Claude Code : outils brain_recall / brain_remember
+https://raw.githubusercontent.com/lomdjudd/kjui/main/KJUI.py   →  Enregistrer sous « KJUI.py » → double-clic
 ```
-Claude interroge alors le cerveau **avant** de lire des fichiers (`brain_recall`, budget 1200 tokens max par défaut)
-et mémorise ce qu'il apprend (`brain_remember`). Sans MCP : `kjui recall "mots clés"` ou le bouton « Copier le contexte » de l'interface.
+`KJUI.py` se met à jour tout seul depuis GitHub à chaque lancement, puis ouvre l'interface dans une fenêtre d'application
+(Chrome/Edge/Brave). Développeur : `pip install -e . && kjui gui`.
+
+L'interface : **Flux en direct** (chaque message, fichier, image et chaque consultation du cerveau par Claude, à l'instant où
+ça arrive), **Conversations** (chaque conversation complète en bulles, images et fichiers inclus, mise à jour en direct),
+**Fichiers** (galerie de tout ce qui est gardé) et le **cerveau 3D** où chaque point est un souvenir.
+
+## Claude est connecté en direct
+
+Au premier lancement, `kjui gui` exécute `kjui connect` (réversible : `kjui disconnect`, fichiers sauvegardés en `*.kjui.bak`) :
+
+| Ce qui est branché | Effet |
+|---|---|
+| **Hook `UserPromptSubmit`** (Claude Code) | à chaque message, le contexte pertinent du cerveau est **injecté automatiquement** (≤ 700 tokens, seulement si ça recouvre vraiment la question, jamais la session en cours) |
+| **Hook `SessionStart`** | injecte tes instructions épinglées (éco-tokens, etc.) au début de chaque session |
+| **Serveur MCP** (Claude Code + Claude Desktop) | outils `brain_recall` / `brain_remember` + consigne d'usage envoyée à Claude |
+| **CLAUDE.md global** | 3 lignes qui disent à Claude de faire confiance au contexte injecté |
+
+Chaque consultation apparaît dans le flux (« Claude a consulté le cerveau : #12 #45 · −340 tokens ») et allume les points
+correspondants dans le cerveau. La pastille du haut indique l'état de la connexion. Redémarre Claude Code après la première connexion.
 
 ## Tout est enregistré (fichiers en original, en direct)
 

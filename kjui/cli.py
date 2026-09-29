@@ -70,6 +70,11 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("sync", help="importer une fois les sessions Claude Code (~/.claude/projects)")
     sub.add_parser("watch", help="surveiller en continu les sessions Claude Code")
     sub.add_parser("mcp", help="serveur MCP (stdio) pour Claude Code / Desktop")
+    sub.add_parser("connect", help="branche Claude (Code + Desktop) au cerveau : MCP + injection automatique")
+    sub.add_parser("disconnect", help="retire la connexion à Claude")
+    sub.add_parser("status", help="état de la connexion à Claude")
+    h = sub.add_parser("hook", help=argparse.SUPPRESS)
+    h.add_argument("kind", choices=["prompt", "session"])
     sub.add_parser("claude-md", help="affiche le bloc à coller dans CLAUDE.md + commande MCP")
     sub.add_parser("demo", help="charge des souvenirs d'exemple")
 
@@ -78,6 +83,11 @@ def main(argv: list[str] | None = None) -> int:
         args.cmd = "gui"
         args.port, args.no_browser, args.no_watch = 8765, False, False
     brain = Brain(args.db)
+    if args.cmd == "hook":
+        from .hook import run as hook_run
+
+        hook_run(args.kind, brain)
+        return 0
     if args.cmd != "mcp" and not brain.meta_get("seeded"):
         seed_builtin(brain)
         brain.meta_set("seeded", "1")
@@ -129,6 +139,19 @@ def main(argv: list[str] | None = None) -> int:
         from .mcp_server import serve
 
         serve(brain)
+    elif args.cmd in ("connect", "disconnect", "status"):
+        from . import connect as cn
+
+        st = cn.status() if args.cmd == "status" else cn.apply(args.cmd == "connect")
+        mark = lambda v: "—" if v is None else ("✔" if v else "✘")  # noqa: E731
+        print(f"Claude Code · outils MCP (brain_recall/brain_remember) : {mark(st.get('claude_code_mcp'))}")
+        print(f"Claude Code · injection automatique (hooks)          : {mark(st.get('hooks'))}")
+        print(f"Claude Code · CLAUDE.md global                        : {mark(st.get('claude_md'))}")
+        print(f"Claude Desktop · MCP                                   : {mark(st.get('desktop'))}")
+        if st.get("error"):
+            print("⚠", st["error"])
+        if args.cmd == "connect":
+            print("→ Redémarre Claude Code / Claude Desktop pour activer.")
     elif args.cmd == "claude-md":
         print(CLAUDE_MD_SNIPPET)
         print("# Brancher le cerveau à Claude Code :")

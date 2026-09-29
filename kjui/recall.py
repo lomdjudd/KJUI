@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .store import Brain, est_tokens
+from .store import Brain, coverage, est_tokens
 
 
 def _clip(text: str, max_tokens: int) -> str:
@@ -19,7 +19,16 @@ def _clip(text: str, max_tokens: int) -> str:
     return cut.rstrip() + " […]"
 
 
-def recall(brain: Brain, query: str, budget: int = 1200, limit: int = 8, include_pinned: bool = True) -> dict[str, Any]:
+def recall(
+    brain: Brain,
+    query: str,
+    budget: int = 1200,
+    limit: int = 8,
+    include_pinned: bool = True,
+    via: str = "gui",
+    exclude_conv: str = "",
+    min_cover: float = 0.0,
+) -> dict[str, Any]:
     """Retourne {pack, ids, tokens, saved}. Les instructions épinglées passent en premier (max 40 % du budget)."""
     parts: list[str] = []
     ids: list[int] = []
@@ -47,7 +56,13 @@ def recall(brain: Brain, query: str, budget: int = 1200, limit: int = 8, include
         if used >= budget * 0.4:
             break
         push(m, int(budget * 0.4) - used)
-    hits = brain.search(query, limit=limit)
+    hits = brain.search(query, limit=limit, exclude_conv=exclude_conv)
+    if min_cover:  # mode automatique : ne garde que ce qui recouvre vraiment la question
+        def ok(h: dict) -> bool:
+            n, tot = coverage(query, f'{h["title"]} {h["tags"]} {h["content"]}')
+            return tot > 0 and n >= (2 if tot >= 2 else 1) and n / tot >= min_cover
+
+        hits = [h for h in hits if ok(h)]
     for m in hits:
         push(m, max(120, budget // 3))
 
@@ -58,6 +73,7 @@ def recall(brain: Brain, query: str, budget: int = 1200, limit: int = 8, include
     served = est_tokens(pack)
     if ids:
         brain.bump(ids, served, baseline)
+        brain.log_event("recall", text=query, data={"ids": ids, "tokens": served, "saved": max(0, baseline - served), "via": via})
     return {
         "pack": pack,
         "ids": ids,
