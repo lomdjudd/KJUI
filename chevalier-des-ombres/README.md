@@ -16,7 +16,7 @@ Le jeu est publié sous forme de page web : **https://claude.ai/artifact/3aMX1wq
 2. Ouvre-le, puis autorise **« Installer des applis inconnues »** si Android le demande.
 3. Lance **Chevalier des Ombres** : le jeu s'ouvre en plein écran, en mode paysage.
 
-L'APK fait environ 18 Mo (dont 17 Mo de musiques et bruitages), ne demande aucune permission réseau (seulement la vibration) et enregistre les sauvegardes dans le stockage privé de l'application. Il faut un téléphone compatible WebGL 2 (quasiment tous les appareils depuis 2016).
+L'APK fait environ 19 Mo (dont 17 Mo de musiques et bruitages). Une version légère de 2 Mo, [`release/ChevalierDesOmbres-leger.apk`](release/ChevalierDesOmbres-leger.apk), garde les bruitages enregistrés mais remplace les musiques orchestrales par la musique composée par le jeu. Les deux versions ne demandent aucune permission réseau (seulement la vibration) et enregistrent les sauvegardes dans le stockage privé de l'application. Il faut un téléphone compatible WebGL 2 (quasiment tous les appareils depuis 2016).
 
 ## 🖥️ Jouer sur PC
 
@@ -111,6 +111,7 @@ npm install
 npm run dev      # serveur de développement
 npm run build    # génère dist/index.html (fichier unique, hors ligne)
 npm run apk      # génère release/ChevalierDesOmbres.apk
+LITE=1 bash android/build-apk.sh   # version légère sans les musiques orchestrales
 ```
 
 La construction de l'APK n'a besoin ni d'Android Studio ni de Gradle : le script [`android/build-apk.sh`](android/build-apk.sh) récupère aapt2, `android.jar`, d8 et apksigner la première fois, puis empaquette le jeu dans une WebView plein écran ([`MainActivity.java`](android/java/com/kjui/chevalier/MainActivity.java)) avec un pont natif pour les sauvegardes, les vibrations et la touche retour. Il faut Node.js, un JDK 17 ou plus récent, `python3` et `zip`.

@@ -9,6 +9,7 @@ const mimeOf = (p) => MIME[p.split('.').pop()] || 'application/octet-stream';
 
 export const recorded = {
   installed: false,
+  hasMusic: false,
   index: null,
 
   entries() {
@@ -22,6 +23,7 @@ export const recorded = {
   async install(onProgress = () => {}) {
     const list = this.entries();
     let ok = 0;
+    let music = 0;
     let bytes = 0;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
@@ -32,20 +34,23 @@ export const recorded = {
         await datastore.put('rec:' + e.path, new Blob([buf], { type: mimeOf(e.path) }));
         bytes += buf.byteLength;
         ok++;
+        if (e.kind === 'music') music++;
       } catch {
         // fichier absent (page ouverte depuis le disque, réseau coupé…) : son de synthèse
       }
       await onProgress((i + 1) / list.length, e.kind === 'music' ? `Musique : ${e.id}` : `Bruitage : ${e.id}`);
     }
-    this.index = { ok, total: list.length, bytes };
+    this.index = { ok, music, total: list.length, bytes };
     await datastore.put('rec:index', this.index);
     this.installed = ok > 0;
+    this.hasMusic = music > 0;
     return this.index;
   },
 
   async load() {
     this.index = (await datastore.get('rec:index')) || null;
     this.installed = !!(this.index && this.index.ok > 0);
+    this.hasMusic = !!(this.index && this.index.music > 0);
   },
 
   // Fichier installé (ou, à défaut, téléchargé à la volée)

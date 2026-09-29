@@ -333,7 +333,7 @@ export class AudioSys {
   }
 
   _useRecordedMusic() {
-    return !!(this.recMusic && settings.get('musicSource') !== 'composed' && recorded.installed && recorded.canPlayMusic());
+    return !!(this.recMusic && settings.get('musicSource') !== 'composed' && recorded.hasMusic && recorded.canPlayMusic());
   }
 
   async _trackUrl(id) {

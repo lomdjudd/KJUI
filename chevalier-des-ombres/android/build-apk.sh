@@ -46,7 +46,11 @@ rm -rf "$BUILD"
 mkdir -p "$BUILD/assets" "$BUILD/classes" "$BUILD/dex"
 cp "$ROOT/dist/index.html" "$BUILD/assets/index.html"
 # Musiques et bruitages enregistrés (servis par la WebView sous https://appassets.androidplatform.net/)
-if [ -d "$ROOT/dist/audio" ]; then cp -r "$ROOT/dist/audio" "$BUILD/assets/audio"; fi
+# LITE=1 : version légère (bruitages enregistrés, sans les musiques orchestrales)
+if [ -d "$ROOT/dist/audio" ]; then
+  if [ "${LITE:-0}" = "1" ]; then mkdir -p "$BUILD/assets/audio" && cp -r "$ROOT/dist/audio/sfx" "$BUILD/assets/audio/sfx"
+  else cp -r "$ROOT/dist/audio" "$BUILD/assets/audio"; fi
+fi
 
 echo "→ Ressources (aapt2)…"
 "$TOOLS/aapt2" compile --dir "$DIR/res" -o "$BUILD/res.zip"
@@ -75,7 +79,7 @@ if [ ! -f "$KS" ]; then
 fi
 
 echo "→ Signature (apksigner)…"
-APK="$OUT/ChevalierDesOmbres.apk"
+if [ "${LITE:-0}" = "1" ]; then APK="$OUT/ChevalierDesOmbres-leger.apk"; else APK="$OUT/ChevalierDesOmbres.apk"; fi
 java -jar "$TOOLS/apksigner.jar" sign --ks "$KS" --ks-key-alias "$ALIAS" --ks-pass "pass:$KS_PASS" --key-pass "pass:$KS_PASS" \
   --min-sdk-version 24 --out "$APK" "$BUILD/aligned.apk"
 java -jar "$TOOLS/apksigner.jar" verify --min-sdk-version 24 "$APK"
