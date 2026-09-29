@@ -149,14 +149,16 @@ export class Touch {
           this.knob.style.transform = `translate(${dx}px, ${dy}px)`;
           this.input.touchMove.x = dx / r;
           this.input.touchMove.y = dy / r;
-          // Poussé à fond : sprint
-          const full = d > r * 0.97;
+          // Sprint : doigt glissé au-delà du cercle (pousser à fond ne fait que courir)
+          const full = d > r * (this.sprinting ? 1.15 : 1.3);
           if (full && !this.sprinting) {
             this.sprinting = true;
             this.input._press('sprint');
+            this.stick.classList.add('sprint');
           } else if (!full && this.sprinting) {
             this.sprinting = false;
             this.input._release('sprint');
+            this.stick.classList.remove('sprint');
           }
         }
       },
@@ -173,6 +175,7 @@ export class Touch {
         if (this.sprinting) {
           this.sprinting = false;
           this.input._release('sprint');
+          this.stick.classList.remove('sprint');
         }
       }
     };

@@ -80,7 +80,7 @@ export function computeStats(profile) {
   const up = profile.weapons[w.id] || 0;
   const st = {
     maxHp: Math.round(100 + L * 12 + (sk.hp || 0) + (ob.hp || 0)),
-    maxStamina: Math.round(100 + L * 2.5 + (sk.stamina || 0) + (ob.stamina || 0)),
+    maxStamina: Math.round(110 + L * 3 + (sk.stamina || 0) + (ob.stamina || 0)),
     maxMana: Math.round(60 + L * 4 + (sk.mana || 0) + (ob.mana || 0)),
     def: (o.def || 0) + (sk.def || 0) + L * 0.6,
     res: { ...(o.res || {}) },
@@ -101,7 +101,7 @@ export function computeStats(profile) {
     lifesteal: (sk.lifesteal || 0) + (ob.lifesteal || 0) + (w.lifesteal || 0),
     manaRegen: 1.5 + (sk.manaRegen || 0),
     hpRegen: ob.regen || 0,
-    staminaRegen: 48 * (1 + (sk.staminaRegen || 0)),
+    staminaRegen: 52 * (1 + (sk.staminaRegen || 0)),
     cooldownMul: Math.max(0.5, 1 - (sk.cooldown || 0)),
     flaskHeal: 0.45 * (1 + (sk.flaskHeal || 0) + profile.flaskUpgrades.potency * 0.15),
     flasks: 3 + (sk.flasks || 0) + profile.flaskUpgrades.heal,

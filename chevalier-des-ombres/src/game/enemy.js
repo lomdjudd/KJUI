@@ -722,7 +722,7 @@ export class Enemy extends Actor {
       const counter = this.def.attacks.find((a) => a.type === 'melee');
       if (counter && info.source) {
         g.player.anim.hitReact();
-        g.player.stamina -= 15;
+        g.player.stamina -= 10;
       }
       return { dmg: 0, blocked: true };
     }

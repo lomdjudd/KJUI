@@ -27,7 +27,7 @@ Ouvre [`dist/index.html`](dist/index.html) dans Chrome, Edge ou Firefox (double-
 | Action | Clavier / souris | Manette | Tactile |
 |---|---|---|---|
 | Se déplacer / caméra | ZQSD ou WASD / souris | stick gauche / stick droit | joystick à gauche / glisser à droite |
-| Sprint | Maj | L3 | joystick poussé à fond |
+| Sprint | Maj | L3 | glisser le doigt au-delà du cercle du joystick |
 | Attaque légère (combo) | clic gauche ou J | X | bouton ⚔ ou toucher rapide à droite |
 | Attaque lourde (maintenir = charger, 3 niveaux) | K | Y ou RT | ⚒ |
 | Esquive (roulades, bond arrière, pas de garde, glissade, ruée aérienne) | Alt ou C | B | ↻ Esquive |
@@ -90,6 +90,7 @@ Compter environ 15 à 40 secondes selon l'appareil. Les lancements suivants dém
 - **27 armes** en 5 styles de combat (épée à une main + bouclier, arme à deux mains, arme d'hast, dagues, bâton), avec éléments (feu, givre, foudre, poison, ombre, sacré) et améliorations à la forge ; **7 boucliers** ; **15 tenues** qui changent l'apparence et les statistiques.
 - **32 compétences** dans 4 branches et **18 pouvoirs** (boule de feu, nova de givre, chaîne d'éclairs, loups spectraux, bouclier sacré, etc.).
 - **Combat exigeant et lisible** : endurance, esquives contextuelles avec invulnérabilité, esquive parfaite et Temps des Ombres, parade puis riposte, combos, attaques chargées, coups de pied, exécutions, assassinats furtifs, arts d'arme, verrouillage de cible, altérations d'état (brûlure, poison, gel, ralentissement, étourdissement, choc).
+- **Endurance** : sprint presque gratuit en exploration (environ 45 s), environ 12 s en combat ; roulade 14 % de la barre, attaques et parades moins coûteuses ; récupération plus rapide hors combat, ralentie en garde. Barre vidée = épuisement (barre orange clignotante, plus de sprint jusqu'à 30 %).
 - **Effets** : traînées d'armes lissées, images rémanentes du chevalier, ondes de choc qui déforment l'écran, étalonnage violet du Temps des Ombres, flou radial, fissures au sol, éclats d'impact par élément.
 - **Personnages** : chevalier HD (joueur, chevaliers déchus, armures vivantes, chevaliers du Néant, et 3 boss) ; monstres procéduraux avec détails de surface calculés par le shader (métal martelé et rayé, tissu, cuir, os fissuré, fourrure, écailles, pierre) et spectres parcourus de volutes animées.
 - **Audio** : musique dark fantasy composée par le jeu à partir d'instruments enregistrés à l'installation, avec un thème principal (valse en ré mineur), des ambiances par région et des couches exploration / combat / boss qui s'enchaînent ; bruitages spatialisés avec réverbération.

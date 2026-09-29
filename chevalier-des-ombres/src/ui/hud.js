@@ -337,6 +337,10 @@ export class Hud {
     e.hpLag.style.width = this.hpLagV * 100 + '%';
     e.hpTxt.textContent = `${Math.ceil(p.hp)} / ${p.maxHp}`;
     e.stFill.style.width = clamp(p.stamina / p.maxStamina, 0, 1) * 100 + '%';
+    if (p.exhausted !== this._exh) {
+      this._exh = p.exhausted;
+      e.stFill.parentElement.classList.toggle('exhausted', !!p.exhausted);
+    }
     e.mpFill.style.width = clamp(p.mana / p.maxMana, 0, 1) * 100 + '%';
     e.xpRing.style.strokeDashoffset = 195 * (1 - prof.xp / xpForLevel(prof.level));
     // États

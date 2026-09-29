@@ -21,14 +21,29 @@ const ARCS = {
 
 // Esquives : durée, vitesse de départ/fin, invulnérabilité, coût, animation
 const DODGES = {
-  roll: { dur: 0.62, v0: 8.5, v1: 0, iframes: null, cost: 22, clip: 'roll' },
-  rollBack: { dur: 0.62, v0: 7.6, v1: 0, iframes: null, cost: 22, clip: 'rollBack', keepYaw: true },
-  rollLeft: { dur: 0.56, v0: 8.2, v1: 0, iframes: null, cost: 20, clip: 'rollLeft', keepYaw: true },
-  rollRight: { dur: 0.56, v0: 8.2, v1: 0, iframes: null, cost: 20, clip: 'rollRight', keepYaw: true },
-  backstep: { dur: 0.45, v0: 7.4, v1: 0, iframes: 0.3, cost: 14, clip: 'backstep', keepYaw: true },
-  sidestep: { dur: 0.32, v0: 10.5, v1: 2, iframes: 0.2, cost: 14, clip: 'sidestepL' },
-  slide: { dur: 0.7, v0: 10, v1: 3, iframes: 0.32, cost: 16, clip: 'slide' },
-  airDash: { dur: 0.26, v0: 13, v1: 6, iframes: 0.16, cost: 16, clip: 'dash', noGravity: true },
+  roll: { dur: 0.62, v0: 8.5, v1: 0, iframes: null, cost: 15, clip: 'roll' },
+  rollBack: { dur: 0.62, v0: 7.6, v1: 0, iframes: null, cost: 15, clip: 'rollBack', keepYaw: true },
+  rollLeft: { dur: 0.56, v0: 8.2, v1: 0, iframes: null, cost: 14, clip: 'rollLeft', keepYaw: true },
+  rollRight: { dur: 0.56, v0: 8.2, v1: 0, iframes: null, cost: 14, clip: 'rollRight', keepYaw: true },
+  backstep: { dur: 0.45, v0: 7.4, v1: 0, iframes: 0.3, cost: 9, clip: 'backstep', keepYaw: true },
+  sidestep: { dur: 0.32, v0: 10.5, v1: 2, iframes: 0.2, cost: 9, clip: 'sidestepL' },
+  slide: { dur: 0.7, v0: 10, v1: 3, iframes: 0.32, cost: 11, clip: 'slide' },
+  airDash: { dur: 0.26, v0: 13, v1: 6, iframes: 0.16, cost: 11, clip: 'dash', noGravity: true },
+};
+
+// Endurance : coûts continus (par seconde), coûts ponctuels et délais avant récupération (s).
+// Hors combat, le sprint ne coûte presque rien et la récupération est plus rapide.
+const STAM = {
+  sprint: 9,
+  sprintCalm: 2.5,
+  charge: 3,
+  jump: 5,
+  doubleJump: 7,
+  attackMul: 0.75,
+  heavyMul: 1.4,
+  delay: { sprint: 0.3, attack: 0.5, dodge: 0.45, block: 0.6, jump: 0.35, charge: 0.45 },
+  // Épuisé (barre vidée) : plus de sprint jusqu'à ce seuil
+  recover: 0.3,
 };
 
 // Arts d'armes (touche Art) : animation, multiplicateur, coût en mana
@@ -53,6 +68,7 @@ export class Player extends Actor {
     this.stamina = 100;
     this.mana = 60;
     this.staminaDelay = 0;
+    this.exhausted = false;
     this.iframes = 0;
     this.comboIndex = 0;
     this.comboTimer = 0;
@@ -210,7 +226,17 @@ export class Player extends Actor {
       return;
     }
     // Régénérations
-    if (this.staminaDelay <= 0 && !this.sprinting) this.stamina = Math.min(this.maxStamina, this.stamina + st.staminaRegen * (this.blocking ? 0.35 : 1) * dt);
+    // Endurance : récupération (plus rapide hors combat, réduite en garde ou en pleine attaque)
+    const calm = !g.inCombat;
+    if (this.staminaDelay <= 0 && !this.sprinting) {
+      const mul = (this.blocking ? 0.5 : 1) * (calm ? 1.6 : 1) * (this.state === 'attack' ? 0.4 : 1);
+      this.stamina = Math.min(this.maxStamina, this.stamina + st.staminaRegen * mul * dt);
+    }
+    if (this.stamina < 0) this.stamina = 0;
+    if (this.stamina <= 1) {
+      if (!this.exhausted) this.staminaDelay = Math.max(this.staminaDelay, 0.8);
+      this.exhausted = true;
+    } else if (this.exhausted && this.stamina >= this.maxStamina * STAM.recover) this.exhausted = false;
     this.mana = Math.min(this.maxMana, this.mana + st.manaRegen * dt);
     if (st.hpRegen) this.heal(st.hpRegen * dt);
     // Verrouillage : cible perdue
@@ -242,7 +268,7 @@ export class Player extends Actor {
         this.wasBlocking = this.blocking;
         if (wantLen > 0.1) {
           const locked = !!this.lockTarget;
-          const sprintWanted = input.isDown('sprint') && !this.blocking && this.stamina > 1;
+          const sprintWanted = input.isDown('sprint') && !this.blocking && !this.exhausted && this.stamina > 1;
           if (sprintWanted && this.sneaking) this.setSneak(false);
           const sp = this.blocking ? 2.2 : sprintWanted ? 7.4 : this.sneaking ? 2.5 : locked ? 4.2 : 4.9;
           speed = sp * st.speedMul * wantLen * slow * (this.buffs.berserk ? 1.15 : 1);
@@ -250,8 +276,8 @@ export class Player extends Actor {
           dirZ = wantZ / wantLen;
           if (sprintWanted) {
             this.sprinting = true;
-            this.stamina -= 13 * st.sprintCost * dt;
-            this.staminaDelay = 0.4;
+            this.stamina -= (g.inCombat ? STAM.sprint : STAM.sprintCalm) * st.sprintCost * dt;
+            this.staminaDelay = STAM.delay.sprint;
           }
           if (!this.lockTarget || this.sprinting) this.yaw = dampAngle(this.yaw, Math.atan2(dirX, dirZ), this.sprinting ? 9 : 12, dt);
         }
@@ -294,8 +320,8 @@ export class Player extends Actor {
         // Attaque lourde chargée : 3 niveaux, relâcher pour frapper
         this.blocking = false;
         this.chargeT += dt;
-        this.stamina -= 5 * dt;
-        this.staminaDelay = 0.6;
+        this.stamina -= STAM.charge * dt;
+        this.staminaDelay = STAM.delay.charge;
         const lvl = this.chargeT > 1.4 ? 3 : this.chargeT > 0.9 ? 2 : this.chargeT > 0.45 ? 1 : 0;
         if (lvl > this.chargeLevel) {
           this.chargeLevel = lvl;
@@ -516,15 +542,15 @@ export class Player extends Actor {
       if (this.grounded) {
         this.vy = 8;
         this.grounded = false;
-        this.stamina -= 8;
-        this.staminaDelay = 0.5;
+        this.stamina -= STAM.jump;
+        this.staminaDelay = STAM.delay.jump;
         if (this.sneaking) this.setSneak(false);
         audio.play('jump', { pos: this.pos });
       } else if (!this.doubleJumped && this.stamina > 10) {
         this.doubleJumped = true;
         this.vy = 7.6;
-        this.stamina -= 10;
-        this.staminaDelay = 0.5;
+        this.stamina -= STAM.doubleJump;
+        this.staminaDelay = STAM.delay.jump;
         this.anim.play('doubleJump', 1);
         audio.play('doubleJump', { pos: this.pos });
         g.particles.burst({ x: this.pos.x, y: this.pos.y + 0.2, z: this.pos.z }, 0xb07aff, 16, 2.5, 0.3, 0.6, { intensity: 2.5 });
@@ -604,7 +630,7 @@ export class Player extends Actor {
     const st = this.stats;
     const d = { ...(DODGES[kind] || DODGES.roll), ...(override || {}) };
     this.stamina -= d.cost * st.rollCost;
-    this.staminaDelay = 0.7;
+    this.staminaDelay = STAM.delay.dodge;
     this.state = 'roll';
     this.dodge = d;
     this.dodgeKind = kind;
@@ -712,9 +738,9 @@ export class Player extends Actor {
     }
     const clip = H_CLIPS[name];
     if (!clip) return;
-    const cost = opts.execute ? 0 : st.weapon.stamina * (heavy ? 1.6 : opts.kick ? 0.8 : 1) * (opts.art ? 0.6 : 1);
+    const cost = opts.execute ? 0 : st.weapon.stamina * STAM.attackMul * (heavy ? STAM.heavyMul : opts.kick ? 0.7 : 1) * (opts.art ? 0.5 : 1);
     this.stamina -= cost;
-    this.staminaDelay = 0.8;
+    this.staminaDelay = STAM.delay.attack;
     this.state = 'attack';
     this.heavy = heavy;
     this.curClip = clip;
@@ -1130,9 +1156,9 @@ export class Player extends Actor {
         if (settings.get('vibration')) native.vibrate(40);
         return { dmg: 0, parried: true };
       }
-      const cost = amount * 1.3 * st.shield.stability * st.blockCost + 6;
+      const cost = amount * 1.0 * st.shield.stability * st.blockCost + 4;
       this.stamina -= cost;
-      this.staminaDelay = 0.9;
+      this.staminaDelay = STAM.delay.block;
       audio.play('block', { pos: this.pos });
       g.camRig.shake(0.12);
       if (this.stamina <= 0) {

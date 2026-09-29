@@ -564,6 +564,7 @@ export class Game {
     // Audio
     audio.setListener(this.camera.position.x, this.camera.position.z, this.camRig.yaw);
     const inCombat = this.enemies.some((e) => e.alive && !e.isBoss && (e.state === 'chase' || e.state === 'attack') && e.distTo(this.player) < 25);
+    this.inCombat = inCombat || !!this.activeBoss;
     audio.setIntensity(this.activeBoss ? 2 : inCombat ? 1 : 0);
     // Vie basse
     const ratio = this.player.hp / this.player.maxHp;
