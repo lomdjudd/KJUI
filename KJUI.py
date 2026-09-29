@@ -54,12 +54,40 @@ def update() -> str:
     VER.write_text(remote)
     # le lanceur se met aussi à jour lui-même (effet au prochain démarrage)
     try:
+        me = globals().get("__file__")
         new = (APP / "KJUI.py").read_bytes()
-        if Path(__file__).read_bytes() != new:
-            Path(__file__).write_bytes(new)
+        if me and Path(me).resolve() != (APP / "KJUI.py").resolve() and Path(me).read_bytes() != new:
+            Path(me).write_bytes(new)
     except OSError:
         pass
     return "mis à jour"
+
+
+def shortcut() -> None:
+    """Crée UNE fois un raccourci « KJUI Brain » sur le Bureau : plus besoin de rien retélécharger ni retrouver."""
+    mark = HOME / ".shortcut_done"
+    if mark.exists():
+        return
+    try:
+        run = APP / "KJUI.py"
+        desk = Path.home() / "Desktop"
+        if not desk.is_dir():
+            return
+        if sys.platform == "win32":
+            f = desk / "KJUI Brain.bat"
+            f.write_bytes(f'@echo off\r\n"{sys.executable}" "{run}"\r\npause\r\n'.encode())
+        elif sys.platform == "darwin":
+            f = desk / "KJUI Brain.command"
+            f.write_text(f'#!/bin/sh\n"{sys.executable}" "{run}"\n')
+            f.chmod(0o755)
+        else:
+            f = desk / "KJUI Brain.desktop"
+            f.write_text(f"[Desktop Entry]\nType=Application\nName=KJUI Brain\nExec=\"{sys.executable}\" \"{run}\"\nTerminal=true\n")
+            f.chmod(0o755)
+        mark.write_text(str(f))
+        print(f"✔ Raccourci créé sur ton Bureau : « {f.name} » (tu peux supprimer le dossier téléchargé)")
+    except OSError:
+        pass
 
 
 def main() -> int:
@@ -71,6 +99,7 @@ def main() -> int:
             input("Appuie sur Entrée pour fermer…")
             return 1
         print(f"(pas de mise à jour : {e}) — démarrage de la version installée")
+    shortcut()
     args = ["gui"] + sys.argv[1:]
     while True:
         env = dict(os.environ, KJUI_BOOTSTRAP="1", PYTHONPATH=str(APP))
@@ -88,6 +117,11 @@ def main() -> int:
 
 if __name__ == "__main__":
     try:
-        raise SystemExit(main())
+        code = main()
     except KeyboardInterrupt:
-        pass
+        code = 0
+    except Exception as e:  # noqa: BLE001
+        print(f"\n✘ Erreur inattendue : {e}")
+        input("Appuie sur Entrée pour fermer…")
+        code = 1
+    raise SystemExit(code)

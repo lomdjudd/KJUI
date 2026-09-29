@@ -4,13 +4,11 @@ Un **cerveau local** pour Claude : il mémorise tes données (faits, conversatio
 que les quelques souvenirs pertinents, au lieu de le laisser relire des fichiers ou chercher dans le vide.
 Python 3.9+, **zéro dépendance**, 100 % hors-ligne (SQLite + recherche plein texte BM25).
 
-## Démarrage (un seul fichier à télécharger)
+## Démarrage
 
-```
-https://raw.githubusercontent.com/lomdjudd/kjui/main/KJUI.py   →  Enregistrer sous « KJUI.py » → double-clic
-```
-`KJUI.py` se met à jour tout seul depuis GitHub à chaque lancement, puis ouvre l'interface dans une fenêtre d'application
-(Chrome/Edge/Brave). Développeur : `pip install -e . && kjui gui`.
+Voir `COMMENT-LANCER.md` : télécharge le ZIP de la branche `main`
+(https://github.com/lomdjudd/kjui/archive/refs/heads/main.zip), décompresse, double-clique `LANCER.bat` / `LANCER.command`.
+Il crée un raccourci sur le Bureau et se met à jour tout seul ensuite. Développeur : `pip install -e . && kjui gui`.
 
 L'interface : **Flux en direct** (chaque message, fichier, image et chaque consultation du cerveau par Claude, à l'instant où
 ça arrive), **Conversations** (chaque conversation complète en bulles, images et fichiers inclus, mise à jour en direct),
