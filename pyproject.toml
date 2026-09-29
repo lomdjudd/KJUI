@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kjui-brain"
+version = "0.1.0"
+description = "Cerveau local pour Claude : mémoire persistante, économie de tokens, visualisation 3D animée"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+kjui = "kjui.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["kjui*"]
+
+[tool.setuptools.package-data]
+kjui = ["static/*.html", "instructions/*.md"]
