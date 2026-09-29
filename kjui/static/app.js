@@ -1,5 +1,7 @@
 "use strict";
 const $=s=>document.querySelector(s);
+// replaceChildren ignore désormais les valeurs vides (sinon « null » s'affiche)
+const _rc=Element.prototype.replaceChildren;Element.prototype.replaceChildren=function(...k){return _rc.apply(this,k.flat().filter(x=>x!=null&&x!==false))};
 const KC={memory:[0,150,230],instruction:[255,150,30],conversation:[140,90,240],file:[30,190,120],image:[240,80,140]};
 const KN={memory:'souvenir',instruction:'instruction',conversation:'message',file:'fichier',image:'image'};
 const rgb=(c,a=1)=>`rgba(${c[0]},${c[1]},${c[2]},${a})`;
