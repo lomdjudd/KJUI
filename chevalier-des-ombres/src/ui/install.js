@@ -38,7 +38,7 @@ export function runInstallScreen() {
       <div class="inst-box frame">
         <div class="logo">Chevalier<small>DES OMBRES</small></div>
         <h2 class="m-title">${update ? 'Mise à jour des données' : 'Installation des données'}</h2>
-        <p>Pour profiter de tout le contenu, le jeu installe ses données sur cet appareil : modèles 3D haute définition et leurs variantes, textures du monde en haute résolution, banque d’instruments et de bruitages. Cette étape n’a lieu qu’une fois.</p>
+        <p>Pour profiter de tout le contenu, le jeu installe ses données sur cet appareil : modèles 3D haute définition et leurs variantes, sculpture de toutes les créatures et des boss, textures du monde en haute résolution, banque d’instruments et de bruitages. Cette étape n’a lieu qu’une fois.</p>
         <div id="inst-dev">${deviceRows(profile)}</div>
         <p class="muted">Taille estimée : environ ${plan.estMb} Mo · textures des personnages ${plan.charSize} px · textures du monde ${plan.worldSize} px</p>
         ${persistNote}

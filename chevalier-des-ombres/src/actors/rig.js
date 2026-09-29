@@ -2,8 +2,10 @@
 // est attachée à un os, puis tout est fusionné dans UN SEUL SkinnedMesh (1 draw call).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { SCULPT, sculptStore, partsSignature, sculptGeometry } from './sculpt.js';
 
 const _m = new THREE.Matrix4();
+const _m2 = new THREE.Matrix4();
 const _q = new THREE.Quaternion();
 const _e = new THREE.Euler();
 const _v = new THREE.Vector3();
@@ -14,19 +16,38 @@ const _c = new THREE.Color();
 // Tessellation minimale (arrondis plus doux ; réduite en qualité d'effets « sobre »)
 export const DETAIL = { seg: 1 };
 const seg = (n) => Math.max(3, Math.round(n * DETAIL.seg));
+// Chaque primitive garde sa description analytique (pour la sculpture en champ de distance)
+const tag = (g, t, a) => {
+  g.userData.sdf = { t, a };
+  return g;
+};
 export const G = {
-  box: (w, h, d) => new THREE.BoxGeometry(w, h, d),
-  cyl: (rt, rb, h, s = 8, open = false) => new THREE.CylinderGeometry(rt, rb, h, seg(Math.max(s, s >= 6 ? 10 : s)), 1, open),
-  sphere: (r, ws = 10, hs = 8) => new THREE.SphereGeometry(r, seg(Math.max(ws, ws >= 8 ? 14 : ws)), seg(Math.max(hs, hs >= 6 ? 10 : hs))),
+  box: (w, h, d) => tag(new THREE.BoxGeometry(w, h, d), 1, [w / 2, h / 2, d / 2]),
+  cyl: (rt, rb, h, s = 8, open = false) => tag(new THREE.CylinderGeometry(rt, rb, h, seg(Math.max(s, s >= 6 ? 10 : s)), 1, open), 2, [rt, rb, h / 2]),
+  sphere: (r, ws = 10, hs = 8) => tag(new THREE.SphereGeometry(r, seg(Math.max(ws, ws >= 8 ? 14 : ws)), seg(Math.max(hs, hs >= 6 ? 10 : hs))), 3, [r]),
   sphereP: (r, ws, hs, ps, pl, ts, tl) => new THREE.SphereGeometry(r, ws, hs, ps, pl, ts, tl),
   cylP: (rt, rb, h, seg, ts, tl) => new THREE.CylinderGeometry(rt, rb, h, seg, 1, false, ts, tl),
-  hemi: (r, ws = 10, hs = 5) => new THREE.SphereGeometry(r, ws, hs, 0, Math.PI * 2, 0, Math.PI / 2),
-  cone: (r, h, seg = 8) => new THREE.ConeGeometry(r, h, seg),
-  capsule: (r, len, s = 6) => new THREE.CapsuleGeometry(r, len, 4, seg(Math.max(s, 10))),
-  torus: (r, t, rs = 6, ts = 12, arc = Math.PI * 2) => new THREE.TorusGeometry(r, t, rs, ts, arc),
-  ico: (r, d = 0) => new THREE.IcosahedronGeometry(r, d),
-  octa: (r) => new THREE.OctahedronGeometry(r),
-  dodeca: (r) => new THREE.DodecahedronGeometry(r),
+  hemi: (r, ws = 10, hs = 5) => tag(new THREE.SphereGeometry(r, ws, hs, 0, Math.PI * 2, 0, Math.PI / 2), 4, [r]),
+  cone: (r, h, seg = 8) => tag(new THREE.ConeGeometry(r, h, seg), 2, [0, r, h / 2]),
+  capsule: (r, len, s = 6) => tag(new THREE.CapsuleGeometry(r, len, 4, seg(Math.max(s, 10))), 7, [r, len / 2]),
+  torus: (r, t, rs = 6, ts = 12, arc = Math.PI * 2) => {
+    const g = new THREE.TorusGeometry(r, t, rs, ts, arc);
+    return arc >= Math.PI * 2 - 1e-3 ? tag(g, 5, [r, t]) : g;
+  },
+  ico: (r, d = 0) => tag(new THREE.IcosahedronGeometry(r, d), 3, [r * 0.92]),
+  octa: (r) => tag(new THREE.OctahedronGeometry(r), 6, [r]),
+  dodeca: (r) => tag(new THREE.DodecahedronGeometry(r), 9, [r * 0.7947]),
+  // Cône arrondi le long de +Y, de 0 (rayon r1) à len (rayon r2) : membres, griffes, cornes
+  rcone: (r1, r2, len, s = 10) => {
+    const cyl = new THREE.CylinderGeometry(r2, r1, len, seg(s), 1, true);
+    cyl.translate(0, len / 2, 0);
+    const a = new THREE.SphereGeometry(r1, seg(s), seg(Math.max(4, s * 0.6)));
+    const b = new THREE.SphereGeometry(r2, seg(s), seg(Math.max(4, s * 0.6)));
+    b.translate(0, len, 0);
+    const g = mergeGeometries([cyl, a, b], false);
+    [cyl, a, b].forEach((x) => x.dispose());
+    return tag(g, 8, [r1, r2, len]);
+  },
   tetra: (r) => new THREE.TetrahedronGeometry(r),
   // Demi-cylindre plat (lame de hache, croissant…)
   disc: (r, t, arc = Math.PI, seg = 10) => {
@@ -44,6 +65,7 @@ export function xf(geo, p = [0, 0, 0], r = [0, 0, 0], s = [1, 1, 1]) {
   _s.set(s[0], s[1], s[2]);
   _m.compose(_v, _q, _s);
   geo.applyMatrix4(_m);
+  if (geo.userData.sdf) geo.userData.m = (geo.userData.m ? _m.clone().multiply(_m2.fromArray(geo.userData.m)) : _m).toArray();
   return geo;
 }
 
@@ -140,21 +162,22 @@ export class RigBuilder {
     return this;
   }
 
+  // Creuse la forme (sculpture uniquement) : orbites, bouches, fentes, plis, côtes, fissures.
+  // N'affecte que les pièces du même os ; la paroi creusée prend la couleur / matière donnée.
+  carve(boneName, geo, color = 0x050505, surf = SURF.cloth) {
+    if (!this.map[boneName]) boneName = 'root';
+    this.parts.push({ bone: boneName, geo, color, surf, carve: true });
+    return this;
+  }
+
   build(material, opts = {}) {
     this.root.updateMatrixWorld(true);
-    const geos = [];
-    for (const p of this.parts) {
-      const bone = this.map[p.bone];
-      const idx = this.bones.indexOf(bone);
-      const g = p.geo;
-      g.applyMatrix4(bone.matrixWorld);
-      paint(g, p.color, p.surf, idx);
-      geos.push(g);
-    }
-    const geo = mergeGeometries(geos, false);
-    geos.forEach((g) => g.dispose());
-    geo.computeBoundingSphere();
-    geo.computeBoundingBox();
+    // Installation : capture des pièces pour la sculpture (avant toute transformation)
+    let sig = null;
+    if (RigBuilder.capture || (SCULPT.enabled && sculptStore.size)) sig = partsSignature(this);
+    if (RigBuilder.capture) RigBuilder.capture(this, sig);
+    const rec = SCULPT.enabled && sig ? sculptStore.get(sig) : null;
+    const geo = rec ? this._sculpted(rec, sig) : this._merged(this.parts.filter((p) => !p.carve || (p.geo.dispose(), false)));
     const mesh = new THREE.SkinnedMesh(geo, material);
     mesh.add(this.root);
     mesh.updateMatrixWorld(true);
@@ -162,11 +185,64 @@ export class RigBuilder {
     mesh.bind(skeleton);
     mesh.castShadow = opts.castShadow !== false;
     mesh.receiveShadow = false;
-    // Sphère englobante élargie (les animations procédurales dépassent la pose de repos)
-    mesh.geometry.boundingSphere.radius *= 1.6;
     mesh.frustumCulled = true;
-    return { mesh, bones: this.map, skeleton };
+    return { mesh, bones: this.map, skeleton, sculpted: !!rec };
   }
+
+  // Pièces rigides fusionnées (modèle classique, accessoires)
+  _merged(parts, finalize = true) {
+    const geos = [];
+    for (const p of parts) {
+      const bone = this.map[p.bone];
+      const g = p.geo;
+      g.applyMatrix4(bone.matrixWorld);
+      paint(g, p.color, p.surf, this.bones.indexOf(bone));
+      geos.push(g);
+    }
+    const geo = geos.length ? mergeGeometries(geos, false) : null;
+    geos.forEach((g) => g.dispose());
+    if (geo && finalize) finalizeGeo(geo);
+    return geo;
+  }
+
+  // Corps sculpté (données installées) + accessoires nets ; partagé entre ennemis identiques
+  _sculpted(rec, sig) {
+    let key = sig;
+    for (const p of this.parts) key += ':' + (typeof p.color === 'number' ? p.color.toString(36) : String(p.color));
+    const cached = sculptCache.get(key);
+    if (cached) {
+      this.parts.forEach((p) => p.geo.dispose());
+      return cached;
+    }
+    const body = sculptGeometry(rec, this.parts);
+    const acc = this._merged(Array.from(rec.acc, (i) => this.parts[i]), false);
+    const used = new Set(rec.acc);
+    this.parts.forEach((p, i) => used.has(i) || p.geo.dispose());
+    const geo = acc ? mergeGeometries([body, acc], false) : body;
+    if (acc) {
+      body.dispose();
+      acc.dispose();
+    }
+    finalizeGeo(geo);
+    geo.userData.shared = true;
+    sculptCache.set(key, geo);
+    return geo;
+  }
+}
+RigBuilder.capture = null;
+
+// Géométries sculptées déjà construites (clé : sculpture + couleurs)
+const sculptCache = new Map();
+export function clearSculptCache() {
+  for (const g of sculptCache.values()) g.dispose();
+  sculptCache.clear();
+}
+
+function finalizeGeo(geo) {
+  geo.computeBoundingSphere();
+  geo.computeBoundingBox();
+  // Sphère englobante élargie (les animations procédurales dépassent la pose de repos)
+  geo.boundingSphere.radius *= 1.6;
 }
 
 // Maillage statique (armes, boucliers, accessoires) avec le même matériau que les personnages

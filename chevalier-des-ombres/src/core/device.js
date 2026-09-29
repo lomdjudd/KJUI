@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { native, storage } from './storage.js';
 import { isMobile, clamp } from './utils.js';
 import { soundbank } from './soundbank.js';
+import { sculptStore } from '../actors/sculpt.js';
 
 const KEY = 'cdo_device_v1';
 
@@ -12,11 +13,12 @@ export const TIERS = ['low', 'medium', 'high', 'ultra'];
 export const TIER_LABEL = { low: 'Faible', medium: 'Moyen', high: 'Élevé', ultra: 'Ultra' };
 
 // Réglages recommandés par palier
+// sculptTarget : budget de sommets d'une créature sculptée ; sculptN : résolution maximale
 export const TIER_REC = {
-  low: { preset: 'low', charTexture: 512, worldTexture: 256, maxEnemies: 10, fxQuality: 'low', audioQuality: 'low', distortion: true, afterimages: true, maxDpr: 1.5 },
-  medium: { preset: 'medium', charTexture: 1024, worldTexture: 512, maxEnemies: 16, fxQuality: 'medium', audioQuality: 'medium', distortion: true, afterimages: true, maxDpr: 2 },
-  high: { preset: 'high', charTexture: 1024, worldTexture: 512, maxEnemies: 24, fxQuality: 'high', audioQuality: 'high', distortion: true, afterimages: true, maxDpr: 2 },
-  ultra: { preset: 'ultra', charTexture: 2048, worldTexture: 1024, maxEnemies: 32, fxQuality: 'high', audioQuality: 'high', distortion: true, afterimages: true, maxDpr: 2.5 },
+  low: { preset: 'low', charTexture: 512, worldTexture: 256, maxEnemies: 10, fxQuality: 'low', audioQuality: 'low', distortion: true, afterimages: true, maxDpr: 1.5, sculptTarget: 4500, sculptN: 84 },
+  medium: { preset: 'medium', charTexture: 1024, worldTexture: 512, maxEnemies: 16, fxQuality: 'medium', audioQuality: 'medium', distortion: true, afterimages: true, maxDpr: 2, sculptTarget: 7000, sculptN: 110 },
+  high: { preset: 'high', charTexture: 1024, worldTexture: 512, maxEnemies: 24, fxQuality: 'high', audioQuality: 'high', distortion: true, afterimages: true, maxDpr: 2, sculptTarget: 9500, sculptN: 130 },
+  ultra: { preset: 'ultra', charTexture: 2048, worldTexture: 1024, maxEnemies: 32, fxQuality: 'high', audioQuality: 'high', distortion: true, afterimages: true, maxDpr: 2.5, sculptTarget: 13000, sculptN: 150 },
 };
 
 function gpuInfo() {
@@ -217,6 +219,7 @@ class Device {
     mb += textureRegistry.totalMb();
     mb += game._geoMb || 0;
     mb += soundbank.memoryMb();
+    mb += sculptStore.memoryMb();
     return Math.round(mb);
   }
 

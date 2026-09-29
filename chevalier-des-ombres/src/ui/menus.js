@@ -445,7 +445,7 @@ export class Menus {
       ['Fioles', 'Croix ↑ (braise) · ↓ (éther)'], ['Verrouiller', 'R3'], ['Sprint · furtif (à l’arrêt)', 'L3'], ['Carte / Pause', 'Select / Start'],
     ])}<h3>Tactile</h3>${rows([['Déplacement', 'Joystick à gauche (poussé à fond = sprint)'], ['Caméra', 'Glisser à droite'], ['Actions', 'Boutons à droite (Art, Furtif…)'], ['Vue', 'Icône œil']])}
     <h3>Techniques</h3>${rows([
-      ['Pas de côté', 'Esquive avec une cible verrouillée'], ['Glissade', 'Esquive en sprintant'], ['Ruée aérienne', 'Esquive en l’air'], ['Esquive parfaite', 'Esquiver au dernier moment : le temps ralentit'],
+      ['Roulade', 'Esquive + direction (avant, arrière, côtés si cible verrouillée)'], ['Bond arrière', 'Esquive sans direction'], ['Pas de garde', 'Esquive en tenant la garde'], ['Glissade', 'Esquive en sprintant'], ['Ruée aérienne', 'Esquive en l’air'], ['Esquive parfaite', 'Esquiver au dernier moment : le temps ralentit'],
       ['Contre-attaque', 'Attaquer juste après une esquive'], ['Attaque en course', 'Attaquer en sprintant'], ['Attaque plongeante', 'Attaquer en l’air, en hauteur'], ['Coup de pied', 'Attaque lourde en garde : brise les boucliers'],
       ['Exécution', 'Attaquer un ennemi étourdi'], ['Assassinat', 'En mode furtif, attaquer un ennemi de dos'],
     ])}</div></div>`;

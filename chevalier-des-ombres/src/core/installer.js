@@ -10,9 +10,28 @@ import { soundbank } from './soundbank.js';
 import { PACK, decodeDataUrl } from '../data/pack.js';
 import { worldTextureKeys, generateWorldTexture, setInstalledWorldTextures } from '../gfx/textures.js';
 import { KNIGHT_VARIANTS, extractGlbImage, stripGlbImages, blobToPixels, recolorPixels, pixelsToBlob, registerModel, registerVariantTexture } from '../actors/glb.js';
+import { RigBuilder } from '../actors/rig.js';
+import { SCULPT, sculptStore, describeRig } from '../actors/sculpt.js';
+import { createSculptPool } from '../actors/sculptPool.js';
+import { buildHumanoid } from '../actors/models.js';
+import { createCharMaterial } from '../gfx/materials.js';
+import { ENEMIES } from '../data/enemies.js';
+import { BOSSES } from '../data/bosses.js';
+import { NPCS } from '../data/quests.js';
+import { buildModelFor } from '../game/enemy.js';
 
 // À incrémenter quand le contenu des données change (force une réinstallation)
-export const DATA_VERSION = 1;
+export const DATA_VERSION = 2;
+
+// Toutes les créatures à sculpter (le chevalier texturé et ses variantes sont exclus)
+function sculptSources() {
+  const mat = createCharMaterial();
+  const src = [];
+  for (const d of ENEMIES) if (!d.glb) src.push({ label: d.name, boss: false, build: () => buildModelFor(d) });
+  for (const d of BOSSES) if (!d.glb) src.push({ label: d.name, boss: true, build: () => buildModelFor(d) });
+  for (const n of Object.values(NPCS)) if (n.look) src.push({ label: n.name, boss: false, build: () => buildHumanoid(n.look, mat) });
+  return { src, dispose: () => mat.dispose() };
+}
 
 export const TEX_LABELS = {
   stone: 'pierre taillée', tiles: 'dalles des catacombes', cobble: 'pavés', rock: 'roche', bark: 'écorce', wood: 'bois',
@@ -60,7 +79,8 @@ export const installer = {
     const variants = Object.keys(KNIGHT_VARIANTS).length;
     const texMb = (variants * charSize * charSize * 0.28 + 18 * worldSize * worldSize * 2 * 0.3) / 1048576;
     const audioMb = { low: 3, medium: 6, high: 10 }[settings.get('audioQuality')] || 6;
-    return { charSize, worldSize, estMb: Math.round(texMb + audioMb + 1) };
+    const sculptMb = (70 * rec.sculptTarget * 34) / 1048576;
+    return { charSize, worldSize, sculptTarget: rec.sculptTarget, sculptN: rec.sculptN, estMb: Math.round(texMb + audioMb + sculptMb + 1) };
   },
 
   // Installation complète ; onProgress(fraction 0..1, étape, détail)
@@ -68,9 +88,10 @@ export const installer = {
     const t0 = performance.now();
     const steps = [
       ['analyse', 0.05],
-      ['modèles', 0.2],
-      ['textures', 0.5],
-      ['sons', 0.22],
+      ['modèles', 0.13],
+      ['textures', 0.32],
+      ['sons', 0.14],
+      ['créatures', 0.33],
       ['fin', 0.03],
     ];
     let base = 0;
@@ -140,8 +161,59 @@ export const installer = {
     await datastore.put('audio:bank', bank);
     next(3);
 
-    // 5. Finalisation
-    stepProgress(4, 0.5, 'Vérification', '');
+    // 5. Sculpture des créatures et des boss (anatomie HD, en parallèle sur plusieurs cœurs)
+    stepProgress(4, 0, 'Sculpture des créatures', 'Préparation des anatomies…');
+    await frame();
+    const prevSculpt = SCULPT.enabled;
+    SCULPT.enabled = true;
+    const jobs = [];
+    const seen = new Set();
+    let cur = null;
+    RigBuilder.capture = (rb, sig) => {
+      if (seen.has(sig)) return;
+      seen.add(sig);
+      jobs.push({ sig, desc: describeRig(rb), label: cur.label, boss: cur.boss });
+    };
+    const { src, dispose } = sculptSources();
+    for (const s of src) {
+      cur = s;
+      try {
+        const b = s.build();
+        b.mesh.geometry.dispose();
+        if (b.mesh.material && b.mesh.material.dispose) b.mesh.material.dispose();
+      } catch (e) {
+        console.warn('Créature ignorée', s.label, e);
+      }
+    }
+    RigBuilder.capture = null;
+    dispose();
+    const pool = createSculptPool(Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)));
+    const index = [];
+    let done = 0;
+    await Promise.all(
+      jobs.map((j) =>
+        pool
+          .run(j.desc, { N: Math.round(plan.sculptN * (j.boss ? 1.15 : 1)), target: Math.round(plan.sculptTarget * (j.boss ? 1.6 : 1)) })
+          .then(async (rec) => {
+            if (rec) {
+              await datastore.put('sculpt:' + j.sig, rec);
+              index.push(j.sig);
+            }
+          })
+          .catch((e) => console.warn('Sculpture ignorée', j.label, e))
+          .finally(() => {
+            done++;
+            stepProgress(4, done / jobs.length, 'Sculpture des créatures', `${j.label} (${done}/${jobs.length})`);
+          }),
+      ),
+    );
+    pool.close();
+    await datastore.put('sculpt:index', index);
+    SCULPT.enabled = prevSculpt;
+    next(4);
+
+    // 6. Finalisation
+    stepProgress(5, 0.5, 'Vérification', '');
     let bytes = 0;
     for (const k of await datastore.keys()) bytes += sizeOf(await datastore.get(k));
     this.meta = {
@@ -204,6 +276,14 @@ export const installer = {
     // Sons
     const bank = await datastore.get('audio:bank');
     if (bank) soundbank.load(bank);
+    onProgress(0.92);
+    // Créatures sculptées
+    const index = (await datastore.get('sculpt:index')) || [];
+    for (const sig of index) {
+      const rec = await datastore.get('sculpt:' + sig);
+      if (rec) sculptStore.set(sig, rec);
+    }
+    SCULPT.enabled = settings.get('charModel') !== 'classic';
     onProgress(1);
   },
 

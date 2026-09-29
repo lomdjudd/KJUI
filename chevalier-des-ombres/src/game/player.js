@@ -22,7 +22,10 @@ const ARCS = {
 // Esquives : durée, vitesse de départ/fin, invulnérabilité, coût, animation
 const DODGES = {
   roll: { dur: 0.62, v0: 8.5, v1: 0, iframes: null, cost: 22, clip: 'roll' },
-  backstep: { dur: 0.45, v0: 6.4, v1: 0, iframes: 0.28, cost: 16, clip: 'backstep' },
+  rollBack: { dur: 0.62, v0: 7.6, v1: 0, iframes: null, cost: 22, clip: 'rollBack', keepYaw: true },
+  rollLeft: { dur: 0.56, v0: 8.2, v1: 0, iframes: null, cost: 20, clip: 'rollLeft', keepYaw: true },
+  rollRight: { dur: 0.56, v0: 8.2, v1: 0, iframes: null, cost: 20, clip: 'rollRight', keepYaw: true },
+  backstep: { dur: 0.45, v0: 7.4, v1: 0, iframes: 0.3, cost: 14, clip: 'backstep', keepYaw: true },
   sidestep: { dur: 0.32, v0: 10.5, v1: 2, iframes: 0.2, cost: 14, clip: 'sidestepL' },
   slide: { dur: 0.7, v0: 10, v1: 3, iframes: 0.32, cost: 16, clip: 'slide' },
   airDash: { dur: 0.26, v0: 13, v1: 6, iframes: 0.16, cost: 16, clip: 'dash', noGravity: true },
@@ -271,8 +274,11 @@ export class Player extends Actor {
         dirX = this.rollDir.x;
         dirZ = this.rollDir.z;
         if (d.noGravity) this.vy = 0;
-        // Silhouettes rémanentes pendant les esquives rapides
-        if (this.dodgeKind !== 'roll' && this.dodgeKind !== 'backstep') {
+        // Silhouettes rémanentes : denses pour les ruées, espacées pour les roulades
+        if (this.dodgeKind.startsWith('roll') || this.dodgeKind === 'backstep') {
+          if (k < 0.75) this._ghost(dt, 0.09);
+          if (this.grounded && Math.random() < dt * 10) g.effects.dust({ x: this.pos.x, y: this.pos.y, z: this.pos.z }, 2);
+        } else {
           this._ghost(dt, 0.045);
           if (this.dodgeKind === 'airDash' || this.dodgeKind === 'powerDash') g.renderer.fx.radial = Math.max(g.renderer.fx.radial || 0, 0.7);
         }
@@ -467,7 +473,8 @@ export class Player extends Actor {
     if (input.wasPressed('sneak') || (input.wasPressed('l3') && wantLen < 0.2)) {
       if (free && this.grounded) this.setSneak(!this.sneaking);
     }
-    // Esquives : roulade, pas de côté (cible verrouillée), glissade (en sprint), ruée aérienne
+    // Esquives : roulades (avant, arrière, côtés), bond arrière (sans direction), pas de côté
+    // (garde levée), glissade (en sprint), ruée aérienne
     const canCancel = this.state === 'attack' && this.anim.actionT > (this.curClip && this.curClip.hit ? this.curClip.hit[1] : 0.6) && !this.atkFlags.execute;
     const dodgeOk = free || canCancel || this.state === 'charge';
     if (input.wasPressed('dodge') && !dodgeOk) this.dodgeBuffer = 0.3;
@@ -477,16 +484,22 @@ export class Player extends Actor {
       let kind = 'roll';
       let dx = wantLen > 0.1 ? wantX / wantLen : 0;
       let dz = wantLen > 0.1 ? wantZ / wantLen : 0;
+      const guard = input.isDown('block');
       if (!this.grounded) {
         if (this.airDashed) kind = null;
         else kind = 'airDash';
-      } else if (this.sprintT > 0.25 && wantLen > 0.1) kind = 'slide';
-      else if (this.lockTarget && wantLen > 0.1) {
-        // Pas de côté si la direction est latérale ou vers l'arrière par rapport à la cible
+      } else if (wantLen <= 0.1) kind = 'backstep';
+      else if (this.sprintT > 0.25 && !guard) kind = 'slide';
+      else if (guard) kind = 'sidestep';
+      else if (this.lockTarget) {
+        // Cible verrouillée : on garde la cible en face et on roule dans la direction demandée
         const toT = Math.atan2(this.lockTarget.pos.x - this.pos.x, this.lockTarget.pos.z - this.pos.z);
-        const rel = Math.abs(angleDiff(toT, Math.atan2(dx, dz)));
-        kind = rel > 0.9 ? 'sidestep' : 'roll';
-      } else if (wantLen <= 0.1 && this.lockTarget) kind = 'backstep';
+        this.yaw = toT;
+        const rel = angleDiff(Math.atan2(dx, dz), toT);
+        if (Math.abs(rel) < 0.75) kind = 'roll';
+        else if (Math.abs(rel) > 2.4) kind = 'rollBack';
+        else kind = Math.sin(Math.atan2(dx, dz) - toT) > 0 ? 'rollLeft' : 'rollRight';
+      }
       if (kind) {
         if (wantLen <= 0.1) {
           const back = kind === 'backstep' ? -1 : 1;
@@ -599,12 +612,13 @@ export class Player extends Actor {
     this.rollDur = d.dur;
     this.backstep = kind === 'backstep';
     this.rollDir.set(dx, 0, dz);
-    if (kind === 'roll' || kind === 'slide' || kind === 'airDash' || kind === 'powerDash') this.yaw = Math.atan2(dx, dz);
+    if (!d.keepYaw && kind !== 'sidestep') this.yaw = Math.atan2(dx, dz);
     let clip = d.clip;
     if (kind === 'sidestep') {
-      // Côté du pas selon l'orientation du chevalier
-      const side = Math.sin(Math.atan2(dx, dz) - this.yaw);
-      clip = side > 0 ? 'sidestepL' : 'sidestepR';
+      // Pas de garde : de côté, vers l'avant ou en arrière selon la direction demandée
+      const rel = Math.atan2(dx, dz) - this.yaw;
+      const side = Math.sin(rel);
+      clip = Math.abs(side) >= 0.5 ? (side > 0 ? 'sidestepL' : 'sidestepR') : Math.cos(rel) > 0 ? 'dash' : 'backstep';
     }
     const c = H_CLIPS[clip];
     this.anim.play(clip, c ? c.dur / d.dur : 1);
@@ -616,9 +630,11 @@ export class Player extends Actor {
       this.airDashed = true;
       this.vy = 0;
     }
-    if (this.sneaking && kind !== 'roll') this.setSneak(false);
-    audio.play(kind === 'roll' || kind === 'backstep' ? 'roll' : kind === 'slide' ? 'slide' : 'dash', { pos: this.pos });
-    if (kind !== 'roll' && kind !== 'backstep') g.effects.dust({ x: this.pos.x, y: this.pos.y, z: this.pos.z }, kind === 'slide' ? 10 : 5);
+    const rolling = kind.startsWith('roll');
+    if (this.sneaking && !rolling) this.setSneak(false);
+    audio.play(rolling || kind === 'backstep' ? 'roll' : kind === 'slide' ? 'slide' : 'dash', { pos: this.pos });
+    g.effects.dust({ x: this.pos.x, y: this.pos.y, z: this.pos.z }, kind === 'slide' ? 10 : rolling ? 7 : 5);
+    this.ghostT = rolling || kind === 'backstep' ? 0.08 : 0;
   }
 
   setSneak(on) {

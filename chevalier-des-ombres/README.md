@@ -2,7 +2,7 @@
 
 Action-RPG **dark fantasy en 3D**, dans l'esprit des jeux Xbox 360 : un chevalier maudit, des cimetières noyés de brume verte, des châteaux gothiques sous un ciel violet étoilé, des spectres, des liches et des chevaliers cornus. Jouable **à la troisième ou à la première personne**, sur **Android (APK)**, sur PC dans le navigateur ou à la manette.
 
-Le chevalier est un **modèle 3D HD** (fichier GLB fourni, animé par le jeu) ; tout le reste — monstres, décors, textures, ciel, effets, bruitages et musique — est **généré par le code**. Le jeu tient dans un seul fichier HTML d'environ 2,6 Mo et fonctionne hors ligne.
+Le chevalier est un **modèle 3D HD** (fichier GLB fourni, animé par le jeu) ; les monstres et les boss sont **sculptés par le jeu lui-même** lors de l'installation des données (anatomie HD, maillages lisses). Tout le reste — décors, textures, ciel, effets, bruitages et musique — est **généré par le code**. Le jeu tient dans un seul fichier HTML et fonctionne hors ligne.
 
 ## 🌐 Jouer en ligne (sans rien installer)
 
@@ -30,7 +30,7 @@ Ouvre [`dist/index.html`](dist/index.html) dans Chrome, Edge ou Firefox (double-
 | Sprint | Maj | L3 | joystick poussé à fond |
 | Attaque légère (combo) | clic gauche ou J | X | bouton ⚔ ou toucher rapide à droite |
 | Attaque lourde (maintenir = charger, 3 niveaux) | K | Y ou RT | ⚒ |
-| Esquive (roulade, pas de côté, glissade, ruée aérienne) | Alt ou C | B | ↻ |
+| Esquive (roulades, bond arrière, pas de garde, glissade, ruée aérienne) | Alt ou C | B | ↻ Esquive |
 | Garde / parade (au bon moment) | clic droit ou Q | LB | ⛨ (maintenu) |
 | Saut (deux fois = double saut) | Espace | A | ⇧ |
 | Art d'arme | G | LT | ✧ |
@@ -48,9 +48,12 @@ Sur Android, le bouton **retour** ouvre la pause et revient en arrière dans les
 
 | Technique | Comment |
 |---|---|
+| Roulade | esquive + direction : vraie roulade avant ; avec une cible verrouillée, roulade avant, arrière, à gauche ou à droite en gardant l'ennemi en face |
+| Bond arrière | esquive sans toucher au joystick |
+| Pas de garde | esquive en tenant la garde : pas rapide de côté, en avant ou en arrière |
 | Esquive parfaite — « Temps des Ombres » | esquiver au tout dernier moment : le monde ralentit, le chevalier non |
 | Contre-attaque | attaquer juste après une esquive |
-| Pas de côté / glissade / ruée aérienne | esquiver avec une cible verrouillée / en sprintant / en l'air |
+| Glissade / ruée aérienne | esquiver en sprintant / en l'air |
 | Attaque en course, attaque glissée | attaquer en sprintant ou pendant une glissade |
 | Attaque plongeante | attaquer en l'air, en hauteur : onde de choc à l'impact |
 | Coup de pied | attaque lourde en tenant la garde : brise les boucliers |
@@ -66,8 +69,9 @@ Au premier démarrage, un écran **« Installation des données »** prépare to
 2. **Modèles** : le chevalier HD et ses 11 variantes de couleurs (ombre, néant, pourpre, cendre, givre, or, braise, os, émeraude, royal, obsidienne), en textures adaptées au palier (512 à 2048 px).
 3. **Textures du monde** en haute définition (256 à 1024 px selon le palier).
 4. **Banque de sons** : instruments (chœurs, cordes, violoncelle, cuivres, orgue, harpe, luth, piano, boîte à musique, cloches, timbales, taikos…) et plus de 50 bruitages avec variantes, calculés une fois (22, 32 ou 44 kHz selon le palier).
+5. **Sculpture des créatures** : chaque monstre, boss et habitant reçoit une anatomie HD (muscles, crânes creusés, côtes, crocs, griffes, touffes de fourrure, plis de robes, plaques d'armure, fissures de lave lumineuses…). Les formes sont fusionnées en un maillage lisse aux articulations souples, calculé en parallèle sur plusieurs cœurs, avec un nombre de polygones adapté à l'appareil (4 500 à 13 000 sommets par créature, plus pour les boss).
 
-Compter environ 5 à 15 secondes. Les lancements suivants démarrent directement. **Pause → Paramètres → Appareil & données** permet de relancer l'analyse, de réinstaller ou de supprimer les données.
+Compter environ 15 à 40 secondes selon l'appareil. Les lancements suivants démarrent directement. **Pause → Paramètres → Appareil & données** permet de relancer l'analyse, de réinstaller ou de supprimer les données.
 
 ## 🧠 Profil de l'appareil et stabilité
 
@@ -95,7 +99,7 @@ Compter environ 5 à 15 secondes. Les lancements suivants démarrent directement
 ## ⚡ Optimisation
 
 - Un seul appel de dessin par personnage (squelette rigide fusionné), décors instanciés par blocs avec élimination à distance, bâtiments fusionnés par matériau, 4 lumières recyclées affectées aux sources les plus proches.
-- Environ 60 à 115 appels de dessin par image selon la région (ombres et post-traitement compris), 40 à 75 k triangles.
+- Environ 60 à 115 appels de dessin par image selon la région (ombres et post-traitement compris), 60 à 190 k triangles avec les créatures sculptées ; les créatures identiques partagent le même maillage.
 - Préréglage graphique choisi automatiquement selon l'appareil, résolution dynamique si le jeu ralentit, limite d'images par seconde réglable, pause automatique quand l'application passe en arrière-plan.
 
 ## 🛠️ Développement

@@ -3,6 +3,8 @@
 // yeux du néant, horreurs tentaculaires, mimics, dragon ; armes et boucliers.
 import * as THREE from 'three';
 import { RigBuilder, PropBuilder, G, xf, SURF } from './rig.js';
+import { SCULPT } from './sculpt.js';
+import { torsoHD, headHD, armHD, legHD, tailHD, quadHD, spiderHD, serpentHD, batHD, tentacleHD, eyeHD, dragonHD } from './anatomy.js';
 
 const PI = Math.PI;
 
@@ -84,13 +86,24 @@ export function buildHumanoid(spec, material) {
     rb.bone('tail3', 'tail2', 0, 0, -0.32);
   }
 
-  torsoParts(rb, spec.torso || 'armor', c, B, T);
-  headParts(rb, spec.head || 'helm_great', c, B);
-  armParts(rb, spec.arms || 'armor', c, T, A, 'L');
-  armParts(rb, spec.arms || 'armor', c, T, A, 'R');
-  legParts(rb, spec.legs || 'armor', c, T, L, 'L', B);
-  legParts(rb, spec.legs || 'armor', c, T, L, 'R', B);
-  extraParts(rb, ex, c, B, spec);
+  // Anatomie HD (sculptée à l'installation) ou modèle classique en pièces
+  const hd = SCULPT.enabled && spec.hd !== false;
+  if (hd) {
+    torsoHD(rb, spec.torso || 'armor', c, B, T);
+    if (!headHD(rb, spec.head || 'helm_great', c, B)) headParts(rb, spec.head || 'helm_great', c, B);
+    armHD(rb, spec.arms || 'armor', c, T, A, 'L');
+    armHD(rb, spec.arms || 'armor', c, T, A, 'R');
+    legHD(rb, spec.legs || 'armor', c, T, L, 'L', B);
+    legHD(rb, spec.legs || 'armor', c, T, L, 'R', B);
+  } else {
+    torsoParts(rb, spec.torso || 'armor', c, B, T);
+    headParts(rb, spec.head || 'helm_great', c, B);
+    armParts(rb, spec.arms || 'armor', c, T, A, 'L');
+    armParts(rb, spec.arms || 'armor', c, T, A, 'R');
+    legParts(rb, spec.legs || 'armor', c, T, L, 'L', B);
+    legParts(rb, spec.legs || 'armor', c, T, L, 'R', B);
+  }
+  extraParts(rb, ex, c, B, spec, hd);
 
   const built = rb.build(material, { castShadow: spec.castShadow !== false });
   built.height = hipsY + 0.95;
@@ -551,7 +564,7 @@ function legParts(rb, type, c, T, L, side, B) {
   }
 }
 
-function extraParts(rb, ex, c, B, spec) {
+function extraParts(rb, ex, c, B, spec, hd = false) {
   if (ex.has('cape')) {
     const cc = c.cape;
     rb.add('cape1', xf(G.box(0.46 * B, 0.42, 0.02), [0, -0.19, 0]), cc, SURF.cloth);
@@ -571,7 +584,8 @@ function extraParts(rb, ex, c, B, spec) {
       rb.add(w2, xf(G.cone(0.03, 0.2, 4), [s * 0.62, 0.05, 0], [0, 0, s * -0.8]), c.bone, SURF.bone);
     }
   }
-  if (ex.has('tail')) {
+  if (ex.has('tail') && hd) tailHD(rb, c);
+  else if (ex.has('tail')) {
     rb.add('tail1', xf(G.cyl(0.05, 0.04, 0.36, 6), [0, 0, -0.17], [PI / 2, 0, 0]), c.tail || c.skin, SURF.leather);
     rb.add('tail2', xf(G.cyl(0.04, 0.025, 0.34, 6), [0, 0, -0.16], [PI / 2, 0, 0]), c.tail || c.skin, SURF.leather);
     rb.add('tail3', xf(G.cone(0.05, 0.16, 4), [0, 0, -0.12], [-PI / 2, 0, 0]), c.dark, SURF.leather);
@@ -627,6 +641,8 @@ export function buildQuadruped(spec, material) {
   rb.bone('tail1', 'body', 0, 0.04, -0.12);
   rb.bone('tail2', 'tail1', 0, 0, -0.25);
   const W = t === 'toad' ? 1.6 : t === 'rat' ? 0.7 : t === 'boar' ? 1.3 : 1;
+  if (SCULPT.enabled) quadHD(rb, t, c, W, legH, bodyLen);
+  else {
   // Corps
   if (t === 'toad') {
     rb.add('body', xf(G.sphere(0.3, 10, 8), [0, 0.02, 0.15], [0, 0, 0], [1.2, 0.75, 1.2]), c.main, SURF.wet);
@@ -674,6 +690,7 @@ export function buildQuadruped(spec, material) {
   const tl = t === 'rat' ? 0.4 : 0.28;
   rb.add('tail1', xf(G.cyl(0.04 * W, 0.03 * W, tl, 5), [0, 0, -tl / 2], [PI / 2, 0, 0]), c.main, SURF.leather);
   rb.add('tail2', xf(G.cyl(0.03 * W, t === 'rat' ? 0.008 : 0.04 * W, tl, 5), [0, 0, -tl / 2], [PI / 2, 0, 0]), t === 'hound' ? c.glow : c.main, t === 'hound' ? SURF.glow : SURF.leather);
+  }
   const built = rb.build(material);
   built.rig = 'quad';
   built.height = legH + 0.4;
@@ -687,20 +704,26 @@ export function buildSpider(spec, material) {
   rb.bone('body', 'root', 0, 0.45, 0);
   rb.bone('abdomen', 'body', 0, 0.08, -0.25);
   rb.bone('head', 'body', 0, 0, 0.22);
-  rb.add('body', xf(G.sphere(0.22, 10, 8), [0, 0, 0], [0, 0, 0], [1, 0.7, 1.1]), c.main, SURF.leather);
-  rb.add('abdomen', xf(G.sphere(0.34, 12, 8), [0, 0.05, -0.2], [0, 0, 0], [1, 0.85, 1.2]), c.main, SURF.leather);
-  rb.add('abdomen', xf(G.box(0.12, 0.04, 0.28), [0, 0.32, -0.2], [0.15, 0, 0]), c.mark, SURF.glowSoft);
-  rb.add('head', xf(G.sphere(0.13, 8, 6), [0, 0, 0.05]), c.main, SURF.leather);
-  for (let i = 0; i < 6; i++) rb.add('head', xf(G.sphere(0.022, 5, 4), [((i % 3) - 1) * 0.045, 0.06 + Math.floor(i / 3) * 0.035, 0.15]), c.eyes, SURF.glow);
-  for (const s of [-1, 1]) rb.add('head', xf(G.cone(0.025, 0.13, 4), [s * 0.04, -0.07, 0.15], [PI - 0.4, 0, 0]), c.bone, SURF.bone);
   for (let i = 0; i < 8; i++) {
     const side = i < 4 ? 1 : -1;
-    const k = i % 4;
     const n = 'leg' + i;
-    rb.bone(n, 'body', side * 0.15, 0.02, 0.12 - k * 0.1);
+    rb.bone(n, 'body', side * 0.15, 0.02, 0.12 - (i % 4) * 0.1);
     rb.bone(n + 'b', n, side * 0.36, 0.22, 0);
-    rb.add(n, xf(G.cyl(0.035, 0.028, 0.46, 5), [side * 0.18, 0.11, 0], [0, 0, side * -1.1]), c.main, SURF.leather);
-    rb.add(n + 'b', xf(G.cyl(0.028, 0.01, 0.72, 5), [side * 0.12, -0.33, 0], [0, 0, side * 0.35]), c.main, SURF.leather);
+  }
+  if (SCULPT.enabled) spiderHD(rb, c);
+  else {
+    rb.add('body', xf(G.sphere(0.22, 10, 8), [0, 0, 0], [0, 0, 0], [1, 0.7, 1.1]), c.main, SURF.leather);
+    rb.add('abdomen', xf(G.sphere(0.34, 12, 8), [0, 0.05, -0.2], [0, 0, 0], [1, 0.85, 1.2]), c.main, SURF.leather);
+    rb.add('abdomen', xf(G.box(0.12, 0.04, 0.28), [0, 0.32, -0.2], [0.15, 0, 0]), c.mark, SURF.glowSoft);
+    rb.add('head', xf(G.sphere(0.13, 8, 6), [0, 0, 0.05]), c.main, SURF.leather);
+    for (let i = 0; i < 6; i++) rb.add('head', xf(G.sphere(0.022, 5, 4), [((i % 3) - 1) * 0.045, 0.06 + Math.floor(i / 3) * 0.035, 0.15]), c.eyes, SURF.glow);
+    for (const s of [-1, 1]) rb.add('head', xf(G.cone(0.025, 0.13, 4), [s * 0.04, -0.07, 0.15], [PI - 0.4, 0, 0]), c.bone, SURF.bone);
+    for (let i = 0; i < 8; i++) {
+      const side = i < 4 ? 1 : -1;
+      const n = 'leg' + i;
+      rb.add(n, xf(G.cyl(0.035, 0.028, 0.46, 5), [side * 0.18, 0.11, 0], [0, 0, side * -1.1]), c.main, SURF.leather);
+      rb.add(n + 'b', xf(G.cyl(0.028, 0.01, 0.72, 5), [side * 0.12, -0.33, 0], [0, 0, side * 0.35]), c.main, SURF.leather);
+    }
   }
   const built = rb.build(material);
   built.rig = 'spider';
@@ -718,6 +741,8 @@ export function buildBat(spec, material) {
   rb.bone('wingL2', 'wingL', 0.35, 0, 0);
   rb.bone('wingR', 'body', -0.08, 0.05, 0);
   rb.bone('wingR2', 'wingR', -0.35, 0, 0);
+  if (SCULPT.enabled) batHD(rb, c);
+  else {
   rb.add('body', xf(G.sphere(0.12, 8, 6), [0, 0, 0], [0, 0, 0], [1, 1.2, 1]), c.main, SURF.leather);
   rb.add('head', xf(G.sphere(0.08, 8, 6)), c.main, SURF.leather);
   for (const s of [-1, 1]) {
@@ -728,6 +753,7 @@ export function buildBat(spec, material) {
     rb.add(w + '2', xf(G.box(0.38, 0.015, 0.3), [s * 0.18, 0, -0.06], [0, s * 0.2, 0]), c.wing, SURF.leather);
   }
   for (const s of [-1, 1]) rb.add('head', xf(G.cone(0.008, 0.03, 3), [s * 0.02, -0.05, 0.06], [PI, 0, 0]), 0xffffff, SURF.bone);
+  }
   const built = rb.build(material);
   built.rig = 'bat';
   built.height = 1.8;
@@ -767,6 +793,8 @@ export function buildSerpent(spec, material) {
   rb.bone('neck', 'seg0', 0, 0.05, 0.3);
   rb.bone('head', 'neck', 0, 0.35, 0.2);
   rb.bone('jaw', 'head', 0, -0.05, 0.05);
+  if (SCULPT.enabled) serpentHD(rb, c, segs);
+  else {
   for (let i = 0; i < segs; i++) {
     const r = 0.22 * (1 - (i / segs) * 0.75);
     rb.add('seg' + i, xf(G.cyl(r, r * 0.92, 0.46, 8), [0, 0, -0.21], [PI / 2, 0, 0]), i % 2 ? c.main : c.mark, SURF.scales);
@@ -779,6 +807,7 @@ export function buildSerpent(spec, material) {
     rb.add('head', xf(G.sphere(0.04, 6, 4), [s * 0.14, 0.07, 0.15]), c.eyes, SURF.glow);
     rb.add('jaw', xf(G.cone(0.02, 0.1, 4), [s * 0.08, 0.06, 0.24]), 0xf0f0e0, SURF.bone);
     rb.add('head', xf(G.cone(0.05, 0.25, 4), [s * 0.12, 0.12, -0.12], [-1.2, 0, s * 0.4]), c.mark, SURF.leather);
+  }
   }
   const built = rb.build(material);
   built.rig = 'serpent';
@@ -814,14 +843,19 @@ export function buildEye(spec, material) {
     const a = (i / 5) * PI * 2;
     rb.bone('t' + i + 'a', 'body', Math.sin(a) * 0.25, -0.3, Math.cos(a) * 0.25 - 0.1);
     rb.bone('t' + i + 'b', 't' + i + 'a', 0, -0.35, 0);
-    rb.add('t' + i + 'a', xf(G.cyl(0.05, 0.035, 0.38, 5), [0, -0.18, 0]), c.tent, SURF.wet);
-    rb.add('t' + i + 'b', xf(G.cyl(0.035, 0.008, 0.4, 5), [0, -0.2, 0]), c.tent, SURF.wet);
   }
-  rb.add('body', xf(G.sphere(0.42, 14, 10)), c.white, SURF.wet);
-  rb.add('body', xf(G.sphere(0.2, 10, 8), [0, 0, 0.3], [0, 0, 0], [1, 1, 0.5]), c.iris, SURF.glow);
-  rb.add('body', xf(G.sphere(0.08, 8, 6), [0, 0, 0.4], [0, 0, 0], [0.5, 1.4, 0.5]), 0x050505, SURF.wet);
-  rb.add('lidT', xf(G.sphereP(0.45, 14, 6, 0, PI * 2, 0, PI * 0.45), [0, 0, 0], [-0.6, 0, 0]), c.main, SURF.leather);
-  rb.add('body', xf(G.sphereP(0.45, 14, 6, 0, PI * 2, 0, PI * 0.45), [0, 0, 0], [PI + 0.7, 0, 0]), c.main, SURF.leather);
+  if (SCULPT.enabled) eyeHD(rb, c);
+  else {
+    for (let i = 0; i < 5; i++) {
+      rb.add('t' + i + 'a', xf(G.cyl(0.05, 0.035, 0.38, 5), [0, -0.18, 0]), c.tent, SURF.wet);
+      rb.add('t' + i + 'b', xf(G.cyl(0.035, 0.008, 0.4, 5), [0, -0.2, 0]), c.tent, SURF.wet);
+    }
+    rb.add('body', xf(G.sphere(0.42, 14, 10)), c.white, SURF.wet);
+    rb.add('body', xf(G.sphere(0.2, 10, 8), [0, 0, 0.3], [0, 0, 0], [1, 1, 0.5]), c.iris, SURF.glow);
+    rb.add('body', xf(G.sphere(0.08, 8, 6), [0, 0, 0.4], [0, 0, 0], [0.5, 1.4, 0.5]), 0x050505, SURF.wet);
+    rb.add('lidT', xf(G.sphereP(0.45, 14, 6, 0, PI * 2, 0, PI * 0.45), [0, 0, 0], [-0.6, 0, 0]), c.main, SURF.leather);
+    rb.add('body', xf(G.sphereP(0.45, 14, 6, 0, PI * 2, 0, PI * 0.45), [0, 0, 0], [PI + 0.7, 0, 0]), c.main, SURF.leather);
+  }
   const built = rb.build(material);
   built.rig = 'eye';
   built.height = 2.5;
@@ -835,21 +869,26 @@ export function buildTentacle(spec, material) {
   const rb = new RigBuilder();
   rb.bone('body', 'root', 0, 0.4, 0);
   rb.bone('eye', 'body', 0, 1.1, 0.2);
-  rb.add('body', xf(G.sphere(0.9, 12, 8), [0, 0, 0], [0, 0, 0], [1, 0.6, 1]), c.mound, SURF.wet);
-  rb.add('eye', xf(G.sphere(0.32, 12, 10)), 0xe0d0c0, SURF.wet);
-  rb.add('eye', xf(G.sphere(0.16, 8, 6), [0, 0, 0.22], [0, 0, 0], [1, 1, 0.5]), c.eye, SURF.glow);
-  rb.add('eye', xf(G.sphere(0.06, 6, 4), [0, 0, 0.3], [0, 0, 0], [0.5, 1.5, 0.5]), 0x050505, SURF.wet);
   for (let i = 0; i < n; i++) {
     const a = (i / n) * PI * 2;
-    const x = Math.sin(a) * 0.7;
-    const z = Math.cos(a) * 0.7;
     let prev = 'body';
     for (let k = 0; k < 5; k++) {
       const name = 't' + i + '_' + k;
-      rb.bone(name, prev, k === 0 ? x : 0, k === 0 ? 0.2 : 0.55, k === 0 ? z : 0);
-      const r = 0.2 * (1 - k * 0.17);
-      rb.add(name, xf(G.cyl(r * 0.8, r, 0.6, 7), [0, 0.28, 0]), k === 4 ? c.tip : c.main, k === 4 ? SURF.glowSoft : SURF.wet);
+      rb.bone(name, prev, k === 0 ? Math.sin(a) * 0.7 : 0, k === 0 ? 0.2 : 0.55, k === 0 ? Math.cos(a) * 0.7 : 0);
       prev = name;
+    }
+  }
+  if (SCULPT.enabled) tentacleHD(rb, c, n);
+  else {
+    rb.add('body', xf(G.sphere(0.9, 12, 8), [0, 0, 0], [0, 0, 0], [1, 0.6, 1]), c.mound, SURF.wet);
+    rb.add('eye', xf(G.sphere(0.32, 12, 10)), 0xe0d0c0, SURF.wet);
+    rb.add('eye', xf(G.sphere(0.16, 8, 6), [0, 0, 0.22], [0, 0, 0], [1, 1, 0.5]), c.eye, SURF.glow);
+    rb.add('eye', xf(G.sphere(0.06, 6, 4), [0, 0, 0.3], [0, 0, 0], [0.5, 1.5, 0.5]), 0x050505, SURF.wet);
+    for (let i = 0; i < n; i++) {
+      for (let k = 0; k < 5; k++) {
+        const r = 0.2 * (1 - k * 0.17);
+        rb.add('t' + i + '_' + k, xf(G.cyl(r * 0.8, r, 0.6, 7), [0, 0.28, 0]), k === 4 ? c.tip : c.main, k === 4 ? SURF.glowSoft : SURF.wet);
+      }
     }
   }
   const built = rb.build(material);
@@ -902,14 +941,29 @@ export function buildDragon(spec, material) {
   for (const [n, par, x, z] of [['FL', 'chest', 0.4, 0], ['FR', 'chest', -0.4, 0], ['BL', 'body', 0.45, 0], ['BR', 'body', -0.45, 0]]) {
     rb.bone('leg' + n, par, x, -0.1, z);
     rb.bone('leg' + n + '2', 'leg' + n, 0, -0.6, 0.1);
+  }
+  for (const s of [1, -1]) {
+    const w = s > 0 ? 'wingL' : 'wingR';
+    rb.bone(w, 'chest', s * 0.35, 0.35, -0.2);
+    rb.bone(w + '2', w, s * 1.6, 0.2, 0);
+  }
+  if (SCULPT.enabled) dragonHD(rb, c);
+  else dragonClassic(rb, c);
+  const built = rb.build(material);
+  built.rig = 'dragon';
+  built.height = 3;
+  return built;
+}
+
+
+function dragonClassic(rb, c) {
+  for (const n of ['FL', 'FR', 'BL', 'BR']) {
     rb.add('leg' + n, xf(G.cyl(0.16, 0.12, 0.65, 7), [0, -0.3, 0]), c.main, SURF.scales);
     rb.add('leg' + n + '2', xf(G.cyl(0.11, 0.09, 0.6, 7), [0, -0.3, 0]), c.main, SURF.scales);
     rb.add('leg' + n + '2', xf(G.box(0.26, 0.08, 0.36), [0, -0.6, 0.08]), c.horn, SURF.darkMetal);
   }
   for (const s of [1, -1]) {
     const w = s > 0 ? 'wingL' : 'wingR';
-    rb.bone(w, 'chest', s * 0.35, 0.35, -0.2);
-    rb.bone(w + '2', w, s * 1.6, 0.2, 0);
     rb.add(w, xf(G.cyl(0.06, 0.05, 1.7, 6), [s * 0.8, 0.1, 0], [0, 0, s * -PI / 2]), c.main, SURF.leather);
     rb.add(w, xf(G.box(1.6, 0.03, 1.4), [s * 0.8, 0, -0.7]), c.wing, SURF.leather);
     rb.add(w + '2', xf(G.box(1.8, 0.025, 1.6), [s * 0.9, 0, -0.8], [0, s * 0.3, 0]), c.wing, SURF.leather);
@@ -940,10 +994,6 @@ export function buildDragon(spec, material) {
     rb.add('tail' + i, xf(G.cone(0.05, 0.22, 4), [0, r, -0.28], [-0.4, 0, 0]), c.horn, SURF.bone);
   }
   rb.add('tail5', xf(G.octa(0.2), [0, 0, -0.65], [0, 0, 0], [0.4, 1, 1.4]), c.glow, SURF.glow);
-  const built = rb.build(material);
-  built.rig = 'dragon';
-  built.height = 3;
-  return built;
 }
 
 // ======================= ARMES =======================

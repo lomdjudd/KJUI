@@ -186,21 +186,58 @@ export const H_CLIPS = {
       [1, {}],
     ],
   },
+  // Roulades : corps en boule + rotation complète du bassin (rollAxis) — avant, arrière, côtés
   roll: {
-    dur: 0.6,
+    dur: 0.62, rollAxis: 'fwd', rollSpan: [0.1, 0.8],
     keys: [
       [0, {}],
-      [0.15, { chest: [0.9, 0, 0], spine: [0.5, 0, 0], head: [0.6, 0, 0], armR: [-1.2, 0, -0.3], foreR: [-1.2, 0, 0], armL: [-1.2, 0, 0.3], foreL: [-1.3, 0, 0], thighL: [-1.8, 0, 0], shinL: [2.0, 0, 0], thighR: [-1.6, 0, 0], shinR: [2.1, 0, 0], rootY: -0.45 }],
-      [0.7, { chest: [0.9, 0, 0], spine: [0.5, 0, 0], head: [0.6, 0, 0], armR: [-1.2, 0, -0.3], foreR: [-1.2, 0, 0], armL: [-1.2, 0, 0.3], foreL: [-1.3, 0, 0], thighL: [-1.8, 0, 0], shinL: [2.0, 0, 0], thighR: [-1.6, 0, 0], shinR: [2.1, 0, 0], rootY: -0.45 }],
+      [0.12, { chest: [0.95, 0, 0], spine: [0.55, 0, 0], head: [0.7, 0, 0], armR: [-1.3, 0, -0.25], foreR: [-1.5, 0, 0], armL: [-1.3, 0, 0.25], foreL: [-1.6, 0, 0], thighL: [-2.0, 0, 0.1], shinL: [2.3, 0, 0], thighR: [-1.9, 0, -0.1], shinR: [2.3, 0, 0], rootY: -0.5 }],
+      [0.72, { chest: [0.95, 0, 0], spine: [0.55, 0, 0], head: [0.7, 0, 0], armR: [-1.3, 0, -0.25], foreR: [-1.5, 0, 0], armL: [-1.3, 0, 0.25], foreL: [-1.6, 0, 0], thighL: [-2.0, 0, 0.1], shinL: [2.3, 0, 0], thighR: [-1.9, 0, -0.1], shinR: [2.3, 0, 0], rootY: -0.5 }],
+      [0.9, { chest: [0.4, 0, 0], thighL: [-0.9, 0, 0], shinL: [1.2, 0, 0], thighR: [-0.4, 0, 0], shinR: [1.0, 0, 0], rootY: -0.22 }],
       [1, {}],
     ],
     roll: true,
   },
+  rollBack: {
+    dur: 0.62, rollAxis: 'back', rollSpan: [0.1, 0.8],
+    keys: [
+      [0, {}],
+      [0.12, { chest: [0.95, 0, 0], spine: [0.55, 0, 0], head: [0.7, 0, 0], armR: [-1.3, 0, -0.25], foreR: [-1.5, 0, 0], armL: [-1.3, 0, 0.25], foreL: [-1.6, 0, 0], thighL: [-2.0, 0, 0.1], shinL: [2.3, 0, 0], thighR: [-1.9, 0, -0.1], shinR: [2.3, 0, 0], rootY: -0.5 }],
+      [0.72, { chest: [0.95, 0, 0], spine: [0.55, 0, 0], head: [0.7, 0, 0], armR: [-1.3, 0, -0.25], foreR: [-1.5, 0, 0], armL: [-1.3, 0, 0.25], foreL: [-1.6, 0, 0], thighL: [-2.0, 0, 0.1], shinL: [2.3, 0, 0], thighR: [-1.9, 0, -0.1], shinR: [2.3, 0, 0], rootY: -0.5 }],
+      [0.9, { chest: [0.45, 0, 0], thighL: [-1.0, 0, 0], shinL: [1.4, 0, 0], thighR: [-0.6, 0, 0], shinR: [1.3, 0, 0], rootY: -0.25 }],
+      [1, {}],
+    ],
+    roll: true,
+  },
+  rollLeft: {
+    dur: 0.56, rollAxis: 'left', rollSpan: [0.1, 0.8],
+    keys: [
+      [0, {}],
+      [0.12, { chest: [0.95, 0, 0], spine: [0.55, 0, 0], head: [0.7, 0, 0], armR: [-1.3, 0, -0.25], foreR: [-1.5, 0, 0], armL: [-1.3, 0, 0.25], foreL: [-1.6, 0, 0], thighL: [-2.0, 0, 0.1], shinL: [2.3, 0, 0], thighR: [-1.9, 0, -0.1], shinR: [2.3, 0, 0], rootY: -0.48 }],
+      [0.72, { chest: [0.95, 0, 0], spine: [0.55, 0, 0], head: [0.7, 0, 0], armR: [-1.3, 0, -0.25], foreR: [-1.5, 0, 0], armL: [-1.3, 0, 0.25], foreL: [-1.6, 0, 0], thighL: [-2.0, 0, 0.1], shinL: [2.3, 0, 0], thighR: [-1.9, 0, -0.1], shinR: [2.3, 0, 0], rootY: -0.48 }],
+      [0.9, { chest: [0.35, 0, 0.2], thighL: [-0.8, 0, 0.3], shinL: [1.1, 0, 0], thighR: [-0.5, 0, 0], shinR: [1.2, 0, 0], rootY: -0.2 }],
+      [1, {}],
+    ],
+    roll: true,
+  },
+  rollRight: {
+    dur: 0.56, rollAxis: 'right', rollSpan: [0.1, 0.8],
+    keys: [
+      [0, {}],
+      [0.12, { chest: [0.95, 0, 0], spine: [0.55, 0, 0], head: [0.7, 0, 0], armR: [-1.3, 0, -0.25], foreR: [-1.5, 0, 0], armL: [-1.3, 0, 0.25], foreL: [-1.6, 0, 0], thighL: [-2.0, 0, 0.1], shinL: [2.3, 0, 0], thighR: [-1.9, 0, -0.1], shinR: [2.3, 0, 0], rootY: -0.48 }],
+      [0.72, { chest: [0.95, 0, 0], spine: [0.55, 0, 0], head: [0.7, 0, 0], armR: [-1.3, 0, -0.25], foreR: [-1.5, 0, 0], armL: [-1.3, 0, 0.25], foreL: [-1.6, 0, 0], thighL: [-2.0, 0, 0.1], shinL: [2.3, 0, 0], thighR: [-1.9, 0, -0.1], shinR: [2.3, 0, 0], rootY: -0.48 }],
+      [0.9, { chest: [0.35, 0, -0.2], thighR: [-0.8, 0, -0.3], shinR: [1.1, 0, 0], thighL: [-0.5, 0, 0], shinL: [1.2, 0, 0], rootY: -0.2 }],
+      [1, {}],
+    ],
+    roll: true,
+  },
+  // Bond arrière : petit saut, buste en retrait, bras écartés
   backstep: {
     dur: 0.45,
     keys: [
       [0, {}],
-      [0.3, { chest: [-0.25, 0, 0], thighL: [0.5, 0, 0], shinL: [0.4, 0, 0], thighR: [-0.3, 0, 0], shinR: [0.6, 0, 0], rootY: -0.1 }],
+      [0.18, { chest: [-0.3, 0, 0], spine: [-0.1, 0, 0], head: [0.2, 0, 0], thighL: [-0.5, 0, 0.1], shinL: [0.9, 0, 0], thighR: [-0.3, 0, -0.1], shinR: [0.8, 0, 0], armL: [-0.2, 0, 0.6], armR: [-0.3, 0, -0.5], rootY: 0.12 }],
+      [0.6, { chest: [0.25, 0, 0], thighL: [-0.8, 0, 0.1], shinL: [1.1, 0, 0], thighR: [0.2, 0, -0.1], shinR: [0.6, 0, 0], armL: [-0.3, 0, 0.4], armR: [-0.4, 0, -0.3], rootY: -0.18 }],
       [1, {}],
     ],
   },
@@ -494,6 +531,8 @@ export class Animator {
     this.rootOffset = 0;
     this.extraYaw = 0;
     this.flipAngle = 0;
+    this.rollAngle = 0;
+    this.rollAxis = 'x';
     this.lidOpen = 0;
     this.retarget = built.retarget || null;
     for (const name in this.b) this.cur[name] = [0, 0, 0];
@@ -683,8 +722,16 @@ export class Animator {
       this.extraYaw = clip.spin ? smoothstep(clip.hit[0] - 0.1, clip.hit[1], t) * Math.PI * 2 * (clip.spinTurns || 1) : 0;
       // Salto (double saut) : rotation complète du bassin
       if (clip.flip) this.flipAngle = smoothstep(0.08, 0.82, t) * Math.PI * 2;
+      // Roulades : tour complet autour de l'axe latéral (avant/arrière) ou avant-arrière (côtés)
+      if (clip.rollAxis) {
+        const [r0, r1] = clip.rollSpan || [0.1, 0.8];
+        const a = smoothstep(r0, r1, t) * Math.PI * 2;
+        this.rollAngle = clip.rollAxis === 'back' || clip.rollAxis === 'left' ? -a : a;
+        this.rollAxis = clip.rollAxis === 'fwd' || clip.rollAxis === 'back' ? 'x' : 'z';
+      }
     }
     if (!this.action || !this.action.clip || !this.action.clip.flip) this.flipAngle = 0;
+    if (!this.action || !this.action.clip || !this.action.clip.rollAxis) this.rollAngle = 0;
     if (!this.action) this.extraYaw = 0;
     // Réaction aux coups (additive)
     if (this.hitT > 0) {
@@ -696,6 +743,10 @@ export class Animator {
     if (s.lookYaw) pose.head[1] += clamp(s.lookYaw, -0.8, 0.8);
     for (const n of H_BONES) this._set(n, pose[n][0], pose[n][1], pose[n][2], dt, lambda);
     if (this.flipAngle) this.b.hips.rotation.x = this.cur.hips[0] + this.flipAngle;
+    if (this.rollAngle) {
+      if (this.rollAxis === 'x') this.b.hips.rotation.x = this.cur.hips[0] + this.rollAngle;
+      else this.b.hips.rotation.z = this.cur.hips[2] + this.rollAngle;
+    }
     const hips = this.b.hips;
     this.rootOffset = damp(this.rootOffset, rootY, 18, dt);
     hips.position.y = hips.userData.rest.y + this.rootOffset;

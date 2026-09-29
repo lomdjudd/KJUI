@@ -9,7 +9,7 @@ import { audio } from '../core/audio.js';
 const BUTTONS = [
   ['attack', 'Frappe', '⚔', 86, 36, 34, false],
   ['heavy', 'Lourde', '⚒', 60, 132, 22, false],
-  ['dodge', 'Roulade', '↻', 64, 28, 132, false],
+  ['dodge', 'Esquive', '↻', 64, 28, 132, false],
   ['block', 'Garde', '⛨', 62, 118, 110, true],
   ['jump', 'Saut', '⇧', 52, 200, 34, false],
   ['power', 'Pouvoir', '✦', 60, 104, 192, false],

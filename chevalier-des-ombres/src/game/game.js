@@ -31,6 +31,7 @@ import { saveProfile } from './save.js';
 import { buildHumanoid } from '../actors/models.js';
 import { Animator } from '../actors/anims.js';
 import { PropBuilder, G, xf, SURF, DETAIL } from '../actors/rig.js';
+import { SCULPT } from '../actors/sculpt.js';
 import { rand, dist2, clamp, makeRng, hashString } from '../core/utils.js';
 
 const _v = new THREE.Vector3();
@@ -95,6 +96,7 @@ export class Game {
       if (k === 'shadows' || k === 'preset' || k === '*') this.applyShadowSettings();
       if (k === 'fxQuality' || k === 'preset' || k === '*') this.applyDetail();
       if (k === 'drawDistance' || k === 'preset' || k === '*') this.applyFog();
+      if (k === 'charModel' || k === '*') SCULPT.enabled = settings.get('charModel') !== 'classic';
       if (k === 'charModel' && this.player.mesh) this.player.rebuild();
       if (k === 'camMode') {
         this.camRig.mode = settings.get('camMode');
@@ -328,7 +330,7 @@ export class Game {
   _disposeMesh(root, ownMaterials = false) {
     this.scene.remove(root);
     root.traverse((o) => {
-      if (o.geometry) o.geometry.dispose();
+      if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose();
       if (o.isSkinnedMesh) o.skeleton.dispose();
       if (ownMaterials && o.material && o.material.dispose) o.material.dispose();
     });
