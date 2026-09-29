@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import json
+import mimetypes
+import os
 import re
+import time
 from pathlib import Path
 from typing import Iterable
 
@@ -64,18 +67,46 @@ def chunk_markdown(text: str, doc_title: str = "") -> list[tuple[str, str]]:
     return out
 
 
+def chunk_plain(text: str, title: str, limit: int = CHUNK_CHARS, max_chunks: int = 300) -> list[tuple[str, str]]:
+    """Découpage pour du code/texte brut : par lignes, ~350 tokens max par bloc (les longues lignes sont coupées)."""
+    out: list[str] = []
+    cur = ""
+    for line in text.splitlines():
+        while len(line) > limit:  # js/css minifié…
+            if cur:
+                out.append(cur)
+                cur = ""
+            out.append(line[:limit])
+            line = line[limit:]
+        if cur and len(cur) + len(line) > limit:
+            out.append(cur)
+            cur = ""
+        cur += line + "\n"
+        if len(out) >= max_chunks:
+            break
+    if cur.strip() and len(out) < max_chunks:
+        out.append(cur)
+    return [(f"{title} ({i + 1})" if len(out) > 1 else title, c.strip()) for i, c in enumerate(out) if c.strip()]
+
+
 def ingest_markdown(
-    brain: Brain, text: str, name: str, kind: str | None = None, pinned: bool | None = None, source: str = ""
+    brain: Brain, text: str, name: str, kind: str | None = None, pinned: bool | None = None, source: str = "",
+    blob: str = "", mime: str = "", key_prefix: str = "", plain: bool = False,
 ) -> dict[str, int]:
     """Ingère un document. Frontmatter supporté : kind, pinned, tags, title."""
-    meta, body = parse_frontmatter(text)
+    meta, body = parse_frontmatter(text) if not plain else ({}, text)
     k = kind or meta.get("kind") or "file"
     p = pinned if pinned is not None else meta.get("pinned", "").lower() in ("1", "true", "yes", "oui")
     doc_title = meta.get("title") or Path(name).stem
     doc_tokens = est_tokens(body)
     created = updated = 0
     # Un doc d'instructions court reste d'un seul bloc : plus fiable pour Claude.
-    chunks = [(doc_title, body.strip())] if k == "instruction" and len(body) <= 2400 else chunk_markdown(body, doc_title)
+    if plain:
+        chunks = chunk_plain(body, name)
+    elif k == "instruction" and len(body) <= 2400:
+        chunks = [(doc_title, body.strip())]
+    else:
+        chunks = chunk_markdown(body, doc_title)
     for i, (title, chunk) in enumerate(chunks):
         if not chunk.strip():
             continue
@@ -85,9 +116,11 @@ def ingest_markdown(
             kind=k,
             tags=meta.get("tags", ""),
             source=source or name,
-            key=f"md:{source or name}:{i}",
+            key=f"md:{key_prefix or source or name}:{i}",
             pinned=p,
             doc_tokens=doc_tokens,
+            blob=blob,
+            mime=mime,
         )
         created += new
         updated += not new
@@ -104,7 +137,6 @@ MIME_EXT = {
 }
 EXT_MIME = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif", "webp": "image/webp",
             "pdf": "application/pdf"}
-MAX_BLOB = 60_000_000
 
 
 def store_binary(brain: Brain, name: str, data: bytes, mime: str = "", context: str = "", source: str = "",
@@ -121,18 +153,27 @@ def store_binary(brain: Brain, name: str, data: bytes, mime: str = "", context: 
                      blob=blob, mime=mime)
 
 
+MAX_BLOB = 250_000_000
+
+
 def ingest_bytes(brain: Brain, name: str, data: bytes, kind: str | None = None, pinned: bool | None = None,
-                 source: str = "") -> dict[str, int]:
-    """Point d'entrée universel : texte/code → blocs cherchables ; image, pdf, autre → fichier conservé."""
+                 source: str = "", key_prefix: str = "") -> dict[str, int]:
+    """Point d'entrée universel. TOUT fichier est conservé en original (téléchargeable) ;
+    le texte/code est en plus découpé en blocs cherchables."""
     if len(data) > MAX_BLOB:
         return {"chunks": 0, "created": 0}
     ext = Path(name).suffix.lower()
     if ext in TEXT_EXT:
         try:
-            return ingest_markdown(brain, data.decode("utf-8"), name, kind, pinned, source=source or name)
+            text = data.decode("utf-8")
         except UnicodeDecodeError:
-            pass
-    _, new = store_binary(brain, name, data, source=source)
+            text = None
+        if text is not None:
+            blob = brain.save_blob(data, ext.lstrip("."))
+            mime = mimetypes.guess_type(name)[0] or "text/plain"
+            return ingest_markdown(brain, text, name, kind, pinned, source=source or name, blob=blob, mime=mime,
+                                   key_prefix=key_prefix, plain=ext not in (".md", ".markdown", ".txt"))
+    _, new = store_binary(brain, name, data, source=source, key=(f"{key_prefix}:bin" if key_prefix else None))
     return {"chunks": 1, "created": int(new)}
 
 
@@ -198,14 +239,19 @@ def _ingest_blocks(brain: Brain, who: str, blocks: list[dict], source: str, key:
             inp = b.get("input") or {}
             name = b.get("name", "")
             if name == "Write" and inp.get("content"):
-                n += brain.add(inp["content"], title=f"Fichier écrit : {inp.get('file_path', '?')}", kind="file",
-                               tags="claude fichier", source=source, key=k)[1]
+                fp = inp.get("file_path", "fichier.txt")
+                n += ingest_bytes(brain, Path(fp).name or "fichier.txt", str(inp["content"]).encode(),
+                                  source=f"Claude Code · {fp}", key_prefix=k)["created"]
             elif name in ("Edit", "MultiEdit"):
                 edits = inp.get("edits") or [inp]
                 body = "\n\n".join(f"- {e.get('old_string', '')}\n+ {e.get('new_string', '')}" for e in edits)
                 if body.strip("-+ \n"):
                     n += brain.add(body, title=f"Édition : {inp.get('file_path', '?')}", kind="file",
                                    tags="claude édition", source=source, key=k)[1]
+            elif name in ("create_file", "str_replace_based_edit_tool") and inp.get("file_text"):  # claude.ai (exécution de code)
+                fp = inp.get("path", "fichier.txt")
+                n += ingest_bytes(brain, Path(fp).name or "fichier.txt", str(inp["file_text"]).encode(),
+                                  source=f"claude.ai · {fp}", key_prefix=k)["created"]
             elif name == "artifacts" and inp.get("content"):  # export claude.ai
                 n += brain.add(inp["content"], title=f"Artifact : {inp.get('title') or inp.get('id', '')}", kind="file",
                                tags="claude artifact", source=source, key=k)[1]
@@ -217,6 +263,7 @@ def ingest_claude_export(brain: Brain, path: Path) -> int:
     import zipfile
 
     media: list[tuple[str, bytes]] = []
+    data: list | dict
     if path.suffix.lower() == ".zip":
         with zipfile.ZipFile(path) as z:
             data = json.loads(z.read(next(n for n in z.namelist() if n.endswith("conversations.json"))))
@@ -225,8 +272,16 @@ def ingest_claude_export(brain: Brain, path: Path) -> int:
                     media.append((n, z.read(n)))
     else:
         data = json.loads(path.read_text("utf-8"))
+    total = ingest_conversations(brain, data if isinstance(data, list) else [data])
+    for name, blob in media:
+        total += store_binary(brain, Path(name).name, blob, source="export claude.ai")[1]
+    return total
+
+
+def ingest_conversations(brain: Brain, convs: list[dict]) -> int:
+    """Conversations au format claude.ai (export ou API interne) : messages, pièces jointes, artifacts."""
     total = 0
-    for conv in data if isinstance(data, list) else [data]:
+    for conv in convs:
         uid = conv.get("uuid") or conv.get("name", "")
         src = conv.get("name") or uid
         for i, msg in enumerate(conv.get("chat_messages", [])):
@@ -240,11 +295,9 @@ def ingest_claude_export(brain: Brain, path: Path) -> int:
                 if att.get("extracted_content"):
                     total += brain.add(att["extracted_content"], title=f"Pièce jointe : {att.get('file_name', '?')}",
                                        kind="file", tags="toi pièce-jointe", source=src, key=f"{key}:att{a}")[1]
-            for f, fl in enumerate(msg.get("files") or []):
+            for f, fl in enumerate(msg.get("files") or msg.get("files_v2") or []):
                 total += brain.add(f"[Fichier joint] {fl.get('file_name', '?')}", title=fl.get("file_name", "fichier"),
                                    kind="file", source=src, key=f"{key}:file{f}")[1]
-    for name, blob in media:
-        total += store_binary(brain, Path(name).name, blob, source="export claude.ai")[1]
     return total
 
 
@@ -272,11 +325,76 @@ def ingest_transcript(brain: Brain, path: Path, offset: int = 0) -> tuple[int, i
     return n, pos
 
 
-def sync_claude_code(brain: Brain, root: Path | None = None) -> int:
+SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", ".cache", ".gradle", ".idea", ".next", ".mypy_cache"}
+SECRET = re.compile(r"(^\.env|\.pem$|\.key$|\.p12$|\.pfx$|\.jks$|\.keystore$|id_rsa|id_ed25519|credentials|secret)", re.I)
+SCAN_DAYS = 30
+MAX_WALK = 30000
+
+
+def scan_folder(brain: Brain, root: Path, since: float) -> int:
+    """Enregistre les fichiers de `root` créés/modifiés depuis `since` (png, html, css, js, apk, zip…)."""
+    root = root.resolve()
+    if not root.is_dir() or root == Path.home().resolve() or root == Path(root.anchor):
+        return 0
+    n = walked = 0
+    for dirpath, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        for fn in files:
+            walked += 1
+            if walked > MAX_WALK:
+                return n
+            p = Path(dirpath) / fn
+            if SECRET.search(fn):
+                continue
+            try:
+                st = p.stat()
+            except OSError:
+                continue
+            if st.st_mtime < since or st.st_size > MAX_BLOB or st.st_size == 0:
+                continue
+            sig, k = f"{int(st.st_mtime)}:{st.st_size}", f"seen:{p}"
+            if brain.meta_get(k) == sig:
+                continue
+            try:
+                rel = str(p.relative_to(root))
+                n += ingest_bytes(brain, fn, p.read_bytes(), source=f"{root.name}/{rel}")["created"]
+            except OSError:
+                continue
+            brain.meta_set(k, sig)
+    return n
+
+
+def _session_info(path: Path) -> tuple[str, float]:
+    """(dossier de travail, début de session) lus dans les premières lignes du transcript."""
+    from datetime import datetime
+
+    cwd, start = "", 0.0
+    with path.open("rb") as f:
+        for i, raw in enumerate(f):
+            if i > 60:
+                break
+            try:
+                ev = json.loads(raw)
+            except ValueError:
+                continue
+            cwd = cwd or ev.get("cwd", "")
+            if not start and ev.get("timestamp"):
+                try:
+                    start = datetime.fromisoformat(ev["timestamp"].replace("Z", "+00:00")).timestamp()
+                except ValueError:
+                    pass
+            if cwd and start:
+                break
+    return cwd, start
+
+
+def sync_claude_code(brain: Brain, root: Path | None = None, scan_files: bool = False) -> int:
     root = root or Path.home() / ".claude" / "projects"
     if not root.exists():
         return 0
     total = 0
+    folders: dict[str, float] = {}
+    horizon = time.time() - SCAN_DAYS * 86400
     for f in root.rglob("*.jsonl"):
         k = f"off:{f}"
         off = int(brain.meta_get(k, "0"))
@@ -285,4 +403,10 @@ def sync_claude_code(brain: Brain, root: Path | None = None) -> int:
         n, new_off = ingest_transcript(brain, f, off)
         brain.meta_set(k, str(new_off))
         total += n
+        if scan_files:
+            cwd, start = _session_info(f)
+            if cwd:
+                folders[cwd] = min(folders.get(cwd, 9e18), max(start, horizon))
+    for cwd, since in folders.items():
+        total += scan_folder(brain, Path(cwd), since)
     return total

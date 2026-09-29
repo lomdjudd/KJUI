@@ -114,12 +114,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"rappels        : {s['recalls']}  (≈{s['served_tokens']} tokens servis)")
         print(f"tokens économisés (estimation) : {s['saved_tokens']}")
     elif args.cmd == "sync":
-        print(f"✔ {sync_claude_code(brain)} échanges mémorisés")
+        print(f"✔ {sync_claude_code(brain, scan_files=True)} éléments mémorisés (messages + fichiers)")
     elif args.cmd == "watch":
         print("👀 surveillance de ~/.claude/projects (Ctrl+C pour arrêter)")
         try:
             while True:
-                n = sync_claude_code(brain)
+                n = sync_claude_code(brain, scan_files=True)
                 if n:
                     print(f"  +{n} souvenirs")
                 time.sleep(5)

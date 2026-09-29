@@ -106,5 +106,26 @@ class BrainTest(unittest.TestCase):
         self.assertEqual(self.brain.search("kiwi")[0]["kind"], "file")
 
 
+    def test_original_file_kept_and_folder_scan(self):
+        from kjui.ingest import ingest_bytes, scan_folder
+
+        r = ingest_bytes(self.brain, "page.html", b"<html><body>bonjour pamplemousse</body></html>")
+        hit = self.brain.search("pamplemousse")[0]
+        self.assertEqual((self.brain.files_dir / hit["blob"]).read_bytes(), b"<html><body>bonjour pamplemousse</body></html>")
+        proj = Path(self.tmp.name) / "proj"
+        (proj / "app" / "build").mkdir(parents=True)
+        (proj / "node_modules").mkdir()
+        (proj / "app" / "build" / "app.apk").write_bytes(b"PK\x03\x04 fake apk")
+        (proj / "style.css").write_text("body{color:red} /* mangue */")
+        (proj / "logo.png").write_bytes(b"\x89PNG fake")
+        (proj / ".env").write_text("SECRET=1")
+        (proj / "node_modules" / "x.js").write_text("ignoré")
+        n = scan_folder(self.brain, proj, since=0)
+        self.assertEqual(n, 3)  # apk + css + png (pas .env, pas node_modules)
+        self.assertEqual(scan_folder(self.brain, proj, since=0), 0)  # rien de neuf
+        self.assertEqual(self.brain.search("app.apk")[0]["blob"].endswith(".apk"), True)
+        self.assertEqual(self.brain.search("mangue")[0]["kind"], "file")
+
+
 if __name__ == "__main__":
     unittest.main()

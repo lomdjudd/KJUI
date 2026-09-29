@@ -13,7 +13,7 @@ import base64
 import mimetypes
 import re
 
-from .ingest import ingest_bytes, sync_claude_code
+from .ingest import ingest_bytes, ingest_conversations, store_binary, sync_claude_code
 from .recall import recall
 from .store import KINDS, Brain
 
@@ -34,7 +34,10 @@ def make_handler(brain: Brain, port_ref: list[int]):
             if host not in ("127.0.0.1", "localhost"):
                 return False
             origin = self.headers.get("Origin")
-            return not origin or urlparse(origin).hostname in ("127.0.0.1", "localhost")
+            if not origin or urlparse(origin).hostname in ("127.0.0.1", "localhost"):
+                return True
+            # l'extension navigateur (claude.ai → cerveau) : uniquement pour /api/ext/*
+            return self.path.startswith("/api/ext/") and origin.startswith(("chrome-extension://", "moz-extension://"))
 
         def _send(self, code: int, body: bytes, ctype: str = "application/json") -> None:
             self.send_response(code)
@@ -77,6 +80,8 @@ def make_handler(brain: Brain, port_ref: list[int]):
                 self.end_headers()
                 self.wfile.write(data)
                 return
+            if u.path == "/api/ext/ping":
+                return self._json({"ok": True, "memories": brain.stats()["memories"]})
             if u.path == "/favicon.ico":
                 return self._send(204, b"", "text/plain")
             if u.path == "/api/graph":
@@ -110,6 +115,12 @@ def make_handler(brain: Brain, port_ref: list[int]):
                         pinned=bool(b.get("pinned")),
                     )
                     return self._json({"id": i, "created": new})
+                if self.path == "/api/ext/conversation":
+                    return self._json({"stored": ingest_conversations(brain, [b])})
+                if self.path == "/api/ext/file":
+                    _, new = store_binary(brain, b["name"], base64.b64decode(b["b64"]), b.get("mime", ""),
+                                          b.get("context", ""), b.get("source", "claude.ai"), b.get("key"))
+                    return self._json({"created": new})
                 if self.path == "/api/upload":
                     data = base64.b64decode(b["b64"]) if "b64" in b else b.get("text", "").encode()
                     r = ingest_bytes(
@@ -145,11 +156,13 @@ def run(brain: Brain, port: int = 8765, open_browser: bool = True, watch: bool =
     if watch:
         def loop():
             w = Brain(brain.path)  # connexion dédiée au thread
+            tick = 0
             while True:
                 try:
-                    sync_claude_code(w)
+                    sync_claude_code(w, scan_files=tick % 6 == 0)  # dossiers de travail : toutes les 30 s
                 except Exception:  # noqa: BLE001
                     pass
+                tick += 1
                 time.sleep(5)
 
         threading.Thread(target=loop, daemon=True).start()

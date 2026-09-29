@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "KJUI Brain — claude.ai",
+  "version": "0.1.0",
+  "description": "Envoie en direct tes conversations claude.ai (messages, fichiers, artifacts) vers ton cerveau KJUI local.",
+  "permissions": ["storage"],
+  "host_permissions": ["https://claude.ai/*", "http://127.0.0.1/*", "http://localhost/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    { "matches": ["https://claude.ai/*"], "js": ["content.js"], "run_at": "document_idle" }
+  ],
+  "action": { "default_title": "KJUI Brain", "default_popup": "popup.html" }
+}
