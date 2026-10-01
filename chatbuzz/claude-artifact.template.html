@@ -377,6 +377,12 @@ button.row:hover { background: var(--surface-2); }
   .pill-btn .ic:last-child { display: none; }
   .head-r .iconbtn { width: 36px; }
 }
+.filebtn { position: relative; overflow: hidden; }
+.filebtn input[type=file] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 200px; z-index: 2; }
+.paste { min-height: 44px; padding: 11px 14px; border-radius: 12px; border: 1px dashed var(--line-2); background: var(--surface-2); color: var(--text-2); font-size: 0.86rem; outline: 0; caret-color: transparent; overflow: hidden; }
+.paste:empty::before { content: attr(data-ph); color: var(--muted); }
+.paste:focus { border-color: var(--a2); }
+.drop-on { outline: 2px dashed var(--a1); outline-offset: -6px; }
 .vh { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip: rect(0 0 0 0); pointer-events: none; }
 .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 8px; }
 .gal { aspect-ratio: 1 / 1; border-radius: 14px; overflow: hidden; border: 2px solid transparent; background: var(--surface-2); }
@@ -421,12 +427,13 @@ label.btn, label.wall-opt { cursor: pointer; }
     <div style="display:flex;flex-direction:column;gap:8px;flex:1;min-width:0">
       <label class="field" for="fEmoji">Emoji d’avatar<input id="fEmoji" maxlength="4" value="😎"></label>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <label class="btn soft" for="fileAvatar" data-act="pickAvatar" id="lblImport"><svg class="ic"><use href="#i-image"></use></svg>Importer une photo</label>
+        <span class="btn soft filebtn"><svg class="ic"><use href="#i-image"></use></svg>Importer une photo<input type="file" id="fileAvatar" accept="image/*" aria-label="Importer une photo"></span>
         <button type="button" class="btn soft" data-act="clearAvatar" id="btnClearAvatar" hidden>Retirer</button>
       </div>
-      <input type="file" id="fileAvatar" accept="image/*" class="vh" tabindex="-1">
+      <div class="paste" id="pasteZone" contenteditable="true" spellcheck="false" data-ph="…ou appuie ici puis « Coller » une image copiée" aria-label="Coller une image"></div>
     </div>
   </div>
+  <p class="hint" style="margin-top:-6px">La galerie ne s’ouvre pas ? L’app Claude peut bloquer l’accès aux fichiers : ouvre cette page dans Chrome (claude.ai, connecté à ton compte), ou copie une image et colle-la dans la zone ci-dessus.</p>
   <div><div class="sec-label">Ou choisis un portrait</div><div class="gallery" id="fGallery"></div></div>
   <label class="field" for="fName">Nom<input id="fName" required maxlength="60" placeholder="Ex. Kaito, le samouraï timide"></label>
   <div><div class="sec-label">Couleurs</div><div class="swatches" id="fColors"></div></div>
@@ -461,7 +468,6 @@ label.btn, label.wall-opt { cursor: pointer; }
   <div id="chatSettingsBody" style="display:flex;flex-direction:column;gap:18px"></div>
 </div></div>
 
-<input type="file" id="fileWall" accept="image/*" class="vh" tabindex="-1">
 <div id="toast" class="toast" role="status" hidden></div>
 
 <script>
@@ -512,8 +518,8 @@ function toast(msg, action) {
 
 /* ================= Configuration ================= */
 const PLANS = {
-  free: { name: 'Gratuit', tiers: ['quick'], maxCustom: 2, maxGroups: 1, groupSize: 2, avatarImage: false, walls: 4, wallUpload: false, accents: false, memory: false, suggestions: false, aiCreate: false, export: false },
-  plus: { name: 'Plus', tiers: ['quick', 'default'], maxCustom: 10, maxGroups: 5, groupSize: 4, avatarImage: true, walls: 10, wallUpload: false, accents: true, memory: false, suggestions: true, aiCreate: true, export: false },
+  free: { name: 'Gratuit', tiers: ['quick'], maxCustom: 2, maxGroups: 1, groupSize: 2, avatarImage: true, walls: 4, wallUpload: true, accents: false, memory: false, suggestions: false, aiCreate: false, export: false },
+  plus: { name: 'Plus', tiers: ['quick', 'default'], maxCustom: 10, maxGroups: 5, groupSize: 4, avatarImage: true, walls: 10, wallUpload: true, accents: true, memory: false, suggestions: true, aiCreate: true, export: false },
   premium: { name: 'Premium', tiers: ['quick', 'default', 'complex'], maxCustom: Infinity, maxGroups: Infinity, groupSize: 6, avatarImage: true, walls: 10, wallUpload: true, accents: true, memory: true, suggestions: true, aiCreate: true, export: true },
 };
 const PLAN_ORDER = ['free', 'plus', 'premium'];
@@ -934,11 +940,17 @@ function readFile(file) {
     r.readAsDataURL(file);
   });
 }
+function loadImg(url) {
+  return new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = () => reject(new Error('image')); img.src = url; });
+}
+async function decodeImage(file) {
+  try { return await loadImg(await readFile(file)); }
+  catch (e) { if (window.createImageBitmap) return await createImageBitmap(file); throw e; }
+}
 async function fileToDataUrl(file, maxSide, square, quality = 0.84) {
-  const url = await readFile(file);
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
+  const img = await decodeImage(file);
+  return new Promise((resolve) => {
+    {
       let sw = img.width, sh = img.height, sx = 0, sy = 0;
       if (square) { const s = Math.min(sw, sh); sx = (sw - s) / 2; sy = (sh - s) / 2; sw = sh = s; }
       const k = Math.min(1, maxSide / Math.max(sw, sh));
@@ -946,9 +958,7 @@ async function fileToDataUrl(file, maxSide, square, quality = 0.84) {
       c.width = Math.round(sw * k); c.height = Math.round(sh * k);
       c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
       resolve(c.toDataURL('image/jpeg', quality));
-    };
-    img.onerror = () => reject(new Error('image'));
-    img.src = url;
+    }
   });
 }
 
@@ -960,7 +970,6 @@ function openCharForm(base) {
   $('#btnSaveChar').textContent = editing ? 'Enregistrer' : 'Créer et discuter';
   $('#fIdea').value = '';
   $('#aiLock').innerHTML = plan().aiCreate ? '' : `<span class="pill">${ic('lock')}Plus</span>`;
-  $('#lblImport').innerHTML = `${ic('image')}Importer une photo${plan().avatarImage ? '' : ` <span class="pill">${ic('lock')}Plus</span>`}`;
   $('#fName').value = base ? (editing ? base.name : base.name + ' (copie)') : '';
   $('#fEmoji').value = base?.emoji || '😎';
   $('#fCat').innerHTML = DATA.categories.map((c) => `<option>${esc(c)}</option>`).join('');
@@ -983,12 +992,44 @@ function drawCharPickers() {
   $('#charPreview').innerHTML = pic({ colors: d.colors, emoji: $('#fEmoji').value || '😎', image: d.image }, 84);
 }
 $('#fEmoji').addEventListener('input', drawCharPickers);
-$('#fileAvatar').addEventListener('change', async (ev) => {
-  const f = ev.target.files[0];
-  ev.target.value = '';
-  if (!f) return;
-  try { state.draft.image = await fileToDataUrl(f, 320, true); drawCharPickers(); toast('Photo ajoutée'); } catch { toast('Format non pris en charge : choisis une photo JPG ou PNG.'); }
+async function setAvatarFile(f) {
+  if (!state.draft) return;
+  toast('Chargement de la photo…');
+  try { state.draft.image = await fileToDataUrl(f, 320, true); drawCharPickers(); toast('Photo ajoutée'); }
+  catch { toast('Cette image n’a pas pu être lue. Essaie une photo JPG ou PNG, ou une capture d’écran.'); }
+}
+function imageIn(dt) {
+  if (!dt) return null;
+  for (const f of dt.files || []) if (f.type.startsWith('image/')) return f;
+  for (const it of dt.items || []) if (it.kind === 'file' && it.type.startsWith('image/')) return it.getAsFile();
+  return null;
+}
+document.addEventListener('change', (ev) => {
+  const t = ev.target;
+  if (t.type !== 'file') return;
+  const f = t.files && t.files[0];
+  t.value = '';
+  if (!f) return toast('Aucune image reçue.');
+  if (t.id === 'fileAvatar') setAvatarFile(f);
+  else if (t.classList.contains('wallfile')) setWallFile(f);
 });
+document.addEventListener('paste', (ev) => {
+  if ($('#sheetChar').hidden) return;
+  const f = imageIn(ev.clipboardData);
+  if (f) { ev.preventDefault(); $('#pasteZone').textContent = ''; return setAvatarFile(f); }
+  if (ev.target.id === 'pasteZone') { ev.preventDefault(); toast('Le presse-papiers ne contient pas d’image.'); }
+});
+document.addEventListener('input', (ev) => { if (ev.target.id === 'pasteZone') { const im = ev.target.querySelector('img'); ev.target.textContent = ''; if (im && /^data:image\//.test(im.src)) fetchDataImage(im.src); } });
+function fetchDataImage(dataUrl) {
+  const [head, b64] = dataUrl.split(',');
+  const mime = (head.match(/data:([^;]+)/) || [])[1] || 'image/png';
+  const bin = atob(b64), arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  setAvatarFile(new File([arr], 'image', { type: mime }));
+}
+$('#sheetChar').addEventListener('dragover', (ev) => { ev.preventDefault(); $('#formChar').classList.add('drop-on'); });
+$('#sheetChar').addEventListener('dragleave', () => $('#formChar').classList.remove('drop-on'));
+$('#sheetChar').addEventListener('drop', (ev) => { ev.preventDefault(); $('#formChar').classList.remove('drop-on'); const f = imageIn(ev.dataTransfer); if (f) setAvatarFile(f); });
 async function aiFill() {
   if (!gate(plan().aiCreate, 'Création par IA', (p) => p.aiCreate)) return;
   if (!sample) return toast(NO_SAMPLE);
@@ -1420,7 +1461,7 @@ function openChatSettings() {
     const look = w.id === 'portrait' && base && src(base) ? `<span class="wimg" style="background-image:url('${src(base)}')"></span>` : '';
     const style = w.css ? `background-image:${w.css}` : w.id === 'plain' ? 'background:var(--bg)' : '';
     return `<button class="wall-opt${sel === w.id ? ' on' : ''}" data-wall="${w.id}" style="${style}">${look}<span>${esc(w.name)}</span>${i >= p.walls ? `<span class="lockdot">${ic('lock')}</span>` : ''}</button>`;
-  }).join('') + `<label class="wall-opt${sel === 'custom' ? ' on' : ''}" for="fileWall" data-wall="custom"><span>${ic('image')}<br>Mon image</span>${p.wallUpload ? '' : `<span class="lockdot">${ic('lock')}</span>`}</label>`;
+  }).join('') + `<div class="wall-opt filebtn${sel === 'custom' ? ' on' : ''}"><span>${ic('image')}<br>Mon image</span><input type="file" class="wallfile" accept="image/*" aria-label="Choisir une image de fond"></div>`;
   const a = e.group ? null : affinity(e.id);
   $('#chatSettingsBody').innerHTML = `
     ${a ? `<div class="panel"><div class="panel-t">${ic('trophy')}Affinité avec ${esc(firstName(e.name))}</div><div class="level-row"><strong>${a.name}</strong><span class="muted small">${a.pts} pts</span></div><div class="bar"><i style="width:${Math.round(a.pct * 100)}%"></i></div></div>` : ''}
@@ -1436,10 +1477,8 @@ function openChatSettings() {
     </div>`;
   $('#sheetChat').hidden = false;
 }
-$('#fileWall').addEventListener('change', async (ev) => {
-  const f = ev.target.files[0];
-  ev.target.value = '';
-  if (!f) return;
+async function setWallFile(f) {
+  toast('Chargement de l’image…');
   try {
     const url = await fileToDataUrl(f, 1000, false, 0.78);
     if (!store.set('wallimg.' + state.route.id, url)) return toast('Image trop lourde pour la mémoire du navigateur.');
@@ -1447,8 +1486,8 @@ $('#fileWall').addEventListener('change', async (ev) => {
     store.set('walls', state.walls);
     applyWall();
     openChatSettings();
-  } catch { toast('Format non pris en charge : choisis une photo JPG ou PNG.'); }
-});
+  } catch { toast('Cette image n’a pas pu être lue. Essaie une photo JPG ou PNG.'); }
+}
 
 /* ================= Actions à confirmer ================= */
 const armTimers = new WeakMap();
@@ -1654,7 +1693,6 @@ document.addEventListener('click', (ev) => {
       return openCharForm(c);
     }
     if (a === 'aiFill') return aiFill();
-    if (a === 'pickAvatar') { if (!gate(plan().avatarImage, 'Import de photos', (p) => p.avatarImage)) ev.preventDefault(); return; }
     if (a === 'clearAvatar') { state.draft.image = ''; return drawCharPickers(); }
     if (a === 'modelMenu') { renderModelMenu(); $('#modelMenu').hidden = !$('#modelMenu').hidden; return; }
     if (a === 'chatSettings') return openChatSettings();
