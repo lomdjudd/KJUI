@@ -1,0 +1,16 @@
+# Déploiement Render (gratuit) : dashboard.render.com > New > Blueprint > ce dépôt.
+services:
+  - type: web
+    name: chatbuzz
+    runtime: node
+    rootDir: chatbuzz
+    plan: free
+    buildCommand: echo "rien à construire"
+    startCommand: node server.js
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false        # Render te demandera de la coller
+      - key: ACCESS_CODE
+        sync: false        # code d'accès pour protéger ta clé (recommandé)
+      - key: CLAUDE_MODEL
+        value: claude-haiku-4-5-20251001
