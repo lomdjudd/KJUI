@@ -1,0 +1,12 @@
+{
+  "name": "chatbuzz",
+  "private": true,
+  "version": "1.0.0",
+  "description": "ChatBuzz : site de chat avec des personnages IA (style PolyBuzz), propulsé par l'API Claude.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": { "node": ">=18" }
+}

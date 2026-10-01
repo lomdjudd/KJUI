@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0716" />
+  <title>ChatBuzz — Discute avec des personnages IA</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💬</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+  <header class="topbar">
+    <a href="#/" class="logo"><span class="logo-mark">💬</span><span>Chat<b>Buzz</b></span></a>
+    <div class="topbar-actions">
+      <button class="btn ghost" id="btnProfile" title="Mon profil">👤 <span class="hide-sm" id="profileLabel">Profil</span></button>
+      <button class="btn glow" id="btnCreate">＋ Créer<span class="hide-sm"> un perso</span></button>
+    </div>
+  </header>
+
+  <main id="app">
+    <!-- ACCUEIL -->
+    <section id="home" class="view">
+      <div class="hero">
+        <p class="eyebrow">✨ Des personnages qui te répondent comme de vrais humains</p>
+        <h1>Rencontre <span class="grad">qui tu veux</span>.<br />Discute sans fin.</h1>
+        <p class="sub">Romance, aventure, mystère, amitié… choisis un personnage ou crée le tien et lance la conversation.</p>
+        <div class="search">
+          <span>🔎</span>
+          <input id="search" type="search" placeholder="Rechercher un personnage, un style, un tag…" autocomplete="off" />
+        </div>
+      </div>
+      <div class="chips" id="chips"></div>
+      <div id="recent" class="recent" hidden>
+        <h2>Reprendre</h2>
+        <div class="recent-row" id="recentRow"></div>
+      </div>
+      <h2 class="section-title" id="gridTitle">Personnages</h2>
+      <div class="grid" id="grid"></div>
+      <p class="empty" id="empty" hidden>Aucun personnage trouvé 😢 — crée le tien !</p>
+      <footer class="foot">
+        Les personnages sont fictifs et générés par IA. Ne partage pas d’informations personnelles sensibles.
+        Réservé aux 18 ans et plus.
+      </footer>
+    </section>
+
+    <!-- CHAT -->
+    <section id="chat" class="view" hidden>
+      <aside class="side" id="side">
+        <div class="side-head">Conversations</div>
+        <div id="sideList" class="side-list"></div>
+      </aside>
+      <div class="chat-main">
+        <div class="chat-head" id="chatHead">
+          <button class="icon-btn" id="btnBack" aria-label="Retour">←</button>
+          <div class="avatar sm" id="chatAvatar"></div>
+          <div class="chat-title">
+            <strong id="chatName"></strong>
+            <small id="chatTag"></small>
+          </div>
+          <div class="chat-actions">
+            <button class="icon-btn" id="btnReset" title="Nouvelle conversation">🔄</button>
+            <button class="icon-btn" id="btnDelete" title="Supprimer le personnage" hidden>🗑️</button>
+          </div>
+        </div>
+        <div class="messages" id="messages" aria-live="polite"></div>
+        <form class="composer" id="composer" autocomplete="off">
+          <textarea id="input" rows="1" maxlength="2000" placeholder="Écris un message…"></textarea>
+          <button class="send" id="btnSend" type="submit" aria-label="Envoyer">➤</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODALE : création -->
+  <dialog id="dlgCreate">
+    <form method="dialog" class="modal" id="formCreate">
+      <h3>Crée ton personnage</h3>
+      <label>Nom<input name="name" required maxlength="60" placeholder="Ex. Kaito, le samouraï timide" /></label>
+      <label>Emoji d’avatar<input name="emoji" maxlength="4" value="😎" /></label>
+      <label>Personnalité & histoire
+        <textarea name="persona" required rows="4" maxlength="1500" placeholder="Âge, caractère, manière de parler, passé, relation avec toi…"></textarea>
+      </label>
+      <label>Scénario (optionnel)
+        <textarea name="scenario" rows="2" maxlength="800" placeholder="Où êtes-vous ? Que se passe-t-il ?"></textarea>
+      </label>
+      <label>Premier message du personnage
+        <textarea name="greeting" required rows="2" maxlength="600" placeholder="*sourit* Salut, tu es nouveau ici ?"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" data-close>Annuler</button>
+        <button type="submit" class="btn glow">Créer & discuter</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- MODALE : profil -->
+  <dialog id="dlgProfile">
+    <form method="dialog" class="modal" id="formProfile">
+      <h3>Mon profil</h3>
+      <label>Ton prénom (utilisé par les personnages)<input name="userName" maxlength="40" placeholder="Ex. Alex" /></label>
+      <label id="codeRow" hidden>Code d’accès<input name="code" type="password" placeholder="Fourni par l’hôte du site" /></label>
+      <p class="hint" id="modelInfo"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" data-close>Fermer</button>
+        <button type="submit" class="btn glow">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="app.js" type="module"></script>
+</body>
+</html>
