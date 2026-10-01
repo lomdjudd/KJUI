@@ -377,6 +377,16 @@ button.row:hover { background: var(--surface-2); }
   .pill-btn .ic:last-child { display: none; }
   .head-r .iconbtn { width: 36px; }
 }
+.vh { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip: rect(0 0 0 0); pointer-events: none; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 8px; }
+.gal { aspect-ratio: 1 / 1; border-radius: 14px; overflow: hidden; border: 2px solid transparent; background: var(--surface-2); }
+.gal.on { border-color: #fff; box-shadow: 0 0 0 3px color-mix(in srgb, var(--a1) 45%, transparent); }
+.gal img { width: 100%; height: 100%; object-fit: cover; display: block; }
+label.btn, label.wall-opt { cursor: pointer; }
+.iconbtn.on { color: var(--a1); background: color-mix(in srgb, var(--a1) 16%, transparent); }
+.thought { display: flex; gap: 8px; margin-top: 10px; padding: 9px 12px; border-radius: 14px; background: color-mix(in srgb, var(--a2) 14%, transparent); border: 1px dashed color-mix(in srgb, var(--a2) 60%, transparent); color: #ddd2ff; font-style: italic; font-size: 0.9rem; line-height: 1.45; }
+.thought .ic { width: 16px; height: 16px; color: var(--a2); margin-top: 2px; }
+.thought em { color: #fff; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 
@@ -411,12 +421,13 @@ button.row:hover { background: var(--surface-2); }
     <div style="display:flex;flex-direction:column;gap:8px;flex:1;min-width:0">
       <label class="field" for="fEmoji">Emoji d’avatar<input id="fEmoji" maxlength="4" value="😎"></label>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button type="button" class="btn soft" data-act="pickAvatar"><svg class="ic"><use href="#i-image"></use></svg>Choisir une image</button>
+        <label class="btn soft" for="fileAvatar" data-act="pickAvatar" id="lblImport"><svg class="ic"><use href="#i-image"></use></svg>Importer une photo</label>
         <button type="button" class="btn soft" data-act="clearAvatar" id="btnClearAvatar" hidden>Retirer</button>
       </div>
-      <input type="file" id="fileAvatar" accept="image/*" hidden>
+      <input type="file" id="fileAvatar" accept="image/*" class="vh" tabindex="-1">
     </div>
   </div>
+  <div><div class="sec-label">Ou choisis un portrait</div><div class="gallery" id="fGallery"></div></div>
   <label class="field" for="fName">Nom<input id="fName" required maxlength="60" placeholder="Ex. Kaito, le samouraï timide"></label>
   <div><div class="sec-label">Couleurs</div><div class="swatches" id="fColors"></div></div>
   <label class="field" for="fCat">Catégorie<select id="fCat"></select></label>
@@ -450,7 +461,7 @@ button.row:hover { background: var(--surface-2); }
   <div id="chatSettingsBody" style="display:flex;flex-direction:column;gap:18px"></div>
 </div></div>
 
-<input type="file" id="fileWall" accept="image/*" hidden>
+<input type="file" id="fileWall" accept="image/*" class="vh" tabindex="-1">
 <div id="toast" class="toast" role="status" hidden></div>
 
 <script>
@@ -463,6 +474,13 @@ const store = {
   set(k, v) { try { localStorage.setItem('cb.' + k, JSON.stringify(v)); return true; } catch { return false; } },
 };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const THOUGHT_RE = /^\s*💭\s?(.*)$/;
+function splitThought(text) {
+  const main = [], th = [];
+  for (const line of String(text ?? '').split('\n')) { const m = line.match(THOUGHT_RE); if (m) { if (m[1].trim()) th.push(m[1].trim()); } else main.push(line); }
+  return { main: main.join('\n').trim(), thought: th.join(' ') };
+}
+const fmtMsg = (t) => { const { main, thought } = splitThought(t); return fmt(main) + (thought ? `<div class="thought">${ic('brain')}<span>${fmt(thought)}</span></div>` : ''); };
 const fmt = (t) => esc(t).replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*\n]+)\*/g, '<em>$1</em>').replace(/\n/g, '<br>');
 const ic = (n, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${n}"></use></svg>`;
 const uid = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
@@ -546,7 +564,7 @@ const state = {
   favs: store.get('favs', []),
   plan: PLANS[savedPlan] ? savedPlan : 'free',
   planSince: store.get('planSince', null),
-  prefs: Object.assign({ accent: 'neon', length: 'medium', memory: true, voice: true }, store.get('prefs', {})),
+  prefs: Object.assign({ accent: 'neon', length: 'medium', memory: true, voice: true, thoughts: false }, store.get('prefs', {})),
   walls: store.get('walls', {}),
   stats: Object.assign({ sent: 0 }, store.get('stats', {})),
   persona: Object.assign({ name: store.get('userName', ''), pronouns: '', bio: '' }, store.get('persona', {})),
@@ -660,7 +678,7 @@ function renderShell() {
       <button class="btn ${p === 'premium' ? 'soft' : 'primary'} block" data-act="plans">${p === 'premium' ? 'Gérer mon plan' : 'Voir les plans'}</button>
     </div>`;
 }
-const lastLine = (ch) => (ch.messages[ch.messages.length - 1]?.content || '').replace(/\*/g, '');
+const lastLine = (ch) => splitThought(ch.messages[ch.messages.length - 1]?.content || '').main.replace(/\*/g, '');
 function recentChats() {
   return Object.entries(state.chats)
     .map(([id, ch]) => [findEntity(id), ch])
@@ -844,6 +862,7 @@ function vMe() {
         <div class="panel-t">${ic('settings-2')}Préférences</div>
         <div><div class="sec-label">Longueur des réponses</div>${seg('length', [['short', 'Courte'], ['medium', 'Moyenne'], ['long', 'Longue']])}</div>
         <div><div class="sec-label">Mémoire longue des personnages</div>${seg('memory', [['true', 'Activée'], ['false', 'Désactivée']], p.memory ? '' : 'Premium')}</div>
+        <div><div class="sec-label">Mode pensées</div>${seg('thoughts', [['true', 'Activé'], ['false', 'Désactivé']])}<p class="hint" style="margin-top:6px">Chaque réponse affiche aussi ce que le personnage pense en secret.</p></div>
         ${hasTTS ? `<div><div class="sec-label">Bouton de lecture vocale</div>${seg('voice', [['true', 'Afficher'], ['false', 'Masquer']])}</div>` : ''}
         <div><div class="sec-label">Couleur de l’interface</div><div class="swatches">${ACCENTS.map((a) => `<button class="sw${a.id === state.prefs.accent ? ' on' : ''}" data-accent="${a.id}" aria-label="${esc(a.name)}" title="${esc(a.name)}" style="background:linear-gradient(135deg,${a.a1},${a.a2})">${a.id !== 'neon' && !p.accents ? `<span class="lockdot">${ic('lock')}</span>` : ''}</button>`).join('')}</div></div>
       </div>
@@ -907,12 +926,19 @@ function applyAccent() {
 }
 
 /* ================= Images ================= */
-function fileToDataUrl(file, maxSide, square, quality = 0.84) {
+function readFile(file) {
   return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+async function fileToDataUrl(file, maxSide, square, quality = 0.84) {
+  const url = await readFile(file);
+  return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
-      URL.revokeObjectURL(url);
       let sw = img.width, sh = img.height, sx = 0, sy = 0;
       if (square) { const s = Math.min(sw, sh); sx = (sw - s) / 2; sy = (sh - s) / 2; sw = sh = s; }
       const k = Math.min(1, maxSide / Math.max(sw, sh));
@@ -921,7 +947,7 @@ function fileToDataUrl(file, maxSide, square, quality = 0.84) {
       c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
       resolve(c.toDataURL('image/jpeg', quality));
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image')); };
+    img.onerror = () => reject(new Error('image'));
     img.src = url;
   });
 }
@@ -929,11 +955,12 @@ function fileToDataUrl(file, maxSide, square, quality = 0.84) {
 /* ================= Personnage : formulaire ================= */
 function openCharForm(base) {
   const editing = !!(base && base.custom);
-  state.draft = { id: editing ? base.id : null, image: editing && isData(base.image) ? base.image : '', colors: base ? base.colors.slice() : PALETTES[Math.floor(Math.random() * PALETTES.length)], traits: base?.traits ? base.traits.slice() : [] };
+  state.draft = { id: editing ? base.id : null, image: base ? src(base) : '', colors: base ? base.colors.slice() : PALETTES[Math.floor(Math.random() * PALETTES.length)], traits: base?.traits ? base.traits.slice() : [] };
   $('#charTitle').textContent = editing ? 'Modifier le personnage' : base ? 'Personnaliser une copie' : 'Crée ton personnage';
   $('#btnSaveChar').textContent = editing ? 'Enregistrer' : 'Créer et discuter';
   $('#fIdea').value = '';
   $('#aiLock').innerHTML = plan().aiCreate ? '' : `<span class="pill">${ic('lock')}Plus</span>`;
+  $('#lblImport').innerHTML = `${ic('image')}Importer une photo${plan().avatarImage ? '' : ` <span class="pill">${ic('lock')}Plus</span>`}`;
   $('#fName').value = base ? (editing ? base.name : base.name + ' (copie)') : '';
   $('#fEmoji').value = base?.emoji || '😎';
   $('#fCat').innerHTML = DATA.categories.map((c) => `<option>${esc(c)}</option>`).join('');
@@ -952,6 +979,7 @@ function drawCharPickers() {
   $('#fColors').innerHTML = PALETTES.map((p, i) => `<button type="button" class="sw${p[0] === d.colors[0] && p[1] === d.colors[1] ? ' on' : ''}" data-pal="${i}" aria-label="Couleur ${i + 1}" style="background:linear-gradient(145deg,${p[0]},${p[1]})"></button>`).join('');
   $('#fTraits').innerHTML = TRAITS.map((t) => `<button type="button" class="trait${d.traits.includes(t) ? ' on' : ''}" data-trait="${esc(t)}">${esc(t)}</button>`).join('');
   $('#btnClearAvatar').hidden = !d.image;
+  $('#fGallery').innerHTML = DATA.characters.filter((c) => src(c)).map((c) => `<button type="button" class="gal${d.image === src(c) ? ' on' : ''}" data-gal="${esc(src(c))}" aria-label="Portrait de ${esc(cleanName(c.name))}" title="${esc(cleanName(c.name))}"><img src="${src(c)}" alt=""></button>`).join('');
   $('#charPreview').innerHTML = pic({ colors: d.colors, emoji: $('#fEmoji').value || '😎', image: d.image }, 84);
 }
 $('#fEmoji').addEventListener('input', drawCharPickers);
@@ -959,7 +987,7 @@ $('#fileAvatar').addEventListener('change', async (ev) => {
   const f = ev.target.files[0];
   ev.target.value = '';
   if (!f) return;
-  try { state.draft.image = await fileToDataUrl(f, 320, true); drawCharPickers(); } catch { toast('Image illisible.'); }
+  try { state.draft.image = await fileToDataUrl(f, 320, true); drawCharPickers(); toast('Photo ajoutée'); } catch { toast('Format non pris en charge : choisis une photo JPG ou PNG.'); }
 });
 async function aiFill() {
   if (!gate(plan().aiCreate, 'Création par IA', (p) => p.aiCreate)) return;
@@ -1066,6 +1094,7 @@ function vChat(id) {
       <button class="iconbtn" data-act="back" aria-label="Retour">${ic('arrow-left')}</button>
       <button class="chat-who" ${e.group ? 'data-act="chatSettings"' : `data-profile="${esc(id)}"`}>${avatar(e, 42)}<span><strong>${esc(e.name)}</strong>${e.group ? `<small class="mem">${esc(e.tagline)}</small>` : `<small id="lvlTag">${ic('trophy')}Niv. ${a.lvl + 1} · ${a.name}${memOn ? ` · ${ic('brain')}mémoire` : ''}</small>`}</span></button>
       <div class="head-r">
+        <button class="iconbtn${thoughtsOn() ? ' on' : ''}" data-act="thoughts" id="thoughtBtn" title="Mode pensées" aria-label="Mode pensées" aria-pressed="${thoughtsOn()}">${ic('brain')}</button>
         <button class="pill-btn" data-act="modelMenu" id="modelBtn" aria-haspopup="true">${tierPill()}</button>
         <button class="iconbtn" data-act="chatSettings" aria-label="Réglages de la conversation">${ic('settings-2')}</button>
       </div>
@@ -1111,7 +1140,7 @@ function msgHtml(m, i, e, o) {
   const n = m.alts?.length || 0;
   const alts = n > 1 ? `<span class="altnav"><button data-alt="${i}:-1" ${m.ai === 0 ? 'disabled' : ''} aria-label="Version précédente">${ic('chevron-left')}</button>${(m.ai ?? 0) + 1}/${n}<button data-alt="${i}:1" ${m.ai === n - 1 ? 'disabled' : ''} aria-label="Version suivante">${ic('chevron-right')}</button></span>` : '';
   const tools = o.live ? '' : `<div class="mtools">${alts}<button data-copy="${i}" title="Copier" aria-label="Copier">${ic('copy')}</button>${hasTTS && state.prefs.voice !== false ? `<button data-speak="${i}" title="Écouter" aria-label="Écouter">${ic('volume-2')}</button>` : ''}${o.isLast && !state.busy && (i > 0 || e.group) ? `<button data-regen title="Régénérer" aria-label="Régénérer">${ic('refresh-cw')}</button>` : ''}<button data-mdel="${i}" title="Supprimer" aria-label="Supprimer">${ic('trash-2')}</button></div>`;
-  return `<div class="msg bot" data-i="${i}" ${who ? `style="${cvars(who)}"` : ''}>${who ? pic(who, 34) : ''}<div class="mcol">${e.group && who ? `<span class="who">${esc(cleanName(who.name))}</span>` : ''}<div class="bubble">${fmt(m.content)}</div>${tools}</div></div>`;
+  return `<div class="msg bot" data-i="${i}" ${who ? `style="${cvars(who)}"` : ''}>${who ? pic(who, 34) : ''}<div class="mcol">${e.group && who ? `<span class="who">${esc(cleanName(who.name))}</span>` : ''}<div class="bubble">${fmtMsg(m.content)}</div>${tools}</div></div>`;
 }
 function introHtml(e) {
   const a = e.group ? null : affinity(e.id);
@@ -1148,13 +1177,16 @@ function userBlock() {
   if (!p.name && !p.bio) return '';
   return `L'UTILISATEUR${p.name ? ' s’appelle ' + p.name : ''}${p.pronouns ? ' (pronoms : ' + p.pronouns + ')' : ''}.${p.bio ? ' Description : ' + p.bio : ''}`;
 }
+const thoughtsOn = () => state.prefs.thoughts === true;
+const THOUGHT_SOLO = "MODE PENSÉES : termine chaque réponse par une ligne séparée qui commence par « 💭 » suivie de la pensée intérieure secrète du personnage à cet instant (ce qu'il ressent vraiment ou n'ose pas dire), en une ou deux phrases à la première personne. Le personnage ne prononce jamais cette pensée à voix haute et ne sait pas que l'utilisateur peut la lire.";
+const THOUGHT_GROUP = "MODE PENSÉES : juste après la réplique de chaque personnage, ajoute une ligne qui commence par « 💭 » avec sa pensée intérieure secrète (une phrase, à la première personne). Les personnages ne lisent pas les pensées des autres.";
 function systemPrompt(e, chat) {
   const mem = chat.memory && plan().memory && String(state.prefs.memory) !== 'false' ? `MÉMOIRE (faits déjà connus, à respecter) :\n${chat.memory}` : '';
   const len = `Longueur des répliques : ${LENGTHS[state.prefs.length] || LENGTHS.medium}.`;
   if (!e.group) {
     const a = affinity(e.id);
     return [DATA.frame, `PERSONNAGE : ${e.name}\n${personaText(e)}`, e.scenario ? `SCÉNARIO / CONTEXTE : ${e.scenario}` : '', len, userBlock(),
-      `Niveau de relation actuel avec l'utilisateur : ${a.name} (niveau ${a.lvl + 1} sur ${LEVELS.length}). Adapte la familiarité et la confiance à ce niveau.`, mem,
+      `Niveau de relation actuel avec l'utilisateur : ${a.name} (niveau ${a.lvl + 1} sur ${LEVELS.length}). Adapte la familiarité et la confiance à ce niveau.`, mem, thoughtsOn() ? THOUGHT_SOLO : '',
       'La conversation de jeu de rôle est déjà commencée : le premier message du personnage et les échanges suivants sont ci-dessous. Réponds uniquement avec la prochaine réplique du personnage.'].filter(Boolean).join('\n\n');
   }
   return [
@@ -1162,7 +1194,7 @@ function systemPrompt(e, chat) {
     "FORMAT OBLIGATOIRE : chaque réplique commence par le nom du personnage entre crochets, par exemple « [Luna] *sourit* Salut ! ». Écris de 1 à 4 répliques par tour, de personnages différents (pas forcément tous). Gestes entre *astérisques*. N'écris jamais de réplique pour l'utilisateur et n'utilise des crochets que pour ces noms. Réponds dans la langue de l'utilisateur (français par défaut).",
     LIMITS,
     'PERSONNAGES PRÉSENTS :\n' + membersOf(e).map((m) => `[${cleanName(m.name)}] ${personaText(m)}`).join('\n\n'),
-    e.scenario ? `SCÉNARIO / CONTEXTE : ${e.scenario}` : '', len, userBlock(), mem,
+    e.scenario ? `SCÉNARIO / CONTEXTE : ${e.scenario}` : '', len, userBlock(), mem, thoughtsOn() ? THOUGHT_GROUP : '',
   ].filter(Boolean).join('\n\n');
 }
 const START = 'Lance la scène : fais parler les personnages.';
@@ -1172,7 +1204,8 @@ function buildTurns(e, chat, history, nudge) {
   for (const m of history.slice(-30)) {
     if (m.role === 'user') { turns.push({ role: 'user', content: m.content }); continue; }
     const who = e.group ? findChar(m.who) : null;
-    const line = who ? `[${cleanName(who.name)}] ${m.content}` : m.content;
+    const body = thoughtsOn() ? m.content : splitThought(m.content).main || m.content;
+    const line = who ? `[${cleanName(who.name)}] ${body}` : body;
     const last = turns[turns.length - 1];
     if (last.role === 'assistant') last.content += '\n' + line; else turns.push({ role: 'assistant', content: line });
   }
@@ -1243,8 +1276,8 @@ async function reply({ nudge, regen } = {}) {
     if (e.group) {
       const parts = parseGroup(text, membersOf(e), streaming);
       if (parts.length) holder.innerHTML = parts.map((m) => msgHtml(m, -1, e, { live: true })).join('');
-    } else if (liveBubble) liveBubble.innerHTML = fmt(text);
-    else { const b = holder.querySelector('.bubble'); if (b) b.innerHTML = fmt(text); }
+    } else if (liveBubble) liveBubble.innerHTML = fmtMsg(text);
+    else { const b = holder.querySelector('.bubble'); if (b) b.innerHTML = fmtMsg(text); }
     scrollDown();
   };
   const ctl = new AbortController();
@@ -1387,7 +1420,7 @@ function openChatSettings() {
     const look = w.id === 'portrait' && base && src(base) ? `<span class="wimg" style="background-image:url('${src(base)}')"></span>` : '';
     const style = w.css ? `background-image:${w.css}` : w.id === 'plain' ? 'background:var(--bg)' : '';
     return `<button class="wall-opt${sel === w.id ? ' on' : ''}" data-wall="${w.id}" style="${style}">${look}<span>${esc(w.name)}</span>${i >= p.walls ? `<span class="lockdot">${ic('lock')}</span>` : ''}</button>`;
-  }).join('') + `<button class="wall-opt${sel === 'custom' ? ' on' : ''}" data-wall="custom"><span>${ic('image')}<br>Mon image</span>${p.wallUpload ? '' : `<span class="lockdot">${ic('lock')}</span>`}</button>`;
+  }).join('') + `<label class="wall-opt${sel === 'custom' ? ' on' : ''}" for="fileWall" data-wall="custom"><span>${ic('image')}<br>Mon image</span>${p.wallUpload ? '' : `<span class="lockdot">${ic('lock')}</span>`}</label>`;
   const a = e.group ? null : affinity(e.id);
   $('#chatSettingsBody').innerHTML = `
     ${a ? `<div class="panel"><div class="panel-t">${ic('trophy')}Affinité avec ${esc(firstName(e.name))}</div><div class="level-row"><strong>${a.name}</strong><span class="muted small">${a.pts} pts</span></div><div class="bar"><i style="width:${Math.round(a.pct * 100)}%"></i></div></div>` : ''}
@@ -1414,7 +1447,7 @@ $('#fileWall').addEventListener('change', async (ev) => {
     store.set('walls', state.walls);
     applyWall();
     openChatSettings();
-  } catch { toast('Image illisible.'); }
+  } catch { toast('Format non pris en charge : choisis une photo JPG ou PNG.'); }
 });
 
 /* ================= Actions à confirmer ================= */
@@ -1502,6 +1535,7 @@ document.addEventListener('click', (ev) => {
     return openGroupForm(null, IDEAS[Number(el.dataset.idea)]);
   }
   if ((el = q('[data-edit]'))) return openCharForm(state.custom.find((c) => c.id === el.dataset.edit));
+  if ((el = q('[data-gal]'))) { const v = el.dataset.gal; if (src({ image: v })) { state.draft.image = state.draft.image === v ? '' : v; drawCharPickers(); } return; }
   if ((el = q('[data-pal]'))) { state.draft.colors = PALETTES[Number(el.dataset.pal)]; return drawCharPickers(); }
   if ((el = q('[data-trait]'))) {
     const d = state.draft, tr = el.dataset.trait;
@@ -1528,7 +1562,7 @@ document.addEventListener('click', (ev) => {
   }
   if ((el = q('[data-wall]'))) {
     const id = el.dataset.wall;
-    if (id === 'custom') { if (!gate(plan().wallUpload, 'Ta propre image en fond', (p) => p.wallUpload)) return; return $('#fileWall').click(); }
+    if (id === 'custom') { if (!gate(plan().wallUpload, 'Ta propre image en fond', (p) => p.wallUpload)) ev.preventDefault(); return; }
     const i = WALLS.findIndex((w) => w.id === id);
     if (!gate(i < plan().walls, 'Ce fond', (p) => p.walls > i)) return;
     state.walls[state.route.id] = id; store.set('walls', state.walls); applyWall(); return openChatSettings();
@@ -1541,13 +1575,13 @@ document.addEventListener('click', (ev) => {
     return hideSugg();
   }
   if ((el = q('[data-copy]'))) {
-    const txt = chatFor(state.route.id).messages[Number(el.dataset.copy)]?.content || '';
+    const txt = splitThought(chatFor(state.route.id).messages[Number(el.dataset.copy)]?.content || '').main;
     navigator.clipboard?.writeText(txt).then(() => toast('Copié'), () => toast('Copie impossible ici.'));
     return;
   }
   if ((el = q('[data-speak]'))) {
     const e = findEntity(state.route.id), m = chatFor(e.id).messages[Number(el.dataset.speak)];
-    return speak(m?.content || '', e.group ? findChar(m?.who) : e);
+    return speak(splitThought(m?.content || '').main, e.group ? findChar(m?.who) : e);
   }
   if ((el = q('[data-alt]'))) {
     const [i, d] = el.dataset.alt.split(':').map(Number);
@@ -1620,12 +1654,19 @@ document.addEventListener('click', (ev) => {
       return openCharForm(c);
     }
     if (a === 'aiFill') return aiFill();
-    if (a === 'pickAvatar') { if (!gate(plan().avatarImage, 'Images d’avatar', (p) => p.avatarImage)) return; return $('#fileAvatar').click(); }
+    if (a === 'pickAvatar') { if (!gate(plan().avatarImage, 'Import de photos', (p) => p.avatarImage)) ev.preventDefault(); return; }
     if (a === 'clearAvatar') { state.draft.image = ''; return drawCharPickers(); }
     if (a === 'modelMenu') { renderModelMenu(); $('#modelMenu').hidden = !$('#modelMenu').hidden; return; }
     if (a === 'chatSettings') return openChatSettings();
     if (a === 'editGroup') { $('#sheetChat').hidden = true; return openGroupForm(findGroup(state.route.id)); }
     if (a === 'export') return exportChat();
+    if (a === 'thoughts') {
+      state.prefs.thoughts = !thoughtsOn();
+      store.set('prefs', state.prefs);
+      el.classList.toggle('on', thoughtsOn());
+      el.setAttribute('aria-pressed', String(thoughtsOn()));
+      return toast(thoughtsOn() ? 'Mode pensées activé : tu liras ce que pense le personnage' : 'Mode pensées désactivé');
+    }
     if (a === 'suggest') return suggest();
     if (a === 'closeSugg') return hideSugg();
     if (a === 'asterisk') {
