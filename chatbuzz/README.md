@@ -52,3 +52,14 @@ chatbuzz/
 ├─ characters.js    personnages + prompt système
 └─ public/          index.html, style.css, app.js (front vanilla)
 ```
+
+## Version claude.ai (sans serveur ni clé API)
+
+`chatbuzz-claude.html` est publiée comme Artifact sur claude.ai : chaque message utilise l'abonnement Claude
+de la personne qui ouvre la page (capacité `sample`), avec le choix du modèle (Rapide, Équilibré, Puissant).
+
+- Source : `claude-artifact.template.html` → `node build-artifact.mjs` génère `chatbuzz-claude.html`.
+- Portraits des personnages : `portraits/*.jpg` (générés avec Canva AI), publiés à côté de la page.
+- Icônes : `assets/icons.svg` (Lucide, licence ISC), intégrées dans la page.
+- Fonctions : profils, affinité par niveaux, favoris, réponses alternatives, suggestions, création par IA,
+  groupes de bots, fonds de conversation, mémoire longue, lecture vocale, export, plans mémorisés (démo).
