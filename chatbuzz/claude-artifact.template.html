@@ -6,19 +6,20 @@
 /* Concept : appli de chat de personnages façon PolyBuzz, nuit d'encre. Portraits peints en vedette, flous en arrière-plan,
    barre latérale sur ordinateur, barre d'onglets sur téléphone. Une seule ambiance sombre, accent réglable. */
 :root {
-  --bg: #0b0a10;
-  --bg-2: #100e17;
-  --surface: #16141e;
-  --surface-2: #1e1b29;
-  --surface-3: #2a2638;
+  --bg: #0c0c0e;
+  --bg-2: #111113;
+  --surface: #19191c;
+  --surface-2: #212124;
+  --surface-3: #2d2d31;
   --line: rgba(255, 255, 255, 0.07);
   --line-2: rgba(255, 255, 255, 0.14);
   --text: #f6f4fb;
-  --text-2: #c7c2d6;
-  --muted: #8d87a2;
-  --a1: #ff4d8d;
-  --a2: #8b5cf6;
-  --a3: #ffb86b;
+  --text-2: #c9c9cf;
+  --muted: #8b8b93;
+  --a1: #ffe14d;
+  --a2: #f5b814;
+  --a3: #ffe14d;
+  --on-a: #17140a;
   --grad: linear-gradient(120deg, var(--a1), var(--a2));
   --ok: #4ade80;
   --danger: #fb7185;
@@ -55,7 +56,7 @@ button:disabled { cursor: default; opacity: 0.4; }
   .side { display: flex; flex-direction: column; gap: 4px; padding: 20px 14px; background: var(--bg-2); border-right: 1px solid var(--line); overflow-y: auto; min-height: 0; }
 }
 .logo { display: flex; align-items: center; gap: 10px; font: 800 1.35rem/1 var(--f-display); letter-spacing: -0.02em; padding: 4px 8px 18px; }
-.logo-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: var(--grad); color: #fff; box-shadow: 0 6px 20px color-mix(in srgb, var(--a1) 40%, transparent); }
+.logo-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: var(--grad); color: var(--on-a); box-shadow: 0 6px 20px color-mix(in srgb, var(--a1) 40%, transparent); }
 .logo-mark .ic { width: 20px; height: 20px; }
 .logo b { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .navlink { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 12px; color: var(--text-2); font-weight: 600; width: 100%; text-align: left; transition: background 0.15s; }
@@ -83,14 +84,14 @@ button:disabled { cursor: default; opacity: 0.4; }
 .tab { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0 2px; font-size: 0.68rem; font-weight: 700; color: var(--muted); }
 .tab.on { color: var(--text); }
 .tab.on .ic { color: var(--a1); }
-.tab-fab { display: grid; place-items: center; width: 46px; height: 46px; margin: 0 auto 4px; border-radius: 16px; background: var(--grad); color: #fff; box-shadow: 0 8px 22px color-mix(in srgb, var(--a1) 45%, transparent); }
+.tab-fab { display: grid; place-items: center; width: 46px; height: 46px; margin: 0 auto 4px; border-radius: 16px; background: var(--grad); color: var(--on-a); box-shadow: 0 8px 22px color-mix(in srgb, var(--a1) 45%, transparent); }
 .app.in-chat .appbar, .app.in-chat .tabbar { display: none; }
 
 /* ---------- Boutons ---------- */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 999px; font-weight: 700; font-size: 0.9rem; white-space: nowrap; transition: transform 0.15s, background 0.15s, box-shadow 0.2s; }
 .btn:active { transform: scale(0.97); }
 .btn .ic { width: 18px; height: 18px; }
-.btn.primary { background: var(--grad); color: #fff; box-shadow: 0 8px 24px color-mix(in srgb, var(--a1) 35%, transparent); }
+.btn.primary { background: var(--grad); color: var(--on-a); box-shadow: 0 8px 24px color-mix(in srgb, var(--a1) 35%, transparent); }
 .btn.soft { background: var(--surface-2); border: 1px solid var(--line-2); }
 .btn.soft:hover { background: var(--surface-3); }
 .btn.soft.on { color: var(--a1); }
@@ -104,8 +105,8 @@ button:disabled { cursor: default; opacity: 0.4; }
 .iconbtn.glass { background: rgba(11, 10, 16, 0.5); backdrop-filter: blur(10px); color: #fff; border-radius: 50%; }
 .plan-badge { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; font-weight: 800; font-size: 0.78rem; background: var(--surface-2); border: 1px solid var(--line-2); }
 .plan-badge .ic { width: 15px; height: 15px; color: var(--a3); }
-.plan-badge.premium { background: var(--grad); border-color: transparent; color: #fff; }
-.plan-badge.premium .ic { color: #fff; }
+.plan-badge.premium { background: var(--grad); border-color: transparent; color: var(--on-a); }
+.plan-badge.premium .ic { color: var(--on-a); }
 
 /* ---------- Images de personnages ---------- */
 .pic { width: var(--sz); height: var(--sz); border-radius: 50%; overflow: hidden; display: grid; place-items: center; flex: none; background: linear-gradient(145deg, var(--c1), var(--c2)); font-size: calc(var(--sz) * 0.5); line-height: 1; }
@@ -208,7 +209,7 @@ button:disabled { cursor: default; opacity: 0.4; }
 .panel p { color: var(--text-2); }
 .span-all { grid-column: 1 / -1; }
 .quote { padding: 14px 16px; border-radius: 16px 16px 16px 6px; background: var(--surface-2); border: 1px solid var(--line-2); color: var(--text-2); }
-.quote em, .bubble em { color: #d6cbff; }
+.quote em, .bubble em { color: color-mix(in srgb, var(--a1) 45%, #ffffff); }
 .level-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .level-row strong { font: 800 1.5rem var(--f-display); }
 .bar { height: 8px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
@@ -261,19 +262,22 @@ button.row:hover { background: var(--surface-2); }
 /* ---------- Chat ---------- */
 .chat { position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; overflow: hidden; overflow: clip; background: var(--bg); }
 .chat-bg { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; }
-.chat-bg.blur { inset: -80px; filter: blur(44px) saturate(1.35) brightness(0.42); }
+.chat-bg.blur { inset: 0 0 auto 0; height: 72%; filter: blur(6px) saturate(1.15) brightness(0.8); transform: scale(1.12); transform-origin: top center; -webkit-mask-image: linear-gradient(#000 30%, transparent); mask-image: linear-gradient(#000 30%, transparent); }
 .chat-bg.preset::after, .chat-bg.photo::after { content: ''; position: absolute; inset: 0; background: rgba(11, 10, 16, 0.62); }
 .chat-bg.plain { background: radial-gradient(70% 45% at 85% 0%, color-mix(in srgb, var(--c1) 28%, transparent), transparent), var(--bg); }
 .chat > *:not(.chat-bg) { position: relative; z-index: 1; }
-.chat-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: rgba(11, 10, 16, 0.55); backdrop-filter: blur(20px); border-bottom: 1px solid var(--line); z-index: 5 !important; }
-.chat-who { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; text-align: left; padding: 2px; border-radius: 12px; }
+.chat-head { display: flex; align-items: center; gap: 8px; padding: 12px 12px 18px; background: linear-gradient(rgba(12, 12, 14, 0.7), rgba(12, 12, 14, 0)); z-index: 5 !important; }
+.chat-head > .iconbtn, .head-r .iconbtn { width: 42px; height: 42px; border-radius: 50%; background: rgba(22, 22, 25, 0.72); backdrop-filter: blur(12px); color: #fff; border: 1px solid var(--line); }
+.chat-who { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 0 1 auto; margin-right: auto; text-align: left; padding: 4px 16px 4px 4px; border-radius: 999px; background: rgba(22, 22, 25, 0.72); backdrop-filter: blur(12px); border: 1px solid var(--line); }
 .chat-who > span:last-child { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
 .chat-who strong { font: 700 1.02rem var(--f-display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-who small { display: inline-flex; align-items: center; gap: 4px; color: var(--a3); font-weight: 700; font-size: 0.74rem; overflow: hidden; white-space: nowrap; }
 .chat-who small.mem { color: var(--muted); }
 .chat-who small .ic { width: 12px; height: 12px; }
 .head-r { display: flex; align-items: center; gap: 4px; flex: none; }
-.pill-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px 7px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); border: 1px solid var(--line-2); font-weight: 700; font-size: 0.8rem; }
+.pill-btn { display: inline-flex; align-items: center; gap: 6px; height: 42px; padding: 0 12px 0 10px; border-radius: 999px; background: rgba(22, 22, 25, 0.72); backdrop-filter: blur(12px); border: 1px solid var(--line); font-weight: 700; font-size: 0.82rem; max-width: 150px; }
+.pill-btn .emo { font-size: 1.15rem; line-height: 1; }
+.pill-btn span:not(.emo) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pill-btn .ic { width: 15px; height: 15px; }
 .pill-btn .ic:first-child { color: var(--a3); }
 .menu { position: absolute; right: 12px; top: calc(100% + 6px); z-index: 40; min-width: 260px; padding: 6px; border-radius: 18px; background: var(--surface-2); border: 1px solid var(--line-2); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6); }
@@ -297,10 +301,10 @@ button.row:hover { background: var(--surface-2); }
 .mcol { min-width: 0; display: flex; flex-direction: column; }
 .msg.user .mcol { align-items: flex-end; }
 .who { font-size: 0.74rem; font-weight: 800; color: var(--c1); margin: 0 0 3px 4px; }
-.bubble { padding: 11px 15px; border-radius: 20px; background: rgba(30, 27, 41, 0.88); border: 1px solid var(--line-2); backdrop-filter: blur(12px); line-height: 1.55; overflow-wrap: anywhere; }
+.bubble { padding: 11px 15px; border-radius: 20px; background: rgba(27, 27, 30, 0.9); border: 1px solid var(--line-2); backdrop-filter: blur(12px); line-height: 1.55; overflow-wrap: anywhere; }
 .msg.bot .bubble { border-top-left-radius: 6px; }
-.msg.user .bubble { background: var(--grad); border: 0; border-top-right-radius: 6px; color: #fff; }
-.msg.user .bubble em { color: rgba(255, 255, 255, 0.85); }
+.msg.user .bubble { background: var(--grad); border: 0; border-top-right-radius: 6px; color: var(--on-a); }
+.msg.user .bubble em { color: var(--on-a); opacity: 0.72; }
 .mtools { display: flex; align-items: center; gap: 0; margin-top: 3px; color: var(--muted); }
 .mtools button { display: grid; place-items: center; width: 30px; height: 28px; border-radius: 8px; }
 .mtools button:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
@@ -317,7 +321,7 @@ button.row:hover { background: var(--surface-2); }
 .err { align-self: center; display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 12px; background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); font-size: 0.85rem; text-align: center; }
 .scene { display: flex; justify-content: center; }
 .sugg { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 0 max(14px, calc((100% - 820px) / 2)) 10px; align-items: center; }
-.sugg button[data-sugg] { flex: none; max-width: 280px; padding: 9px 14px; border-radius: 16px; background: rgba(30, 27, 41, 0.92); border: 1px solid var(--line-2); font-size: 0.84rem; text-align: left; line-height: 1.35; }
+.sugg button[data-sugg] { flex: none; max-width: 280px; padding: 9px 14px; border-radius: 16px; background: rgba(27, 27, 30, 0.92); border: 1px solid var(--line-2); font-size: 0.84rem; text-align: left; line-height: 1.35; }
 .sugg button[data-sugg]:hover { border-color: var(--a2); }
 .sugg-load { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 0.85rem; padding: 8px 4px; }
 .composer { display: flex; align-items: flex-end; gap: 8px; padding: 10px max(12px, calc((100% - 840px) / 2)) calc(10px + env(safe-area-inset-bottom, 0px)); background: rgba(11, 10, 16, 0.6); backdrop-filter: blur(20px); border-top: 1px solid var(--line); }
@@ -326,7 +330,7 @@ button.row:hover { background: var(--surface-2); }
 .cbox textarea { flex: 1; min-width: 0; border: 0; background: none; outline: 0; resize: none; padding: 9px 6px; max-height: 140px; line-height: 1.4; }
 .cbtn { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; color: var(--muted); flex: none; }
 .cbtn:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
-.send { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--grad); color: #fff; flex: none; box-shadow: 0 8px 22px color-mix(in srgb, var(--a1) 40%, transparent); }
+.send { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--grad); color: var(--on-a); flex: none; box-shadow: 0 8px 22px color-mix(in srgb, var(--a1) 40%, transparent); }
 .send.stop { background: var(--surface-3); box-shadow: none; }
 
 /* ---------- Feuilles ---------- */
@@ -342,7 +346,7 @@ button.row:hover { background: var(--surface-2); }
 .sec-label { font-size: 0.74rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
 .picker { display: flex; flex-wrap: wrap; gap: 8px; }
 .pick { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 5px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line-2); font-weight: 700; font-size: 0.85rem; }
-.pick.on { background: var(--grad); border-color: transparent; color: #fff; }
+.pick.on { background: var(--grad); border-color: transparent; color: var(--on-a); }
 .trait { padding: 7px 13px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line-2); font-size: 0.84rem; font-weight: 600; }
 .trait.on { background: var(--text); color: var(--bg); border-color: transparent; font-weight: 800; }
 .ai-box { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 18px; background: linear-gradient(150deg, color-mix(in srgb, var(--a2) 22%, var(--surface-2)), var(--surface-2)); border: 1px solid var(--line-2); }
@@ -367,7 +371,7 @@ button.row:hover { background: var(--surface-2); }
 .plan li .ic { width: 16px; height: 16px; margin-top: 2px; color: var(--ok); }
 .plan li.off { color: var(--muted); }
 .plan li.off .ic { color: var(--muted); }
-.plan-tag { position: absolute; top: 14px; right: 14px; padding: 3px 10px; border-radius: 999px; background: var(--a1); color: #fff; font-size: 0.7rem; font-weight: 800; }
+.plan-tag { position: absolute; top: 14px; right: 14px; padding: 3px 10px; border-radius: 999px; background: var(--a1); color: var(--on-a); font-size: 0.7rem; font-weight: 800; }
 .toast { position: fixed; z-index: 100; left: 50%; width: max-content; bottom: calc(92px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 32px); padding: 11px 12px 11px 18px; border-radius: 16px; background: var(--surface-3); border: 1px solid var(--line-2); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5); font-size: 0.9rem; font-weight: 600; animation: up 0.25s both; }
 @media (min-width: 1024px) { .toast { bottom: 28px; } }
 .app.in-chat ~ .toast { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
@@ -375,7 +379,9 @@ button.row:hover { background: var(--surface-2); }
 @media (max-width: 480px) {
   .chat-head { gap: 4px; padding: 8px 8px; }
   .chat-who .pic, .chat-who .gpic { --sz: 36px !important; }
-  .pill-btn { padding: 6px 8px; font-size: 0.74rem; gap: 4px; }
+  .pill-btn { padding: 0 8px; font-size: 0.74rem; gap: 2px; }
+  .pill-btn span:not(.emo) { display: none; }
+  .chat-who { padding-right: 12px; }
   .pill-btn .ic:last-child { display: none; }
   .head-r .iconbtn { width: 36px; }
 }
@@ -385,6 +391,33 @@ button.row:hover { background: var(--surface-2); }
 .paste:empty::before { content: attr(data-ph); color: var(--muted); }
 .paste:focus { border-color: var(--a2); }
 .drop-on { outline: 2px dashed var(--a1); outline-offset: -6px; }
+.style-sheet { max-width: 640px; padding-bottom: 0; gap: 10px; }
+.st-head h3 { flex: 1; text-align: center; }
+.st-sec { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+.st-sec-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; font: 700 1.05rem var(--f-display); color: var(--text-2); }
+.st-sec-h span { display: inline-flex; align-items: center; gap: 6px; }
+.st-plan { display: inline-flex; align-items: center; gap: 4px; color: var(--a1); font-weight: 800; font-size: 0.9rem; }
+.st-plan .ic { width: 16px; height: 16px; }
+.st-card { position: relative; display: flex; align-items: flex-start; gap: 14px; padding: 16px 48px 16px 16px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.st-card:hover { background: var(--surface-2); }
+.st-card.on { background: var(--surface-2); border-color: color-mix(in srgb, var(--a1) 70%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--a1) 40%, transparent); }
+.st-card.locked .st-emo, .st-card.locked .st-name { opacity: 0.75; }
+.st-emo { font-size: 2.1rem; line-height: 1; width: 46px; text-align: center; flex: none; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4)); }
+.st-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.st-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font: 700 1.12rem var(--f-display); }
+.st-tier { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px; background: var(--surface-3); font: 700 0.72rem var(--f-body); color: var(--a1); }
+.st-tier .ic, .st-lock .ic { width: 13px; height: 13px; }
+.st-lock { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface-3); color: var(--a1); }
+.st-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-tag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 8px; border: 1px solid var(--line-2); color: var(--text-2); font-size: 0.8rem; }
+.st-tag .ic { width: 14px; height: 14px; }
+.st-tag.strong { color: var(--text); }
+.st-set { position: absolute; top: 14px; right: 12px; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 10px; color: var(--muted); }
+.st-set:hover, .st-set.on { color: var(--a1); background: var(--surface-3); }
+.st-more { display: flex; flex-direction: column; gap: 8px; padding-top: 6px; border-top: 1px dashed var(--line-2); }
+.st-more p { color: var(--text-2); font-size: 0.86rem; }
+.st-confirm { position: sticky; bottom: 0; padding: 14px 0 calc(16px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(transparent, var(--surface) 35%); margin-top: 6px; }
+.btn.confirm { padding: 15px; font-size: 1.05rem; background: color-mix(in srgb, var(--a1) 14%, transparent); border: 1.5px solid var(--a1); color: var(--a1); }
 .vh { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip: rect(0 0 0 0); pointer-events: none; }
 .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 8px; }
 .gal { aspect-ratio: 1 / 1; border-radius: 14px; overflow: hidden; border: 2px solid transparent; background: var(--surface-2); }
@@ -464,6 +497,13 @@ label.btn, label.wall-opt { cursor: pointer; }
   </div>
 </form></div>
 
+<!-- Styles de conversation -->
+<div class="sheet-bg" id="sheetStyle" hidden><div class="sheet style-sheet">
+  <div class="sheet-h st-head"><button class="iconbtn" data-close="sheetStyle" aria-label="Fermer"><svg class="ic"><use href="#i-x"></use></svg></button><h3>Choisir le modèle</h3><span style="width:40px"></span></div>
+  <div id="styleBody"></div>
+  <div class="st-confirm"><button class="btn confirm block" data-act="confirmStyle">Confirmer</button></div>
+</div></div>
+
 <!-- Réglages de conversation -->
 <div class="sheet-bg" id="sheetChat" hidden><div class="sheet">
   <div class="sheet-h"><h3>Réglages</h3><button class="iconbtn" data-close="sheetChat" aria-label="Fermer"><svg class="ic"><use href="#i-x"></use></svg></button></div>
@@ -520,11 +560,46 @@ function toast(msg, action) {
 
 /* ================= Configuration ================= */
 const PLANS = {
-  free: { name: 'Gratuit', tiers: ['quick'], maxCustom: 2, maxGroups: 1, groupSize: 2, avatarImage: true, walls: 4, wallUpload: true, accents: false, memory: false, suggestions: false, aiCreate: false, export: false },
-  plus: { name: 'Plus', tiers: ['quick', 'default'], maxCustom: 10, maxGroups: 5, groupSize: 4, avatarImage: true, walls: 10, wallUpload: true, accents: true, memory: false, suggestions: true, aiCreate: true, export: false },
-  premium: { name: 'Premium', tiers: ['quick', 'default', 'complex'], maxCustom: Infinity, maxGroups: Infinity, groupSize: 6, avatarImage: true, walls: 10, wallUpload: true, accents: true, memory: true, suggestions: true, aiCreate: true, export: true },
+  free: { rank: 0, name: 'Gratuit', tiers: ['quick'], maxCustom: 2, maxGroups: 1, groupSize: 2, avatarImage: true, walls: 4, wallUpload: true, accents: false, memory: false, suggestions: false, aiCreate: false, export: false },
+  plus: { rank: 1, name: 'Plus', tiers: ['quick', 'default'], maxCustom: 10, maxGroups: 5, groupSize: 4, avatarImage: true, walls: 10, wallUpload: true, accents: true, memory: false, suggestions: true, aiCreate: true, export: false },
+  premium: { rank: 2, name: 'Premium', tiers: ['quick', 'default', 'complex'], maxCustom: Infinity, maxGroups: Infinity, groupSize: 6, avatarImage: true, walls: 10, wallUpload: true, accents: true, memory: true, suggestions: true, aiCreate: true, export: true },
 };
 const PLAN_ORDER = ['free', 'plus', 'premium'];
+const PLAN_RANK = { free: 0, plus: 1, premium: 2 };
+const STYLE_CATS = { tension: { label: 'Haute tension', icon: 'zap' }, compagnon: { label: 'Compagnon profond', icon: 'heart' }, monde: { label: 'Monde narratif', icon: 'compass' } };
+const STYLE_SECTIONS = [['free', 'Gratuit', 'free'], ['plus', 'Premium', 'plus'], ['flagship', 'Produit phare', 'premium'], ['beta', 'Bêta prioritaire', 'premium']];
+const STYLES = [
+  { id: 'classique', sec: 'free', emoji: '🍦', name: 'Classique', tags: ['Entre vite dans le personnage', 'Reste dans le personnage'], tier: 'quick', len: null, desc: 'Le style de base : naturel, fidèle au personnage, réponses rapides.', prompt: '' },
+  { id: 'express', sec: 'free', emoji: '🍋', name: 'Express', tags: ['Minimal', 'Court'], tier: 'quick', len: 'short', desc: 'Des réponses très courtes, comme des SMS.', prompt: 'Réponses très courtes (1 ou 2 phrases), comme des SMS entre amis. Peu de descriptions.' },
+  { id: 'infini', sec: 'plus', cat: 'tension', emoji: '🍑', name: 'Infini', tags: ['Mémoire longue', 'Narration riche', 'Cohérence du récit'], tier: 'default', len: 'long', desc: 'Narration riche et cohérente qui se souvient des détails passés.', prompt: "Narration riche et détaillée, tension constante. Rappelle et réutilise les détails évoqués plus tôt ; garde une cohérence parfaite de l'intrigue." },
+  { id: 'etincelle', sec: 'plus', cat: 'tension', emoji: '🍏', name: 'Étincelle', tags: ['Rythme rapide', 'Chat naturel', "Axé sur l'action"], tier: 'quick', len: 'medium', desc: 'Dialogues vifs et naturels, beaucoup d’action.', prompt: "Rythme vif : dialogues naturels et percutants, beaucoup d'action, peu de descriptions." },
+  { id: 'cocon', sec: 'plus', cat: 'compagnon', emoji: '🍪', name: 'Cocon', tags: ['Soutien émotionnel', 'Douce romance', 'Faible drame'], tier: 'default', len: 'medium', desc: 'Chaleureux et réconfortant, romance tendre, peu de drame.', prompt: "Ton doux, chaleureux et attentionné : écoute, réconfort, compliments sincères, romance tendre. Évite les conflits et le drame." },
+  { id: 'piment', sec: 'plus', cat: 'tension', emoji: '🌶️', name: 'Piment', tags: ['Vif', 'Émotion directe'], tier: 'default', len: 'medium', desc: 'Tempérament de feu, émotions exprimées sans filtre.', prompt: "Tempérament fort : le personnage exprime ses émotions sans filtre, répliques piquantes, réactions intenses, taquineries et disputes." },
+  { id: 'plume', sec: 'plus', cat: 'tension', emoji: '🪻', name: 'Plume', tags: ['Créatif', 'Axé sur le personnage'], tier: 'default', len: 'medium', desc: 'Écriture créative et imagée, personnage très incarné.', prompt: "Écriture créative et littéraire : images originales, métaphores, voix du personnage très marquée et unique." },
+  { id: 'quete', sec: 'plus', cat: 'monde', emoji: '🗺️', name: 'Quête', tags: ['RPG rapide', 'Basé sur des quêtes'], tier: 'default', len: 'medium', desc: 'Jeu de rôle avec objectifs, choix et conséquences.', prompt: "Mode RPG : donne des objectifs et des quêtes, des obstacles, des récompenses et des conséquences aux choix. Termine souvent par 2 ou 3 options d'action numérotées que l'utilisateur peut choisir (il reste libre de faire autre chose)." },
+  { id: 'saga', sec: 'flagship', cat: 'monde', emoji: '🍯', name: 'Saga', tags: ['Narration visuelle', 'Mémoire durable'], tier: 'complex', len: 'long', desc: 'Narration cinématographique, décors et lumières décrits comme un film.', prompt: "Narration cinématographique : décris les lieux, la lumière, les sons et les détails visuels comme un plan de film, sans ralentir la scène." },
+  { id: 'grenat', sec: 'flagship', cat: 'monde', emoji: '🍎', name: 'Grenat', tags: ['Personnel', 'Cohérent', 'Immersif', 'Proactif'], tier: 'complex', len: 'medium', desc: 'Le personnage prend des initiatives et surprend.', prompt: "Le personnage est proactif : il prend des initiatives, propose des idées, crée des surprises et des rebondissements, sans attendre que l'utilisateur fasse tout." },
+  { id: 'ombre', sec: 'flagship', cat: 'tension', emoji: '🍇', name: 'Ombre', tags: ['Enjeux élevés', 'Tension psychologique', 'Romance sombre'], tier: 'complex', len: 'medium', desc: 'Tension psychologique, mystère et romance sombre.', prompt: "Atmosphère sombre : enjeux élevés, tension psychologique, non-dits, jeux de pouvoir, romance sombre et ambiguë, secrets et mystère." },
+  { id: 'chorale', sec: 'flagship', cat: 'monde', emoji: '🫐', name: 'Chorale', tags: ['Construction du monde', 'Multi-personnages'], tier: 'complex', len: 'long', desc: 'Un monde vivant avec des personnages secondaires.', prompt: "Fais vivre le monde autour de la scène : personnages secondaires avec leurs propres voix et intentions, lieux détaillés, événements de fond." },
+  { id: 'ame', sec: 'flagship', cat: 'compagnon', emoji: '🍒', name: 'Âme', tags: ['Ambiance', 'Profondeur émotionnelle'], tier: 'default', len: 'medium', desc: 'Profondeur émotionnelle et ambiance sensorielle.', prompt: "Profondeur émotionnelle : introspection, vulnérabilité, ambiance sensorielle (sons, odeurs, toucher), silences qui comptent." },
+  { id: 'braise', sec: 'flagship', cat: 'compagnon', emoji: '🍊', name: 'Braise', tags: ['Axé sur les personnages', 'Relations en évolution'], tier: 'default', len: 'medium', desc: 'La relation évolue selon tes actions.', prompt: "La relation évolue de façon réaliste selon les actions de l'utilisateur : la confiance se gagne ou se perd, les sentiments changent avec le temps." },
+  { id: 'velours', sec: 'flagship', cat: 'compagnon', emoji: '🥥', name: 'Velours', tags: ['Réactions authentiques', 'Flux naturel'], tier: 'default', len: 'medium', desc: 'Réactions authentiques et imparfaites, très naturel.', prompt: "Réactions authentiques et imparfaites : hésitations, phrases inachevées, changements d'humeur, comme une vraie personne qui écrit." },
+  { id: 'chronique', sec: 'flagship', cat: 'monde', emoji: '🫒', name: 'Chronique', tags: ['RP détaillé', 'Récit cohérent', 'Arcs longs'], tier: 'complex', len: 'long', desc: 'RP détaillé qui gère de longs arcs narratifs.', prompt: "Jeu de rôle détaillé qui construit des arcs narratifs longs : pose des intrigues, garde la continuité et fais avancer les fils de l'histoire sur la durée." },
+  { id: 'planche', sec: 'beta', cat: 'monde', emoji: '🎨', name: 'Planche', tags: ['Bande dessinée', 'RP visuel'], tier: 'default', len: 'medium', desc: 'Chaque réponse est racontée comme une case de BD.', prompt: "Raconte chaque réponse comme une case de bande dessinée : commence par une ligne « 🎞️ » qui décrit le plan visuel (cadrage, décor, expression), puis les bulles de dialogue." },
+  { id: 'lente', sec: 'beta', cat: 'tension', emoji: '🌙', name: 'Lente', tags: ['Humeur', 'Slow burn', 'Profondeur'], tier: 'default', len: 'medium', desc: 'Slow burn : la tension monte très lentement.', prompt: "Slow burn : la relation et la tension progressent très lentement, par petits gestes et non-dits ; rien n'est précipité." },
+];
+const styleMin = (st) => STYLE_SECTIONS.find((x) => x[0] === st.sec)[2];
+const canStyle = (st) => PLAN_RANK[state.plan] >= PLAN_RANK[styleMin(st)];
+const styleLen = (st) => state.prefs.styleLen?.[st.id] || st.len || state.prefs.length || 'medium';
+function styleOf(chat) {
+  const st = STYLES.find((x) => x.id === (chat?.style || state.prefs.style)) || STYLES[0];
+  return canStyle(st) ? st : STYLES[0];
+}
+function tierFor(chat) {
+  const t = styleOf(chat).tier;
+  if (allowedTier(t)) return t;
+  return plan().tiers[plan().tiers.length - 1];
+}
 const TIERS = {
   quick: { label: 'Rapide', icon: 'zap', desc: 'Répond presque instantanément' },
   default: { label: 'Équilibré', icon: 'gauge', desc: 'Plus de nuance, réfléchit quelques secondes' },
@@ -543,12 +618,14 @@ const WALLS = [
   { id: 'peach', name: 'Pêche', css: 'linear-gradient(160deg,#ffecd2,#fcb69f)' },
 ];
 const ACCENTS = [
-  { id: 'neon', name: 'Magenta', a1: '#ff4d8d', a2: '#8b5cf6', a3: '#ffb86b' },
-  { id: 'sunset', name: 'Soleil', a1: '#ff7a45', a2: '#e8366f', a3: '#ffd166' },
-  { id: 'ocean', name: 'Lagon', a1: '#22d3ee', a2: '#4f6bff', a3: '#7af0c6' },
-  { id: 'forest', name: 'Jade', a1: '#34d399', a2: '#0e9f8e', a3: '#d4ff7a' },
-  { id: 'candy', name: 'Bonbon', a1: '#ff8fd8', a2: '#a78bfa', a3: '#8fe3ff' },
+  { id: 'citron', name: 'Citron', a1: '#ffe14d', a2: '#f5b814', a3: '#ffe14d', on: '#17140a' },
+  { id: 'neon', name: 'Magenta', a1: '#ff4d8d', a2: '#8b5cf6', a3: '#ffb86b', on: '#ffffff' },
+  { id: 'sunset', name: 'Soleil', a1: '#ff7a45', a2: '#e8366f', a3: '#ffd166', on: '#ffffff' },
+  { id: 'ocean', name: 'Lagon', a1: '#22d3ee', a2: '#4f6bff', a3: '#7af0c6', on: '#06121a' },
+  { id: 'forest', name: 'Jade', a1: '#34d399', a2: '#0e9f8e', a3: '#d4ff7a', on: '#06140f' },
+  { id: 'candy', name: 'Bonbon', a1: '#ff8fd8', a2: '#a78bfa', a3: '#8fe3ff', on: '#1a0b16' },
 ];
+const FREE_ACCENTS = ['citron', 'neon'];
 const PALETTES = [['#ff7ab8', '#7a5cff'], ['#43c6ac', '#191654'], ['#f7971e', '#ff512f'], ['#00f5a0', '#00d9f5'], ['#a18cd1', '#fbc2eb'], ['#ff9a9e', '#6a82fb'], ['#f12711', '#f5af19'], ['#232526', '#ff512f']];
 const TRAITS = ['Douceur', 'Humour', 'Mystère', 'Audace', 'Timidité', 'Sarcasme', 'Loyauté', 'Romantisme', 'Curiosité', 'Calme', 'Énergie', 'Jalousie'];
 const RELATIONS = ['Ami(e)', 'Meilleur(e) ami(e)', 'Crush', 'Rival(e)', 'Collègue', 'Mentor', 'Inconnu(e)', 'Colocataire'];
@@ -572,7 +649,7 @@ const state = {
   favs: store.get('favs', []),
   plan: PLANS[savedPlan] ? savedPlan : 'free',
   planSince: store.get('planSince', null),
-  prefs: Object.assign({ accent: 'neon', length: 'medium', memory: true, voice: true, thoughts: false, pace: 'live' }, store.get('prefs', {})),
+  prefs: Object.assign({ accent: 'citron', style: 'classique', styleLen: {}, length: 'medium', memory: true, voice: true, thoughts: false, pace: 'live' }, store.get('prefs', {})),
   walls: store.get('walls', {}),
   stats: Object.assign({ sent: 0 }, store.get('stats', {})),
   persona: Object.assign({ name: store.get('userName', ''), pronouns: '', bio: '' }, store.get('persona', {})),
@@ -581,6 +658,7 @@ const state = {
   category: 'Tous', query: '', convFilter: 'all',
   busy: false, ctl: null, draft: null, gdraft: null, sugg: [], heroIdx: 0,
 };
+if (!state.prefs.v4) { state.prefs.accent = 'citron'; state.prefs.v4 = true; store.set('prefs', state.prefs); }
 let sample = null;
 let downloads = null;
 const hasTTS = typeof window.speechSynthesis !== 'undefined';
@@ -873,7 +951,7 @@ function vMe() {
         <div><div class="sec-label">Rythme des réponses</div>${seg('pace', [['live', 'En direct'], ['instant', 'Instantané']])}<p class="hint" style="margin-top:6px">En direct : le personnage lit, écrit en temps réel et la scène avance instant par instant.</p></div>
         <div><div class="sec-label">Mode pensées</div>${seg('thoughts', [['true', 'Activé'], ['false', 'Désactivé']])}<p class="hint" style="margin-top:6px">Chaque réponse affiche aussi ce que le personnage pense en secret.</p></div>
         ${hasTTS ? `<div><div class="sec-label">Bouton de lecture vocale</div>${seg('voice', [['true', 'Afficher'], ['false', 'Masquer']])}</div>` : ''}
-        <div><div class="sec-label">Couleur de l’interface</div><div class="swatches">${ACCENTS.map((a) => `<button class="sw${a.id === state.prefs.accent ? ' on' : ''}" data-accent="${a.id}" aria-label="${esc(a.name)}" title="${esc(a.name)}" style="background:linear-gradient(135deg,${a.a1},${a.a2})">${a.id !== 'neon' && !p.accents ? `<span class="lockdot">${ic('lock')}</span>` : ''}</button>`).join('')}</div></div>
+        <div><div class="sec-label">Couleur de l’interface</div><div class="swatches">${ACCENTS.map((a) => `<button class="sw${a.id === state.prefs.accent ? ' on' : ''}" data-accent="${a.id}" aria-label="${esc(a.name)}" title="${esc(a.name)}" style="background:linear-gradient(135deg,${a.a1},${a.a2})">${!FREE_ACCENTS.includes(a.id) && !p.accents ? `<span class="lockdot">${ic('lock')}</span>` : ''}</button>`).join('')}</div></div>
       </div>
       <div class="panel">
         <div class="panel-t">${ic('heart')}Favoris</div>
@@ -900,7 +978,8 @@ function openPlans() {
     return [
       li(true, p.maxCustom === Infinity ? 'Personnages illimités' : `${p.maxCustom} personnages créés`),
       li(true, `${p.maxGroups === Infinity ? 'Groupes illimités' : p.maxGroups + (p.maxGroups > 1 ? ' groupes' : ' groupe')} de ${p.groupSize} bots`),
-      li(true, 'Modèles : ' + p.tiers.map((t) => TIERS[t].label).join(', ')),
+      li(true, `${STYLES.filter((st) => p.rank >= PLAN_RANK[styleMin(st)]).length} styles de conversation sur ${STYLES.length}`),
+      li(true, 'Niveaux de modèle : ' + p.tiers.map((t) => TIERS[t].label).join(', ')),
       li(p.suggestions, 'Suggestions de réponses'),
       li(p.aiCreate, 'Création de personnage par IA'),
       li(p.avatarImage, 'Images d’avatar personnalisées'),
@@ -927,11 +1006,12 @@ function setPlan(id) {
   $('#sheetPlans').hidden = true;
   toast(`Plan ${planName(id)} activé et gardé en mémoire`);
   render();
+  if (!$('#sheetStyle').hidden) renderStyleSheet();
 }
 function applyAccent() {
-  const a = ACCENTS.find((x) => x.id === state.prefs.accent && (x.id === 'neon' || plan().accents)) || ACCENTS[0];
+  const a = ACCENTS.find((x) => x.id === state.prefs.accent && (FREE_ACCENTS.includes(x.id) || plan().accents)) || ACCENTS[0];
   const r = document.documentElement.style;
-  r.setProperty('--a1', a.a1); r.setProperty('--a2', a.a2); r.setProperty('--a3', a.a3);
+  r.setProperty('--a1', a.a1); r.setProperty('--a2', a.a2); r.setProperty('--a3', a.a3); r.setProperty('--on-a', a.on);
 }
 
 /* ================= Images ================= */
@@ -1157,7 +1237,7 @@ function chatFor(id) {
   }
   return state.chats[id];
 }
-const tierPill = () => `${ic(TIERS[tierNow()].icon)}<span>${TIERS[tierNow()].label}</span>${ic('chevron-down')}`;
+const stylePill = (chat) => { const st = styleOf(chat); return `<span class="emo">${st.emoji}</span><span>${esc(st.name)}</span>${ic('chevron-down')}`; };
 function vChat(id) {
   const e = findEntity(id);
   chatFor(id);
@@ -1170,10 +1250,9 @@ function vChat(id) {
       <button class="chat-who" ${e.group ? 'data-act="chatSettings"' : `data-profile="${esc(id)}"`}>${avatar(e, 42)}<span><strong>${esc(e.name)}</strong>${e.group ? `<small class="mem">${esc(e.tagline)}</small>` : `<small id="lvlTag">${ic('trophy')}Niv. ${a.lvl + 1} · ${a.name}${memOn ? ` · ${ic('brain')}mémoire` : ''}</small>`}</span></button>
       <div class="head-r">
         <button class="iconbtn${thoughtsOn() ? ' on' : ''}" data-act="thoughts" id="thoughtBtn" title="Mode pensées" aria-label="Mode pensées" aria-pressed="${thoughtsOn()}">${ic('brain')}</button>
-        <button class="pill-btn" data-act="modelMenu" id="modelBtn" aria-haspopup="true">${tierPill()}</button>
+        <button class="pill-btn" data-act="styleSheet" id="modelBtn" aria-haspopup="dialog" aria-label="Choisir le modèle">${stylePill(chatFor(id))}</button>
         <button class="iconbtn" data-act="chatSettings" aria-label="Réglages de la conversation">${ic('settings-2')}</button>
       </div>
-      <div class="menu" id="modelMenu" hidden></div>
     </header>
     <div class="msgs" id="msgs" aria-live="polite"></div>
     <div class="sugg" id="sugg" hidden></div>
@@ -1186,6 +1265,33 @@ function vChat(id) {
       <button class="send" id="btnSend" type="submit" aria-label="Envoyer">${ic('send-horizontal')}</button>
     </form>
   </div>`;
+}
+function renderStyleSheet() {
+  const sel = state.styleSel;
+  const card = (st) => {
+    const locked = !canStyle(st), open = state.styleOpen === st.id, cat = st.cat && STYLE_CATS[st.cat];
+    return `<div class="st-card${sel === st.id ? ' on' : ''}${locked ? ' locked' : ''}" data-style="${st.id}" role="button" tabindex="0" aria-pressed="${sel === st.id}">
+      <span class="st-emo" aria-hidden="true">${st.emoji}</span>
+      <div class="st-main">
+        <div class="st-name">${esc(st.name)}<span class="st-tier">${ic(TIERS[st.tier].icon)}${TIERS[st.tier].label}</span>${locked ? `<span class="st-lock" title="Verrouillé">${ic('lock')}</span>` : ''}</div>
+        <div class="st-tags">${cat ? `<span class="st-tag strong">${ic(cat.icon)}${cat.label}</span>` : ''}${st.tags.map((t) => `<span class="st-tag">${esc(t)}</span>`).join('')}</div>
+        ${open ? `<div class="st-more"><p>${esc(st.desc)}</p><div class="sec-label" style="margin:4px 0 0">Longueur des réponses</div><div class="seg">${[['short', 'Court'], ['medium', 'Moyen'], ['long', 'Long']].map(([v, l]) => `<button type="button" data-stylelen="${st.id}:${v}" class="${styleLen(st) === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>` : ''}
+      </div>
+      <button type="button" class="st-set${open ? ' on' : ''}" data-styleopen="${st.id}" aria-label="Réglages de ${esc(st.name)}">${ic('settings-2')}</button>
+    </div>`;
+  };
+  $('#styleBody').innerHTML = STYLE_SECTIONS.map(([sec, label, min]) => {
+    const unlocked = PLAN_RANK[state.plan] >= PLAN_RANK[min];
+    return `<section class="st-sec"><div class="st-sec-h"><span>${sec === 'beta' ? ic('flame') : sec === 'flagship' ? ic('star') : ''}${label}</span>${sec === 'free' ? '' : `<button type="button" class="st-plan" data-act="plans">${ic('crown')}${unlocked ? planName(state.plan) : min === 'plus' ? 'Plus' : 'Premium'}${ic('chevron-right')}</button>`}</div>${STYLES.filter((x) => x.sec === sec).map(card).join('')}</section>`;
+  }).join('');
+}
+function openStyleSheet() {
+  state.styleSel = styleOf(chatFor(state.route.id)).id;
+  state.styleOpen = null;
+  renderStyleSheet();
+  $('#sheetStyle').hidden = false;
+  const on = $('#styleBody .st-card.on');
+  if (on) on.scrollIntoView({ block: 'center' });
 }
 function renderModelMenu() {
   $('#modelMenu').innerHTML = Object.entries(TIERS).map(([k, t]) => `<button data-tier="${k}" class="${tierNow() === k ? 'on' : ''}">${ic(t.icon)}<span><strong>${t.label}</strong><small>${t.desc}</small></span>${allowedTier(k) ? (tierNow() === k ? ic('check', 'end') : '') : ic('lock', 'end')}</button>`).join('');
@@ -1260,11 +1366,13 @@ const THOUGHT_SOLO = "MODE PENSÉES : termine chaque réponse par une ligne sép
 const THOUGHT_GROUP = "MODE PENSÉES : juste après la réplique de chaque personnage, ajoute une ligne qui commence par « 💭 » avec sa pensée intérieure secrète (une phrase, à la première personne). Les personnages ne lisent pas les pensées des autres.";
 function systemPrompt(e, chat) {
   const mem = chat.memory && plan().memory && String(state.prefs.memory) !== 'false' ? `MÉMOIRE (faits déjà connus, à respecter) :\n${chat.memory}` : '';
-  const len = `Longueur des répliques : ${LENGTHS[state.prefs.length] || LENGTHS.medium}.`;
+  const st = styleOf(chat);
+  const len = `Longueur des répliques : ${LENGTHS[styleLen(st)] || LENGTHS.medium}.`;
+  const sty = st.prompt ? `STYLE DE CONVERSATION « ${st.name} » : ${st.prompt}` : '';
   if (!e.group) {
     const a = affinity(e.id);
     return [DATA.frame, `PERSONNAGE : ${e.name}\n${personaText(e)}`, e.scenario ? `SCÉNARIO / CONTEXTE : ${e.scenario}` : '', len, userBlock(),
-      `Niveau de relation actuel avec l'utilisateur : ${a.name} (niveau ${a.lvl + 1} sur ${LEVELS.length}). Adapte la familiarité et la confiance à ce niveau.`, mem, liveOn() ? LIVE_SOLO : '', thoughtsOn() ? THOUGHT_SOLO : '',
+      `Niveau de relation actuel avec l'utilisateur : ${a.name} (niveau ${a.lvl + 1} sur ${LEVELS.length}). Adapte la familiarité et la confiance à ce niveau.`, mem, sty, liveOn() ? LIVE_SOLO : '', thoughtsOn() ? THOUGHT_SOLO : '',
       'La conversation de jeu de rôle est déjà commencée : le premier message du personnage et les échanges suivants sont ci-dessous. Réponds uniquement avec la prochaine réplique du personnage.'].filter(Boolean).join('\n\n');
   }
   return [
@@ -1272,7 +1380,7 @@ function systemPrompt(e, chat) {
     "FORMAT OBLIGATOIRE : chaque réplique commence par le nom du personnage entre crochets, par exemple « [Luna] *sourit* Salut ! ». Écris de 1 à 4 répliques par tour, de personnages différents (pas forcément tous). Gestes entre *astérisques*. N'écris jamais de réplique pour l'utilisateur et n'utilise des crochets que pour ces noms. Réponds dans la langue de l'utilisateur (français par défaut).",
     LIMITS,
     'PERSONNAGES PRÉSENTS :\n' + membersOf(e).map((m) => `[${cleanName(m.name)}] ${personaText(m)}`).join('\n\n'),
-    e.scenario ? `SCÉNARIO / CONTEXTE : ${e.scenario}` : '', len, userBlock(), mem, liveOn() ? LIVE_GROUP : '', thoughtsOn() ? THOUGHT_GROUP : '',
+    e.scenario ? `SCÉNARIO / CONTEXTE : ${e.scenario}` : '', len, userBlock(), mem, sty, liveOn() ? LIVE_GROUP : '', thoughtsOn() ? THOUGHT_GROUP : '',
   ].filter(Boolean).join('\n\n');
 }
 const START = 'Lance la scène : fais parler les personnages.';
@@ -1408,12 +1516,12 @@ async function reply({ nudge, regen } = {}) {
   state.typer = typer;
   typer.start();
   try {
-    const res = await sample(turns, { cache: false, signal: ctl.signal, modelTier: tierNow(), onText: ({ text }) => typer.push(text) });
+    const res = await sample(turns, { cache: false, signal: ctl.signal, modelTier: tierFor(chat), onText: ({ text }) => typer.push(text) });
     typer.end(res.text);
     await typer.finished;
     const finalText = typer.seen.length < res.text.length ? typer.seen : res.text;
     commit(finalText + (res.truncated && finalText === res.text ? ' …' : ''));
-    if (res.modelTierApplied && res.modelTierApplied !== tierNow()) toast(`Ton abonnement a répondu avec le niveau « ${TIERS[res.modelTierApplied]?.label || res.modelTierApplied} ».`);
+    if (res.modelTierApplied && res.modelTierApplied !== tierFor(chat)) toast(`Ton abonnement a répondu avec le niveau « ${TIERS[res.modelTierApplied]?.label || res.modelTierApplied} ».`);
     maybeMemory(e, chat);
   } catch (err) {
     const code = err?.code;
@@ -1639,6 +1747,9 @@ document.addEventListener('click', (ev) => {
   if ((el = q('[data-hero]'))) return setHero(Number(el.dataset.hero));
   if ((el = q('[data-cat]'))) { state.category = el.dataset.cat; return updateDiscover(); }
   if ((el = q('[data-conv]'))) { state.convFilter = el.dataset.conv; return render(); }
+  if ((el = q('[data-styleopen]'))) { const id = el.dataset.styleopen; state.styleOpen = state.styleOpen === id ? null : id; state.styleSel = id; return renderStyleSheet(); }
+  if ((el = q('[data-stylelen]'))) { const [id, v] = el.dataset.stylelen.split(':'); state.prefs.styleLen = { ...(state.prefs.styleLen || {}), [id]: v }; store.set('prefs', state.prefs); return renderStyleSheet(); }
+  if ((el = q('[data-style]'))) { state.styleSel = el.dataset.style; return renderStyleSheet(); }
   if ((el = q('[data-tier]'))) {
     const tier = el.dataset.tier;
     if (!gate(allowedTier(tier), `Modèle « ${TIERS[tier].label} »`, (p) => p.tiers.includes(tier))) return;
@@ -1670,7 +1781,7 @@ document.addEventListener('click', (ev) => {
   }
   if ((el = q('[data-accent]'))) {
     const id = el.dataset.accent;
-    if (!gate(id === 'neon' || plan().accents, 'Couleurs de l’interface', (p) => p.accents)) return;
+    if (!gate(FREE_ACCENTS.includes(id) || plan().accents, 'Couleurs de l’interface', (p) => p.accents)) return;
     state.prefs.accent = id; store.set('prefs', state.prefs); applyAccent(); return render();
   }
   if ((el = q('[data-pref]'))) {
@@ -1774,7 +1885,20 @@ document.addEventListener('click', (ev) => {
     }
     if (a === 'aiFill') return aiFill();
     if (a === 'clearAvatar') { state.draft.image = ''; return drawCharPickers(); }
-    if (a === 'modelMenu') { renderModelMenu(); $('#modelMenu').hidden = !$('#modelMenu').hidden; return; }
+    if (a === 'styleSheet') return openStyleSheet();
+    if (a === 'confirmStyle') {
+      const st = STYLES.find((x) => x.id === state.styleSel);
+      if (!st) return;
+      if (!gate(canStyle(st), `Le style « ${st.name} »`, (p) => p.rank >= PLAN_RANK[styleMin(st)])) return;
+      const chat = chatFor(state.route.id);
+      chat.style = st.id;
+      state.prefs.style = st.id;
+      store.set('prefs', state.prefs);
+      save.chats();
+      $('#sheetStyle').hidden = true;
+      $('#modelBtn').innerHTML = stylePill(chat);
+      return toast(`${st.emoji} Style ${st.name} activé`);
+    }
     if (a === 'chatSettings') return openChatSettings();
     if (a === 'editGroup') { $('#sheetChat').hidden = true; return openGroupForm(findGroup(state.route.id)); }
     if (a === 'export') return exportChat();
