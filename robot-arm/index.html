@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0f16" />
+    <title>BRAS-6A · Bras mécanique 3D</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <div id="labels" aria-hidden="true"></div>
+
+    <header id="brand">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="8" cy="25" r="3.2" />
+          <circle cx="16" cy="9" r="3.2" />
+          <circle cx="26" cy="15" r="2.6" />
+          <path d="M9.6 22.2 14.4 12M18.9 10.2 23.6 13.6M2 29h12" />
+        </svg>
+      </div>
+      <div>
+        <h1>BRAS-6A</h1>
+        <p>Bras robotisé 6 axes · modèle 3D interactif</p>
+      </div>
+    </header>
+
+    <nav id="views" aria-label="Caméra">
+      <button data-view="iso" title="Vue isométrique">Iso</button>
+      <button data-view="front" title="Vue de face">Face</button>
+      <button data-view="side" title="Vue de profil">Profil</button>
+      <button data-view="top" title="Vue de dessus">Dessus</button>
+      <span class="sep"></span>
+      <button id="btn-rotate" class="toggle" title="Rotation automatique de la caméra">⟳ Orbite</button>
+      <button id="btn-full" title="Plein écran">⛶</button>
+    </nav>
+
+    <aside id="panel" class="open">
+      <button id="panel-handle" aria-label="Replier le panneau"><span></span></button>
+      <div class="tabs" role="tablist">
+        <button role="tab" data-tab="motion" class="active">Mouvements</button>
+        <button role="tab" data-tab="joints">Axes</button>
+        <button role="tab" data-tab="parts">Éclaté</button>
+      </div>
+
+      <section id="tab-motion" class="tab active">
+        <div id="motion-list" class="motion-list"></div>
+        <p id="motion-desc" class="hint"></p>
+        <div class="row">
+          <label for="speed">Vitesse</label>
+          <input id="speed" type="range" min="0.25" max="2" step="0.05" value="1" />
+          <output id="speed-out">1,0×</output>
+        </div>
+        <div class="row buttons">
+          <button id="btn-pause" class="btn">⏸ Pause</button>
+          <button id="btn-reset-cube" class="btn">↺ Replacer le cube</button>
+        </div>
+      </section>
+
+      <section id="tab-joints" class="tab">
+        <p class="hint">Faites glisser un axe pour piloter le bras à la main. Les curseurs suivent le mouvement en mode automatique.</p>
+        <div id="joint-list"></div>
+        <div class="row buttons">
+          <button id="btn-home" class="btn">🏠 Position repos</button>
+          <button id="btn-zero" class="btn">⬆ Bras tendu</button>
+        </div>
+      </section>
+
+      <section id="tab-parts" class="tab">
+        <div class="row buttons">
+          <button id="btn-explode" class="btn primary">💥 Vue éclatée</button>
+        </div>
+        <div class="row">
+          <label for="explode">Écartement</label>
+          <input id="explode" type="range" min="0" max="1" step="0.005" value="0" />
+          <output id="explode-out">0 %</output>
+        </div>
+
+        <div class="seg" role="group" aria-label="Rendu">
+          <button data-render="solid" class="active">Plein</button>
+          <button data-render="xray">Rayons X</button>
+          <button data-render="wire">Fil de fer</button>
+        </div>
+
+        <div class="checks">
+          <label><input id="chk-tags" type="checkbox" checked /> Repères numérotés</label>
+          <label><input id="chk-isolate" type="checkbox" /> Isoler la pièce choisie</label>
+        </div>
+
+        <div id="parts-list"></div>
+      </section>
+    </aside>
+
+    <div id="info" class="hidden" role="dialog" aria-live="polite">
+      <button id="info-close" aria-label="Fermer">×</button>
+      <div class="info-top">
+        <span id="info-num" class="num"></span>
+        <span id="info-group" class="chip"></span>
+      </div>
+      <h2 id="info-name"></h2>
+      <p id="info-desc"></p>
+      <dl>
+        <dt>Matériau</dt>
+        <dd id="info-mat"></dd>
+      </dl>
+    </div>
+
+    <div id="hud">
+      <div class="hud-status"><i id="hud-led"></i><span id="hud-mode">Pick &amp; place</span></div>
+      <div class="hud-grid">
+        <span>X</span><b id="hud-x">0</b>
+        <span>Y</span><b id="hud-y">0</b>
+        <span>Z</span><b id="hud-z">0</b>
+        <em>mm</em>
+      </div>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

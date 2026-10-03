@@ -7,7 +7,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:bras": "vite --config vite.bras.config.js",
+    "build:bras": "vite build --config vite.bras.config.js",
+    "preview:bras": "vite preview --config vite.bras.config.js"
   },
   "dependencies": {
     "three": "^0.186.1"

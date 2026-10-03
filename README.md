@@ -18,6 +18,21 @@ npm run build    # régénère dist/index.html (fichier unique)
 
 Options d'URL utiles : `?q=low|medium|high` force la qualité graphique, `?god` rend Spider-Man invincible.
 
+## 🦾 Bonus : bras mécanique 3D (BRAS-6A)
+
+Une maquette 3D réaliste d'un **bras robotisé industriel à 6 axes**, autonome (indépendante du jeu) : ouvre [`dist-bras/index.html`](dist-bras/index.html) dans un navigateur (fichier unique, fonctionne hors ligne).
+
+- **Modèle détaillé** : 37 pièces (plaque d'ancrage, roulement de couronne, carrousel, 6 moteurs brushless, réducteurs harmoniques, coques moulées, vérin d'équilibrage qui suit le bras, câbles, pince parallèle avec rails, caméra…), matériaux PBR (peinture vernie, acier brossé, caoutchouc, cuivre), éclairage de studio et ombres.
+- **Mouvements** : repos, *pick & place* (le bras saisit réellement le cube et le dépose), salutation, balayage, tracé en 8 avec trace lumineuse, danse, et *pointer une cible* en cliquant sur le sol. Cinématique inverse analytique, curseurs de vitesse et pause.
+- **Pilotage manuel** des 6 axes et de la pince (butées articulaires respectées) avec affichage des coordonnées du TCP.
+- **Mode éclaté** : bouton ou curseur d'écartement, pièces numérotées reliées à leur position d'origine, liste cliquable avec fiche (rôle, matériau), vue *rayons X* / *fil de fer*, isolation d'une pièce.
+- Caméra libre (clic-glisser, molette), vues Iso / Face / Profil / Dessus, orbite automatique. Raccourcis : `Espace` pause, `E` éclater, `1`–`7` mouvements. Utilisable au doigt sur mobile.
+
+```bash
+npm run dev:bras     # serveur de dev
+npm run build:bras   # régénère dist-bras/index.html
+```
+
 ## 🎮 Contenu
 
 ### Déplacements
