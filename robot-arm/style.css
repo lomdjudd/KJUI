@@ -13,6 +13,7 @@
   --radius: 14px;
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color-scheme: dark;
 }
 
 * {
@@ -51,7 +52,7 @@ button {
 /* ---------- marque ---------- */
 #brand {
   position: fixed;
-  top: 14px;
+  top: calc(14px + env(safe-area-inset-top, 0px));
   left: 16px;
   display: flex;
   align-items: center;
@@ -84,7 +85,7 @@ button {
 /* ---------- barre caméra ---------- */
 #views {
   position: fixed;
-  top: 14px;
+  top: calc(14px + env(safe-area-inset-top, 0px));
   right: 16px;
   display: flex;
   align-items: center;
@@ -635,7 +636,7 @@ input[type='range']::-moz-range-thumb {
     height: 36px;
   }
   #views {
-    top: 10px;
+    top: calc(10px + env(safe-area-inset-top, 0px));
     right: 10px;
     gap: 0;
   }
@@ -674,7 +675,7 @@ input[type='range']::-moz-range-thumb {
   }
   #hud {
     bottom: auto;
-    top: 62px;
+    top: calc(62px + env(safe-area-inset-top, 0px));
     left: 10px;
     transform: none;
     padding: 6px 12px;

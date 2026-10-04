@@ -355,7 +355,7 @@ $('#btn-rotate').addEventListener('click', (e) => {
 $('#btn-full').addEventListener('click', () => {
   try {
     if (document.fullscreenElement) document.exitFullscreen();
-    else document.documentElement.requestFullscreen?.();
+    else document.documentElement.requestFullscreen?.()?.catch(() => {});
   } catch (_) {
     /* plein écran indisponible */
   }
