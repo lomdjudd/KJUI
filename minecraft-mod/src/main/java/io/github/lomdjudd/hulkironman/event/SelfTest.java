@@ -182,6 +182,10 @@ public final class SelfTest {
                 check(server.getAdvancements().get(HulkIronMan.id(a)) != null, "succès " + a);
             }
             check(Scheduler.errors == 0, "aucune erreur dans les tâches planifiées");
+            // monde propre pour le test visuel qui le réutilise
+            level.getEntitiesOfClass(GalactusEntity.class, io.github.lomdjudd.hulkironman.hero.Combat.around(base, 300)).forEach(g -> g.discard());
+            level.getEntitiesOfClass(net.minecraft.world.entity.monster.Vex.class, io.github.lomdjudd.hulkironman.hero.Combat.around(base, 300)).forEach(v -> v.discard());
+            level.getEntitiesOfClass(net.minecraft.world.entity.projectile.Projectile.class, io.github.lomdjudd.hulkironman.hero.Combat.around(base, 300)).forEach(e -> e.discard());
             finish(server);
         });
     }

@@ -782,21 +782,27 @@ def item_cosmic_heart():
 
 def item_missile():
     t = Tex(16, 16, seed=35)
-    # missile en diagonale (bas-gauche -> haut-droite)
-    body, hi, tip, fin, fire, fire2 = hexc('9aa1ab'), hexc('d4d9e0'), hexc('d62e2e'), hexc('3a3d44'), hexc('ffb43a'), hexc('fff3a0')
-    for k in range(9):
-        x, y = 4 + k, 11 - k
-        t.set(x, y, body)
-        t.set(x + 1, y, hi)
-        t.set(x, y - 1, hi if k % 2 else body)
-    t.set(13, 2, tip)
-    t.set(14, 1, tip)
-    t.set(13, 1, tip)
-    t.set(14, 2, tip)
-    for (x, y) in ((3, 10), (4, 13), (2, 11), (5, 13)):
-        t.set(x, y, fin)
-    for (x, y, c) in ((3, 12, fire), (2, 13, fire), (1, 14, fire2), (2, 12, fire2), (3, 13, fire2)):
-        t.set(x, y, c)
+    # micro-missile en diagonale : ogive rouge, corps métallique, ailerons, flamme
+    pal = {'r': hexc('e23a2a'), 'R': hexc('9e1c1c'), 'w': hexc('eef2f6'), 'g': hexc('a8b0ba'), 'G': hexc('6c7480'),
+           'k': hexc('2d3138'), 'y': hexc('ffe27a'), 'o': hexc('ff9a2e'), 'f': hexc('ff5a1e')}
+    Face(t, 0, 0, 16, 16).rows([
+        '                ',
+        '            rr  ',
+        '           rrrR ',
+        '          wrrR  ',
+        '         wggR   ',
+        '        wggG    ',
+        '       wggG     ',
+        '      wggG      ',
+        '     wggG       ',
+        '   kwggG        ',
+        '   kkgG         ',
+        '  ykkGk         ',
+        ' oyy kk         ',
+        'ofyo            ',
+        'ffo             ',
+        'f               ',
+    ], pal)
     return t
 
 

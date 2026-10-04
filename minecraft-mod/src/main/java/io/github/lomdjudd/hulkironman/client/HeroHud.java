@@ -154,7 +154,7 @@ public final class HeroHud {
         String[] dirs = {"S", "SO", "O", "NO", "N", "NE", "E", "SE"};
         String dir = dirs[Math.floorMod(Math.round(yaw / 45F), 8)];
         String comp = "◆ " + dir + " " + Math.round((yaw + 360) % 360) + "° ◆";
-        g.drawString(font, comp, w / 2 - font.width(comp) / 2, m + 2, cyan, false);
+        g.drawString(font, comp, w - m - 4 - font.width(comp), m + 4, cyan, false);
 
         // cible
         Entity target = mc.crosshairPickEntity;

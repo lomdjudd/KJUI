@@ -84,6 +84,7 @@ jobs:
           skipMultiplayerWarning:true
           joinedFirstServer:true
           soundCategory_master:0.0
+          chatVisibility:2
           lang:fr_fr
           OPTS
           export LIBGL_ALWAYS_SOFTWARE=1

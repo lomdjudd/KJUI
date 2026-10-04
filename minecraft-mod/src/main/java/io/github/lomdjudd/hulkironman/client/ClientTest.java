@@ -42,8 +42,14 @@ public final class ClientTest {
         IntegratedServer server = mc.getSingleplayerServer();
         if (mc.player == null || mc.level == null || server == null) return;
         ticks++;
+        if (mc.player.isDeadOrDying() && ticks % 10 == 0) mc.player.respawn();
         UUID id = mc.player.getUUID();
         switch (ticks) {
+            case 2 -> onServer(server, id, sp -> {
+                // le monde vient de l'auto-test serveur : on retire le Galactus qui y rôde encore
+                sp.setGameMode(GameType.CREATIVE);
+                sp.serverLevel().getEntitiesOfClass(GalactusEntity.class, sp.getBoundingBox().inflate(256)).forEach(g -> g.discard());
+            });
             case 60 -> onServer(server, id, sp -> {
                 ServerLevel level = sp.serverLevel();
                 level.setDayTime(6000);

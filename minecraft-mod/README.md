@@ -94,11 +94,12 @@ src/main/java/io/github/lomdjudd/hulkironman/
   network/                 paquets client <-> serveur (touches, état, effets, poussées, tremblements)
   client/                  touches, interface, effets de particules, modèle et rendu de Galactus, couche lumineuse
   mixin/                   skin de Hulk / Iron Man à la place du skin du joueur
-  event/                   événements du jeu et auto-test (./gradlew runSelfTest)
+  event/                   événements du jeu et auto-test serveur (./gradlew runSelfTest)
+  client/ClientTest.java   test visuel : captures d'écran automatiques (./gradlew runClientTest)
 src/main/resources/        textures, traductions FR/EN, recettes, butin, succès
 tools/generate_textures.py génère toutes les textures (et un aperçu 3D avec --preview DOSSIER)
 ```
 
-À chaque modification, GitHub Actions compile le mod puis lance un **auto-test sur un vrai serveur** : un joueur factice se transforme, utilise tous les pouvoirs, puis Galactus est invoqué, lance chacune de ses attaques, passe ses phases et meurt.
+À chaque modification, GitHub Actions compile le mod puis lance un **auto-test sur un vrai serveur** : un joueur factice se transforme, utilise tous les pouvoirs, puis Galactus est invoqué, lance chacune de ses attaques, passe ses phases et meurt. Ensuite un **vrai client Minecraft** démarre sur un écran virtuel et prend des captures d'écran (artefact `captures-ecran`).
 
 Pour publier sur CurseForge, le texte de présentation prêt à coller est dans [`CURSEFORGE.md`](CURSEFORGE.md).
