@@ -96,16 +96,29 @@ public final class ClientTest {
             case 300 -> shot(mc, "06_ironman_laser.png");
             case 320 -> onServer(server, id, sp -> HeroManager.useAbility(sp, 2));
             case 344 -> shot(mc, "07_ironman_unirayon.png");
-            case 370 -> {
+            case 360 -> {
+                mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+                onServer(server, id, sp -> sp.teleportTo(sp.serverLevel(), baseX, baseY + 4, baseZ, 0F, 10F));
+            }
+            case 364 -> {
+                mc.player.getAbilities().flying = true;
+                mc.player.onUpdateAbilities();
+            }
+            case 385 -> shot(mc, "08_ironman_vol.png");
+            case 390 -> {
                 mc.options.setCameraType(CameraType.FIRST_PERSON);
                 onServer(server, id, sp -> HeroManager.useAbility(sp, 3));
             }
-            case 382 -> shot(mc, "08_ironman_hud_missiles.png");
-            case 400 -> {
-                mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+            case 420 -> onServer(server, id, sp -> HeroManager.useAbility(sp, 1));
+            case 422 -> shot(mc, "09_ironman_hud_repulseur.png");
+            case 450 -> {
+                mc.player.getAbilities().flying = false;
+                mc.player.onUpdateAbilities();
+                mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
                 onServer(server, id, sp -> {
                     ServerLevel level = sp.serverLevel();
-                    sp.teleportTo(level, baseX, baseY, baseZ - 6, 0F, -12F);
+                    level.getEntitiesOfClass(Mob.class, sp.getBoundingBox().inflate(64)).forEach(m -> m.discard());
+                    sp.teleportTo(level, baseX, baseY, baseZ - 4, 180F, -4F);
                     GalactusEntity g = ModEntities.GALACTUS.get().create(level);
                     if (g == null) return;
                     g.moveTo(baseX, baseY, baseZ + 22, 180F, 0F);
@@ -115,20 +128,24 @@ public final class ClientTest {
                     boss = g;
                 });
             }
-            case 450 -> shot(mc, "09_galactus.png");
-            case 455 -> onServer(server, id, sp -> {
+            case 500 -> shot(mc, "10_galactus.png");
+            case 505 -> onServer(server, id, sp -> {
                 if (boss != null) boss.forceState(GalactusEntity.S_BEAM_CHARGE);
             });
-            case 500 -> shot(mc, "10_galactus_rayon.png");
-            case 540 -> onServer(server, id, sp -> {
+            case 552 -> shot(mc, "11_galactus_rayon.png");
+            case 590 -> onServer(server, id, sp -> {
                 if (boss != null) boss.forceState(GalactusEntity.S_METEOR);
             });
-            case 585 -> shot(mc, "11_galactus_meteores.png");
-            case 600 -> onServer(server, id, sp -> {
+            case 632 -> shot(mc, "12_galactus_meteores.png");
+            case 650 -> onServer(server, id, sp -> {
                 if (boss != null) boss.forceState(GalactusEntity.S_SLAM);
             });
-            case 630 -> shot(mc, "12_galactus_onde.png");
-            case 660 -> {
+            case 680 -> shot(mc, "13_galactus_onde.png");
+            case 700 -> onServer(server, id, sp -> {
+                if (boss != null) boss.forceState(GalactusEntity.S_GRAVITY);
+            });
+            case 730 -> shot(mc, "14_galactus_gravite.png");
+            case 770 -> {
                 HulkIronMan.LOGGER.info("[CLIENTTEST] OK");
                 mc.stop();
             }

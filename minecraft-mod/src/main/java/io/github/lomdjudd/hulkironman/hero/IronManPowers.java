@@ -117,11 +117,12 @@ public final class IronManPowers {
                 if (p.hasDisconnected() || !p.isAlive()) return;
                 Vec3 look = p.getLookAngle();
                 Vec3 right = Combat.rightOf(look);
-                double side = (k % 2 == 0 ? 1 : -1) * (0.4 + (k / 2) * 0.15);
-                Vec3 pos = p.getEyePosition().add(right.scale(side * 0.6)).add(0, 0.2, 0);
+                double side = (k % 2 == 0 ? 1 : -1) * (0.5 + (k / 2) * 0.15);
+                // les missiles jaillissent des épaules, au-dessus et en arrière de la caméra
+                Vec3 pos = p.getEyePosition().add(right.scale(side * 0.7)).add(look.scale(-0.4)).add(0, 0.6, 0);
                 MissileEntity m = new MissileEntity(level, p);
                 m.setPos(pos.x, pos.y, pos.z);
-                m.setDeltaMovement(look.scale(0.5).add(right.scale(side * 0.35)).add(0, 0.35, 0));
+                m.setDeltaMovement(look.scale(0.9).add(right.scale(side * 0.4)).add(0, 0.45, 0));
                 m.setHomingTarget(target);
                 level.addFreshEntity(m);
                 Combat.sound(level, pos, SoundEvents.FIREWORK_ROCKET_LAUNCH, 0.8F, 1.3F + k * 0.05F);

@@ -186,6 +186,7 @@ public final class SelfTest {
             level.getEntitiesOfClass(GalactusEntity.class, io.github.lomdjudd.hulkironman.hero.Combat.around(base, 300)).forEach(g -> g.discard());
             level.getEntitiesOfClass(net.minecraft.world.entity.monster.Vex.class, io.github.lomdjudd.hulkironman.hero.Combat.around(base, 300)).forEach(v -> v.discard());
             level.getEntitiesOfClass(net.minecraft.world.entity.projectile.Projectile.class, io.github.lomdjudd.hulkironman.hero.Combat.around(base, 300)).forEach(e -> e.discard());
+            level.getEntitiesOfClass(Mob.class, io.github.lomdjudd.hulkironman.hero.Combat.around(base, 300)).forEach(e -> e.discard());
             finish(server);
         });
     }

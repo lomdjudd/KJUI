@@ -51,7 +51,7 @@ public final class HeroHud {
         int y0 = h - SLOT - 20;
         if (x0 < w / 2 + 96) {
             // écran étroit : le panneau passe au milieu à droite
-            y0 = h / 2 - 10;
+            y0 = h / 2 + 10;
         }
         boolean hulk = form == HeroForm.HULK;
         int color = hulk ? 0xFF5BE04A : 0xFFFFC23A;
@@ -59,7 +59,7 @@ public final class HeroHud {
 
         // titre + jauge
         String title = hulk ? "HULK" : "IRON MAN";
-        g.drawString(font, title, x0, y0 - 18, color, true);
+        g.drawString(font, title, x0, y0 - 29, color, true);
         float res = Mth.clamp(ClientHeroData.resource / 100F, 0F, 1F);
         String label = hulk
                 ? (ClientHeroData.rageTicks > 0 ? Component.translatable("hud.hulkironman.rage_active", ClientHeroData.rageTicks / 20).getString()
