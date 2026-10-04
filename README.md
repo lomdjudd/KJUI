@@ -1,5 +1,7 @@
 # 🕷️ Spider-Man : Monde Ouvert
 
+> 🧬 **Nouveau :** le dépôt contient aussi [**Évolution**](evolution/README.md), un jeu en monde ouvert où l'on évolue de la cellule à l'humain, puis jusqu'à l'an 2000 et la conquête spatiale. Pour y jouer, ouvre [`evolution/dist/index.html`](evolution/dist/index.html).
+
 Un jeu Spider-Man en 3D, **en monde ouvert**, jouable directement dans le navigateur. Il s'inspire des jeux Spider-Man classiques : tu te balances entre les gratte-ciel d'un Manhattan procédural, tu arrêtes des criminels avec plusieurs styles de combat, tu enchaînes les missions jusqu'au duel final contre le Bouffon Vert.
 
 > Fan-game non officiel, gratuit et sans but commercial. Spider-Man, le Bouffon Vert, Oscorp et le Daily Bugle sont des marques de Marvel. Tous les graphismes et sons du jeu sont générés par le code (aucun élément extrait des jeux officiels).

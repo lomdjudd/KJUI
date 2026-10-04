@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:evolution": "vite evolution",
+    "build:evolution": "vite build evolution"
   },
   "dependencies": {
     "three": "^0.186.1"
