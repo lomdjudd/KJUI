@@ -29,7 +29,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Compiler le mod
-        run: ./gradlew build --stacktrace
+        run: |
+          set +e
+          ./gradlew build --console=plain 2>&1 | tee build.log
+          status=${PIPESTATUS[0]}
+          echo "----- erreurs de compilation -----"
+          grep -E "error:|warning: \[removal\]" -A3 build.log | head -200
+          exit $status
 
       - name: Auto-test sur un vrai serveur (pouvoirs + Galactus)
         run: |

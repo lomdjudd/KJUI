@@ -40,7 +40,7 @@ public final class ClientFx {
         Vec3 a = p.a();
         Vec3 b = p.b();
         float size = p.size();
-        switch (p.type()) {
+        switch (p.kind()) {
             case FxPayload.REPULSOR -> {
                 line(level, a, b, 0.3, CYAN, 0.04);
                 line(level, a, b, 1.2, ParticleTypes.END_ROD, 0.0);

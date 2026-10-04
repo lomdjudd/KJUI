@@ -4,6 +4,8 @@ Un jeu Spider-Man en 3D, **en monde ouvert**, jouable directement dans le naviga
 
 > Fan-game non officiel, gratuit et sans but commercial. Spider-Man, le Bouffon Vert, Oscorp et le Daily Bugle sont des marques de Marvel. Tous les graphismes et sons du jeu sont générés par le code (aucun élément extrait des jeux officiels).
 
+> 🧱 **Nouveau : mod Minecraft « Hulk & Iron Man vs Galactus »** (NeoForge 1.21.1, prêt pour CurseForge) dans le dossier [`minecraft-mod/`](minecraft-mod/README.md) : transforme-toi en Hulk ou en Iron Man et affronte Galactus.
+
 ## ▶️ Jouer
 
 **Le plus simple :** ouvre le fichier [`dist/index.html`](dist/index.html) dans un navigateur récent (Chrome, Edge, Firefox, Safari). C'est un fichier unique qui contient tout le jeu, il marche même hors ligne (double-clic).

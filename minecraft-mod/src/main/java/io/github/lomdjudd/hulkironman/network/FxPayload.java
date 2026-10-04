@@ -12,13 +12,13 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * Serveur -> clients proches : un effet visuel à dessiner avec des particules.
  * Un seul petit paquet par effet, les particules sont générées côté client.
  *
- * @param type   type d'effet (constantes ci-dessous)
+ * @param kind   type d'effet (constantes ci-dessous)
  * @param data   donnée entière : identifiant d'entité ou d'état de bloc selon le type
  * @param a      point principal
  * @param b      second point, direction ou couleur selon le type
  * @param size   rayon / portée / hauteur selon le type
  */
-public record FxPayload(int type, int data, double ax, double ay, double az, double bx, double by, double bz, float size)
+public record FxPayload(int kind, int data, double ax, double ay, double az, double bx, double by, double bz, float size)
         implements CustomPacketPayload {
 
     public static final int REPULSOR = 1;       // a -> b
@@ -50,7 +50,7 @@ public record FxPayload(int type, int data, double ax, double ay, double az, dou
             CustomPacketPayload.codec(FxPayload::write, FxPayload::read);
 
     private void write(FriendlyByteBuf buf) {
-        buf.writeVarInt(type);
+        buf.writeVarInt(kind);
         buf.writeVarInt(data);
         buf.writeDouble(ax);
         buf.writeDouble(ay);
@@ -81,16 +81,16 @@ public record FxPayload(int type, int data, double ax, double ay, double az, dou
 
     // ---------- envoi côté serveur ----------
 
-    public static void send(ServerLevel level, int type, int data, Vec3 a, Vec3 b, float size) {
-        FxPayload p = new FxPayload(type, data, a.x, a.y, a.z, b.x, b.y, b.z, size);
+    public static void send(ServerLevel level, int kind, int data, Vec3 a, Vec3 b, float size) {
+        FxPayload p = new FxPayload(kind, data, a.x, a.y, a.z, b.x, b.y, b.z, size);
         PacketDistributor.sendToPlayersNear(level, null, a.x, a.y, a.z, 160.0, p);
     }
 
-    public static void send(ServerLevel level, int type, Vec3 a, float size) {
-        send(level, type, 0, a, Vec3.ZERO, size);
+    public static void send(ServerLevel level, int kind, Vec3 a, float size) {
+        send(level, kind, 0, a, Vec3.ZERO, size);
     }
 
-    public static void send(ServerLevel level, int type, int data, Vec3 a) {
-        send(level, type, data, a, Vec3.ZERO, 0F);
+    public static void send(ServerLevel level, int kind, int data, Vec3 a) {
+        send(level, kind, data, a, Vec3.ZERO, 0F);
     }
 }

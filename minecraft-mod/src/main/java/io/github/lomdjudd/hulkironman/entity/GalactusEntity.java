@@ -549,11 +549,6 @@ public class GalactusEntity extends Monster {
     }
 
     @Override
-    public boolean canBreatheUnderwater() {
-        return true;
-    }
-
-    @Override
     public boolean isPushable() {
         return false;
     }
