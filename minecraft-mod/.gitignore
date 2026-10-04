@@ -1,0 +1,7 @@
+.gradle/
+build/
+run/
+run-selftest/
+out/
+.idea/
+*.iml
