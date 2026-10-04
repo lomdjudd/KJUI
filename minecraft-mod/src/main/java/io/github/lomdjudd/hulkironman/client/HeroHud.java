@@ -138,6 +138,7 @@ public final class HeroHud {
         g.fill(w - m - 1, h - m - len, w - m, h - m, dim);
         g.fillGradient(0, 0, w, 18, 0x3000C8FF, 0x0000C8FF);
 
+        g.fill(m + 2, m + 2, m + 128, m + 46, 0x70001820);
         g.drawString(font, "J.A.R.V.I.S.", m + 4, m + 4, cyan, false);
         int alt = (int) player.getY();
         double speed = player.getDeltaMovement().length() * 20.0;
@@ -154,6 +155,7 @@ public final class HeroHud {
         String[] dirs = {"S", "SO", "O", "NO", "N", "NE", "E", "SE"};
         String dir = dirs[Math.floorMod(Math.round(yaw / 45F), 8)];
         String comp = "◆ " + dir + " " + Math.round((yaw + 360) % 360) + "° ◆";
+        g.fill(w - m - 8 - font.width(comp), m + 2, w - m - 2, m + 14, 0x70001820);
         g.drawString(font, comp, w - m - 4 - font.width(comp), m + 4, cyan, false);
 
         // cible

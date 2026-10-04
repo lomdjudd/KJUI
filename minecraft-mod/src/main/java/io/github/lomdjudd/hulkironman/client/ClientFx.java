@@ -19,11 +19,13 @@ import org.joml.Vector3f;
 /** Tous les effets visuels des pouvoirs, dessinés avec des particules à partir d'un seul paquet. */
 public final class ClientFx {
     private static final DustParticleOptions CYAN = dust(0.45F, 0.9F, 1.0F, 1.3F);
-    private static final DustParticleOptions CYAN_BIG = dust(0.4F, 0.85F, 1.0F, 2.6F);
+    private static final DustParticleOptions CYAN_BIG = dust(0.4F, 0.85F, 1.0F, 1.8F);
     private static final DustParticleOptions WHITE = dust(1.0F, 1.0F, 1.0F, 1.1F);
     private static final DustParticleOptions LASER = dust(1.0F, 0.25F, 0.1F, 1.2F);
     private static final DustParticleOptions LASER_CORE = dust(1.0F, 0.9F, 0.75F, 0.6F);
     private static final DustParticleOptions GREEN = dust(0.35F, 1.0F, 0.3F, 2.0F);
+    private static final DustParticleOptions GREEN_SMALL = dust(0.35F, 1.0F, 0.3F, 1.0F);
+    private static final DustParticleOptions RED_SMALL = dust(1.0F, 0.2F, 0.1F, 1.0F);
     private static final DustParticleOptions RED = dust(1.0F, 0.15F, 0.1F, 1.6F);
     private static final DustParticleOptions GOLD = dust(1.0F, 0.8F, 0.25F, 1.4F);
     private static final DustParticleOptions PURPLE = dust(0.7F, 0.3F, 1.0F, 2.4F);
@@ -46,7 +48,7 @@ public final class ClientFx {
                 line(level, a, b, 1.2, ParticleTypes.END_ROD, 0.0);
                 burst(level, b, ParticleTypes.ELECTRIC_SPARK, 14, 0.35);
                 level.addParticle(ParticleTypes.FLASH, true, b.x, b.y, b.z, 0, 0, 0);
-                level.addParticle(ParticleTypes.FLASH, true, a.x, a.y, a.z, 0, 0, 0);
+                burst(level, a, ParticleTypes.ELECTRIC_SPARK, 5, 0.15);
             }
             case FxPayload.UNIBEAM -> {
                 line(level, a, b, 0.45, WHITE, 0.05);
@@ -78,8 +80,9 @@ public final class ClientFx {
                 }
             }
             case FxPayload.SPHERE -> {
-                DustParticleOptions col = dust((float) b.x, (float) b.y, (float) b.z, 3.0F);
-                int n = (int) Math.min(420, 30 + size * 22);
+                // les grosses particules de poussière vivent longtemps : on en met peu, de taille moyenne
+                DustParticleOptions col = dust((float) b.x, (float) b.y, (float) b.z, 1.5F);
+                int n = (int) Math.min(240, 24 + size * 11);
                 double golden = Math.PI * (3 - Math.sqrt(5));
                 for (int i = 0; i < n; i++) {
                     double yy = 1 - (i / (double) (n - 1)) * 2;
@@ -102,7 +105,6 @@ public final class ClientFx {
                     Vec3 v = dir.add(spread).normalize().scale(0.6 + r.nextDouble() * 0.9);
                     level.addParticle(ParticleTypes.CLOUD, true, a.x, a.y, a.z, v.x, v.y, v.z);
                 }
-                level.addParticle(ParticleTypes.FLASH, true, a.x, a.y, a.z, 0, 0, 0);
                 level.addParticle(ParticleTypes.EXPLOSION, true, a.x, a.y, a.z, 0, 0, 0);
             }
             case FxPayload.IMPACT -> {
@@ -221,7 +223,7 @@ public final class ClientFx {
                 double w = e.getBbWidth();
                 double h = e.getBbHeight();
                 for (int i = 0; i < 6; i++) {
-                    level.addParticle(i % 2 == 0 ? GREEN : RED, c.x + (r.nextDouble() - 0.5) * w * 1.4, c.y + r.nextDouble() * h,
+                    level.addParticle(i % 2 == 0 ? GREEN_SMALL : RED_SMALL, c.x + (r.nextDouble() - 0.5) * w * 1.4, c.y + r.nextDouble() * h,
                             c.z + (r.nextDouble() - 0.5) * w * 1.4, 0, 0.05, 0);
                 }
                 if (r.nextInt(4) == 0) level.addParticle(ParticleTypes.ANGRY_VILLAGER, c.x, c.y + h + 0.3, c.z, 0, 0, 0);

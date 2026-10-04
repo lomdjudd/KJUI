@@ -153,7 +153,7 @@ public final class HulkPowers {
         Scheduler.repeat(14, age -> {
             if (p.hasDisconnected() || !p.isAlive()) return;
             double r = 2.0 + age * 1.4;
-            FxPayload.send(level, FxPayload.SPHERE, 0, c, new Vec3(0.35, 1.0, 0.3), (float) r);
+            if (age % 2 == 0 || age == 13) FxPayload.send(level, FxPayload.SPHERE, 0, c, new Vec3(0.35, 1.0, 0.3), (float) r);
             for (LivingEntity e : Combat.enemiesNear(p, c, r)) {
                 if (!hit.add(e.getId())) continue;
                 Combat.damage(p, e, 30F);

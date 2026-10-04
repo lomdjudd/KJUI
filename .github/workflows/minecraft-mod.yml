@@ -102,9 +102,9 @@ jobs:
           from PIL import Image
           for f in sorted(glob.glob('run/screenshots/*.png')):
               im = Image.open(f).convert('RGB')
-              im.thumbnail((800, 450))
+              im.thumbnail((1280, 720))
               buf = io.BytesIO()
-              im.save(buf, 'JPEG', quality=72)
+              im.save(buf, 'JPEG', quality=82)
               b = base64.b64encode(buf.getvalue()).decode()
               print('=====BEGIN ' + os.path.basename(f) + '=====')
               for i in range(0, len(b), 3000):

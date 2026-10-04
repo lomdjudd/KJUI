@@ -62,7 +62,7 @@ public final class ClientTest {
                 for (int i = 0; i < 5; i++) {
                     Mob husk = EntityType.HUSK.create(level);
                     if (husk == null) continue;
-                    husk.moveTo(baseX - 6 + i * 3, baseY, baseZ + 7, 180F, 0F);
+                    husk.moveTo(baseX - 9 + i * 4.5, baseY, baseZ + 13, 180F, 0F);
                     husk.setNoAi(true);
                     level.addFreshEntity(husk);
                 }
@@ -121,9 +121,9 @@ public final class ClientTest {
                     sp.teleportTo(level, baseX, baseY, baseZ - 4, 180F, -4F);
                     GalactusEntity g = ModEntities.GALACTUS.get().create(level);
                     if (g == null) return;
-                    g.moveTo(baseX, baseY, baseZ + 22, 180F, 0F);
-                    g.setYHeadRot(180F);
-                    g.setYBodyRot(180F);
+                    g.moveTo(baseX + 9, baseY, baseZ + 22, 160F, 0F);
+                    g.setYHeadRot(160F);
+                    g.setYBodyRot(160F);
                     level.addFreshEntity(g);
                     boss = g;
                 });
