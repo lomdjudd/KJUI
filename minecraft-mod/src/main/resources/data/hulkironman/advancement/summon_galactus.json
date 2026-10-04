@@ -1,0 +1,35 @@
+{
+  "parent": "hulkironman:root",
+  "display": {
+    "icon": {
+      "id": "hulkironman:cosmic_orb"
+    },
+    "title": {
+      "translate": "advancement.hulkironman.summon_galactus"
+    },
+    "description": {
+      "translate": "advancement.hulkironman.summon_galactus.desc"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "c": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "hulkironman:cosmic_orb"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "c"
+    ]
+  ]
+}

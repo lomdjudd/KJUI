@@ -8,7 +8,20 @@ modId = "${mod_id}"
 version = "${mod_version}"
 displayName = "${mod_name}"
 authors = "${mod_authors}"
-description = '''Deviens Hulk ou Iron Man et affronte Galactus !'''
+logoFile = "logo.png"
+displayURL = "https://github.com/lomdjudd/KJUI/tree/main/minecraft-mod"
+description = '''
+Deviens HULK (Sérum Gamma) ou IRON MAN (Réacteur Arc) et affronte GALACTUS, le Dévoreur de Mondes !
+
+Hulk : Clap de tonnerre, Hulk Smash, Saut gamma, Lancer de rocher, Colère gamma.
+Iron Man : vol, Répulseurs, Unirayon, Micro-missiles, Laser circulaire, Frappe orbitale.
+Galactus : boss géant en 3 phases (rayon cosmique, pluie de météores, onde de choc, puits gravitationnel).
+
+Fan-made, non officiel. Hulk, Iron Man et Galactus sont des marques de Marvel.
+'''
+
+[[mixins]]
+config = "hulkironman.mixins.json"
 
 [[dependencies.${mod_id}]]
 modId = "neoforge"

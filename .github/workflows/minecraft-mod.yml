@@ -28,11 +28,27 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Versions NeoForge 1.21.1 disponibles
-        run: curl -s https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml | grep -oE '21\.1\.[0-9]+' | sort -t. -k3 -n | uniq | tail -5
-
       - name: Compiler le mod
         run: ./gradlew build --stacktrace
+
+      - name: Auto-test sur un vrai serveur (pouvoirs + Galactus)
+        run: |
+          mkdir -p run-selftest
+          echo "eula=true" > run-selftest/eula.txt
+          cat > run-selftest/server.properties <<'PROPS'
+          online-mode=false
+          level-type=minecraft\:flat
+          generate-structures=false
+          spawn-protection=0
+          difficulty=normal
+          view-distance=4
+          simulation-distance=4
+          max-tick-time=-1
+          PROPS
+          (timeout 900 ./gradlew runSelfTest --stacktrace || true) 2>&1 | tee selftest.log
+          echo "----- résumé -----"
+          grep -E "\[SELFTEST\]" selftest.log || true
+          grep -q "\[SELFTEST\] OK" selftest.log
 
       - name: Envoyer le .jar
         uses: actions/upload-artifact@v4

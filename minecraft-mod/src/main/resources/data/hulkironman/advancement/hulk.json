@@ -1,0 +1,35 @@
+{
+  "parent": "hulkironman:root",
+  "display": {
+    "icon": {
+      "id": "hulkironman:gamma_serum"
+    },
+    "title": {
+      "translate": "advancement.hulkironman.hulk"
+    },
+    "description": {
+      "translate": "advancement.hulkironman.hulk.desc"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "c": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "hulkironman:gamma_serum"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "c"
+    ]
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "display": {
+    "icon": {
+      "id": "hulkironman:gamma_serum"
+    },
+    "title": {
+      "translate": "advancement.hulkironman.root"
+    },
+    "description": {
+      "translate": "advancement.hulkironman.root.desc"
+    },
+    "frame": "task",
+    "background": "minecraft:textures/gui/advancements/backgrounds/stone.png",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "c": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "hulkironman:gamma_serum",
+              "hulkironman:arc_reactor",
+              "hulkironman:cosmic_orb"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "c"
+    ]
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    { "item": "minecraft:glass_bottle" },
+    { "item": "minecraft:emerald" },
+    { "item": "minecraft:glowstone_dust" },
+    { "item": "minecraft:slime_ball" },
+    { "item": "minecraft:lime_dye" }
+  ],
+  "result": { "id": "hulkironman:gamma_serum", "count": 1 }
+}

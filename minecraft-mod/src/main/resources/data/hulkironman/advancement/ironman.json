@@ -1,0 +1,35 @@
+{
+  "parent": "hulkironman:root",
+  "display": {
+    "icon": {
+      "id": "hulkironman:arc_reactor"
+    },
+    "title": {
+      "translate": "advancement.hulkironman.ironman"
+    },
+    "description": {
+      "translate": "advancement.hulkironman.ironman.desc"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "c": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "hulkironman:arc_reactor"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "c"
+    ]
+  ]
+}

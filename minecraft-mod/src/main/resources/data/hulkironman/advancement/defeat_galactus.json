@@ -1,0 +1,33 @@
+{
+  "parent": "hulkironman:summon_galactus",
+  "display": {
+    "icon": {
+      "id": "hulkironman:cosmic_heart"
+    },
+    "title": {
+      "translate": "advancement.hulkironman.defeat_galactus"
+    },
+    "description": {
+      "translate": "advancement.hulkironman.defeat_galactus.desc"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "c": {
+      "trigger": "minecraft:player_killed_entity",
+      "conditions": {
+        "entity": {
+          "type": "hulkironman:galactus"
+        }
+      }
+    }
+  },
+  "requirements": [
+    [
+      "c"
+    ]
+  ]
+}

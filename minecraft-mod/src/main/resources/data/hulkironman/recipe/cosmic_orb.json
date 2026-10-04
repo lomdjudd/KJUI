@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "EAE",
+    "ADA",
+    "EAE"
+  ],
+  "key": {
+    "E": { "item": "minecraft:ender_eye" },
+    "A": { "item": "minecraft:amethyst_shard" },
+    "D": { "item": "minecraft:diamond_block" }
+  },
+  "result": { "id": "hulkironman:cosmic_orb", "count": 1 }
+}
