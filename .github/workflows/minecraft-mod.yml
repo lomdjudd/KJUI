@@ -14,7 +14,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 55
     defaults:
       run:
         working-directory: minecraft-mod
@@ -62,3 +62,59 @@ jobs:
           name: hulkironman-neoforge-1.21.1
           path: minecraft-mod/build/libs/*.jar
           if-no-files-found: error
+
+      - name: Captures d'écran (vrai client Minecraft, rendu logiciel)
+        if: success() || failure()
+        continue-on-error: true
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb libgl1 libgl1-mesa-dri libglx-mesa0 libxrandr2 libxinerama1 libxcursor1 libxi6 libxxf86vm1 > /dev/null
+          mkdir -p run/saves
+          rm -rf run/saves/test
+          cp -r run-selftest/world run/saves/test
+          cat > run/options.txt <<'OPTS'
+          version:3955
+          onboardAccessibility:false
+          renderDistance:6
+          simulationDistance:5
+          guiScale:2
+          fullscreen:false
+          pauseOnLostFocus:false
+          tutorialStep:none
+          skipMultiplayerWarning:true
+          joinedFirstServer:true
+          soundCategory_master:0.0
+          lang:fr_fr
+          OPTS
+          export LIBGL_ALWAYS_SOFTWARE=1
+          export GALLIUM_DRIVER=llvmpipe
+          (timeout 1500 xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientTest --console=plain || true) 2>&1 | tee clienttest.log | grep -E "CLIENTTEST|ERROR|Exception|Caused by" | head -n 60
+          ls -la run/screenshots || true
+
+      - name: Captures en base64 (relecture automatique)
+        if: success() || failure()
+        continue-on-error: true
+        run: |
+          pip install -q pillow
+          python3 - <<'PY'
+          import base64, glob, io, os
+          from PIL import Image
+          for f in sorted(glob.glob('run/screenshots/*.png')):
+              im = Image.open(f).convert('RGB')
+              im.thumbnail((800, 450))
+              buf = io.BytesIO()
+              im.save(buf, 'JPEG', quality=72)
+              b = base64.b64encode(buf.getvalue()).decode()
+              print('=====BEGIN ' + os.path.basename(f) + '=====')
+              for i in range(0, len(b), 3000):
+                  print(b[i:i + 3000])
+              print('=====END ' + os.path.basename(f) + '=====')
+          PY
+
+      - name: Envoyer les captures d'écran
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: captures-ecran
+          path: minecraft-mod/run/screenshots/*.png
+          if-no-files-found: ignore

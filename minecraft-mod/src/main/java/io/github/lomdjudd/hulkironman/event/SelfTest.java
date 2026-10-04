@@ -47,6 +47,13 @@ public final class SelfTest {
         fp.moveTo(base.x, base.y, base.z, 0F, 0F);
         fp.setOnGround(true);
         HulkIronMan.LOGGER.info("[SELFTEST] Démarrage à {}", base);
+        // Sans joueur connecté, le serveur cesse de faire vivre les entités après 15 s :
+        // on force le chargement de la zone de test pour que Galactus agisse normalement.
+        int cx = spawn.getX() >> 4;
+        int cz = spawn.getZ() >> 4;
+        for (int x = -4; x <= 4; x++) {
+            for (int z = -4; z <= 4; z++) level.setChunkForced(cx + x, cz + z, true);
+        }
 
         List<Mob> dummies = new ArrayList<>();
         Scheduler.repeat(1000, age -> HeroManager.tick(fp));

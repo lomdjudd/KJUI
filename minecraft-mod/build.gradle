@@ -36,6 +36,17 @@ neoForge {
             gameDirectory = project.file('run-selftest')
             systemProperty 'hulkironman.selftest', 'true'
         }
+        // Client de test visuel : charge le monde « test » et prend des captures d'écran.
+        clientTest {
+            client()
+            systemProperty 'hulkironman.clienttest', 'true'
+            programArgument '--quickPlaySingleplayer'
+            programArgument 'test'
+            programArgument '--width'
+            programArgument '1280'
+            programArgument '--height'
+            programArgument '720'
+        }
         configureEach {
             systemProperty 'forge.logging.markers', 'REGISTRIES'
             logLevel = org.slf4j.event.Level.INFO
