@@ -6,6 +6,16 @@ Mod **NeoForge pour Minecraft 1.21.1** : transforme-toi en **Hulk** ou en **Iron
 
 ![Logo](src/main/resources/logo.png)
 
+## 📸 En jeu
+Captures prises automatiquement dans le vrai jeu par le test de GitHub Actions :
+
+| | |
+|---|---|
+| ![Hulk](docs/captures/01_hulk.jpg) Hulk | ![Colère gamma](docs/captures/02_hulk_colere_gamma.jpg) Colère gamma |
+| ![Laser circulaire](docs/captures/06_ironman_laser.jpg) Laser circulaire d'Iron Man | ![Vol](docs/captures/08_ironman_vol.jpg) Vol d'Iron Man |
+| ![HUD](docs/captures/09_ironman_hud_repulseur.jpg) HUD J.A.R.V.I.S. et répulseur | ![Galactus](docs/captures/10_galactus.jpg) Galactus |
+| ![Rayon cosmique](docs/captures/11_galactus_rayon.jpg) Rayon cosmique | ![Météores](docs/captures/12_galactus_meteores.jpg) Pluie de météores |
+
 ## 📥 Installer et jouer
 
 1. Installe **NeoForge 1.21.1** : avec l'appli CurseForge, crée un profil *Minecraft 1.21.1* avec le chargeur *NeoForge* ; sans l'appli, prends l'installeur sur [neoforged.net](https://neoforged.net).

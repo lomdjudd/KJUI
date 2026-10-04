@@ -9,6 +9,7 @@ Fiche à remplir lors de la création du projet sur CurseForge (*Create Project*
 - **Licence** : MIT
 - **Logo** : `src/main/resources/logo.png` (256 × 256)
 - **Fichier** : `hulkironman-1.0.0+neoforge-1.21.1.jar`, type *Release*
+- **Images (onglet Gallery)** : les captures de `docs/captures/` (prises dans le vrai jeu)
 
 Description (à coller dans l'éditeur, il accepte le Markdown) :
 
