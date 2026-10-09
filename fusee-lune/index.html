@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fusée vers la Lune</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #02040a; color: #e8f0ff;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  canvas { display: block; width: 100%; height: 100%; }
+  .panel { position: fixed; background: rgba(5, 10, 25, .65); border: 1px solid rgba(120, 160, 255, .25);
+    border-radius: 10px; backdrop-filter: blur(4px); }
+  #hud { top: 16px; left: 16px; padding: 12px 16px; min-width: 240px; pointer-events: none; }
+  #phase { font-size: 17px; font-weight: 700; color: #ffd27a; margin-bottom: 6px; }
+  #tel { font: 14px/1.7 ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+  #count { position: fixed; top: 42%; left: 50%; transform: translate(-50%, -50%); pointer-events: none;
+    font: 800 clamp(44px, 12vw, 88px)/1 system-ui, sans-serif; color: #fff; white-space: nowrap; opacity: 0;
+    text-shadow: 0 0 28px #ff8a3d, 0 0 60px #ff5a1f; transition: opacity .3s; }
+  #help { bottom: 14px; left: 16px; padding: 6px 12px; font-size: 13px; opacity: .75; pointer-events: none; }
+  #replay { bottom: 14px; right: 16px; padding: 9px 16px; font: 14px system-ui, sans-serif; color: #e8f0ff;
+    background: #1b2b52; border: 1px solid #4d6fd0; cursor: pointer; }
+  #replay:hover { background: #263c70; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.186.1/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.186.1/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="hud" class="panel">
+  <div id="phase">Préparation au lancement</div>
+  <div id="tel"></div>
+</div>
+<div id="count"></div>
+<div id="help" class="panel">Glisser pour tourner · Molette pour zoomer · Espace pour relancer</div>
+<button id="replay" class="panel">↺ Relancer</button>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ---------- Réglages de la mission ---------- */
+const PAD_TOP   = 0.5;                                  // dessus de la rampe de lancement
+const EARTH_R   = 120;
+const EARTH_C   = new THREE.Vector3(0, -EARTH_R, 0);    // la Terre est sous la rampe
+const MOON_R    = 30;
+const MOON_C    = new THREE.Vector3(-90, 340, -520);
+const KM        = 725;                                  // 1 unité de scène ≈ 725 km
+const COUNTDOWN = 10;                                   // secondes avant le décollage
+const IGNITION  = 3;                                    // allumage des moteurs à T-3
+const FLIGHT    = 32;                                   // durée du trajet (secondes)
+const SEP_F     = 0.2;                                  // séparation des boosters (progression du vol)
+const HOLD      = 6;                                    // pause en orbite avant de recommencer
+const CYCLE     = COUNTDOWN + FLIGHT + HOLD;
+const UP        = new THREE.Vector3(0, 1, 0);
+
+/* ---------- Utilitaires ---------- */
+const rand  = (a, b) => a + Math.random() * (b - a);
+const rv    = (s) => new THREE.Vector3(rand(-s, s), rand(-s, s), rand(-s, s));
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const fmt   = (n) => Math.round(n).toLocaleString('fr-FR');
+
+function planetTexture(base, blobs, craters) {
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  g.fillStyle = base;
+  g.fillRect(0, 0, 1024, 512);
+  for (const [color, n, rMin, rMax] of blobs) {
+    g.fillStyle = color;
+    for (let i = 0; i < n; i++) {
+      g.beginPath();
+      g.arc(rand(0, 1024), rand(0, 512), rand(rMin, rMax), 0, Math.PI * 2);
+      g.fill();
+    }
+  }
+  for (let i = 0; i < craters; i++) {
+    const x = rand(0, 1024), y = rand(0, 512), r = rand(2, 26);
+    g.fillStyle = 'rgba(0,0,0,0.25)';
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,0.2)';
+    g.lineWidth = Math.max(1, r * 0.2);
+    g.beginPath(); g.arc(x + r * 0.2, y + r * 0.2, r, 0, Math.PI * 2); g.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function glowTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grd.addColorStop(0, 'rgba(255,255,255,1)');
+  grd.addColorStop(0.35, 'rgba(255,255,255,0.6)');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+
+/* ---------- Rendu, caméra, lumière ---------- */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+document.body.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x02040a);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 8000);
+camera.position.set(-22, 12, 46);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 5, 0);
+controls.enableDamping = true;
+controls.minDistance = 3;
+controls.maxDistance = 1200;
+controls.update();
+
+scene.add(new THREE.HemisphereLight(0x9fc4ff, 0x202030, 0.6));
+const sun = new THREE.DirectionalLight(0xffffff, 2.6);
+sun.position.set(300, 150, 200);
+scene.add(sun);
+
+/* ---------- Ciel étoilé ---------- */
+{
+  const pos = new Float32Array(5000 * 3);
+  for (let i = 0; i < 5000; i++) rv(1).normalize().multiplyScalar(rand(2500, 3500)).toArray(pos, i * 3);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: false })));
+}
+
+/* ---------- Terre et Lune ---------- */
+const earth = new THREE.Mesh(
+  new THREE.SphereGeometry(EARTH_R, 128, 96),
+  new THREE.MeshStandardMaterial({
+    map: planetTexture('#1d5fb8', [['#3d8a4a', 150, 10, 45], ['#eef6ff', 90, 15, 50]], 0),
+    roughness: 0.9,
+  })
+);
+earth.position.copy(EARTH_C);
+scene.add(earth);
+
+// Halo atmosphérique : éclat sur le bord de la Terre seulement
+const halo = new THREE.Mesh(
+  new THREE.SphereGeometry(EARTH_R * 1.04, 128, 96),
+  new THREE.ShaderMaterial({
+    vertexShader: `
+      varying vec3 vN; varying vec3 vV;
+      void main() {
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vN = normalize(normalMatrix * normal);
+        vV = normalize(-mv.xyz);
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      varying vec3 vN; varying vec3 vV;
+      void main() {
+        float f = pow(1.0 - abs(dot(vN, vV)), 3.0);
+        gl_FragColor = vec4(0.4, 0.7, 1.0, f * 0.9);
+      }`,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  })
+);
+halo.position.copy(EARTH_C);
+scene.add(halo);
+
+const moon = new THREE.Mesh(
+  new THREE.SphereGeometry(MOON_R, 96, 72),
+  new THREE.MeshStandardMaterial({
+    map: planetTexture('#8e8e96', [['#9d9da6', 90, 20, 70], ['#6c6c75', 60, 15, 50]], 420),
+    roughness: 1,
+  })
+);
+moon.position.copy(MOON_C);
+scene.add(moon);
+
+/* ---------- Rampe de lancement et tour ---------- */
+const concrete = new THREE.MeshStandardMaterial({ color: 0x8a8d93, roughness: 0.95 });
+const steel = new THREE.MeshStandardMaterial({ color: 0xc8c8d0, metalness: 0.6, roughness: 0.4 });
+
+const pad = new THREE.Mesh(new THREE.BoxGeometry(44, 3, 44), concrete);
+pad.position.set(0, PAD_TOP - 1.5, 0);
+scene.add(pad);
+
+const tower = new THREE.Group();
+const TH = 52, TW = 4.5;
+const bar = (sx, sy, sz, x, y, z) => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), steel);
+  m.position.set(x, y, z);
+  tower.add(m);
+};
+for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) bar(0.5, TH, 0.5, x * TW / 2, TH / 2, z * TW / 2);
+for (let y = 3; y < TH; y += 6) {
+  bar(TW, 0.35, 0.35, 0, y, TW / 2);
+  bar(TW, 0.35, 0.35, 0, y, -TW / 2);
+  bar(0.35, 0.35, TW, TW / 2, y, 0);
+  bar(0.35, 0.35, TW, -TW / 2, y, 0);
+}
+tower.position.set(-8, PAD_TOP, 0);
+scene.add(tower);
+
+/* ---------- Fusée (3 boosters + étage supérieur) ---------- */
+const add = (parent, geo, mat, x = 0, y = 0, z = 0) => {
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x, y, z);
+  parent.add(m);
+  return m;
+};
+const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf2f4f7, roughness: 0.45 });
+const darkMat  = new THREE.MeshStandardMaterial({ color: 0x2a2d35, roughness: 0.6, metalness: 0.3 });
+const redMat   = new THREE.MeshStandardMaterial({ color: 0xc0392b, roughness: 0.5 });
+const finMat   = new THREE.MeshStandardMaterial({ color: 0x1f2430, roughness: 0.5 });
+const flameMat = new THREE.MeshBasicMaterial({ color: 0xff9a3c, transparent: true, opacity: 0.85,
+  blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+const coreMat  = new THREE.MeshBasicMaterial({ color: 0xfff2d0, transparent: true, opacity: 0.9,
+  blending: THREE.AdditiveBlending, depthWrite: false });
+
+// Ogive arrondie : profil de révolution
+function noseGeometry(r, h) {
+  const pts = [];
+  for (let i = 0; i <= 16; i++) {
+    const t = i / 16;
+    pts.push(new THREE.Vector2(r * Math.sqrt(1 - t * t), t * h));
+  }
+  return new THREE.LatheGeometry(pts, 32);
+}
+
+// Tuyère + flamme (la flamme part du bas de la tuyère, pointe vers le bas)
+function engine(parent, x, y, z, s) {
+  const node = add(parent, new THREE.CylinderGeometry(0.22 * s, 0.32 * s, 0.7 * s, 20, 1, true), darkMat,
+    x, y - 0.35 * s, z);
+  const flame = new THREE.Group();
+  flame.position.set(x, y - 0.6 * s, z);
+  flame.add(new THREE.Mesh(
+    new THREE.ConeGeometry(0.3 * s, 2.6 * s, 20, 1, true).rotateZ(Math.PI).translate(0, -1.3 * s, 0), flameMat));
+  flame.add(new THREE.Mesh(
+    new THREE.ConeGeometry(0.14 * s, 1.8 * s, 16, 1, true).rotateZ(Math.PI).translate(0, -0.9 * s, 0), coreMat));
+  parent.add(flame);
+  return { node, flame, acc: 0, phase: rand(0, 6) };
+}
+
+const booster = new THREE.Group();
+add(booster, new THREE.CylinderGeometry(1, 1, 6, 40), whiteMat, 0, 3, 0);
+add(booster, new THREE.CylinderGeometry(1.02, 1.02, 0.25, 40), darkMat, 0, 6, 0);
+for (let i = 0; i < 4; i++) {
+  const a = i * Math.PI / 2;
+  add(booster, new THREE.BoxGeometry(1.4, 2.2, 0.08), finMat, Math.cos(a) * 1.7, 1.1, Math.sin(a) * 1.7)
+    .rotation.y = -a;
+}
+const boosterEngines = [
+  [0, 0, 0, 1.1], [0.55, 0, 0, 0.7], [-0.55, 0, 0, 0.7], [0, 0, 0.55, 0.7], [0, 0, -0.55, 0.7],
+].map(([x, y, z, s]) => engine(booster, x, y, z, s));
+
+const upper = new THREE.Group();
+add(upper, new THREE.CylinderGeometry(0.9, 0.9, 3, 40), whiteMat, 0, 7.5, 0);
+add(upper, noseGeometry(0.9, 2.6), redMat, 0, 9, 0);
+const upperEngines = [engine(upper, 0, 6, 0, 0.8)];
+
+const rocket = new THREE.Group();
+rocket.add(booster, upper);
+rocket.position.set(0, PAD_TOP, 0);
+scene.add(rocket);
+
+// Trajectoire : verticale au départ, puis virage vers la Lune
+const path = new THREE.CatmullRomCurve3([
+  new THREE.Vector3(0, PAD_TOP, 0),
+  new THREE.Vector3(0, 45, 0),
+  new THREE.Vector3(3, 130, -30),
+  new THREE.Vector3(-30, 240, -170),
+  new THREE.Vector3(-62, 305, -340),
+  new THREE.Vector3(-70, 322, -470),
+], false, 'centripetal');
+
+/* ---------- Particules d'échappement et de fumée ---------- */
+const MAX = 2400;
+const pPos = new Float32Array(MAX * 3);
+const pCol = new Float32Array(MAX * 3);
+const posAttr = new THREE.BufferAttribute(pPos, 3).setUsage(THREE.DynamicDrawUsage);
+const colAttr = new THREE.BufferAttribute(pCol, 3).setUsage(THREE.DynamicDrawUsage);
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position', posAttr);
+pGeo.setAttribute('color', colAttr);
+const exhaust = new THREE.Points(pGeo, new THREE.PointsMaterial({
+  size: 1.4, map: glowTexture(), vertexColors: true, transparent: true,
+  depthWrite: false, blending: THREE.AdditiveBlending,
+}));
+exhaust.frustumCulled = false;
+scene.add(exhaust);
+
+const parts = Array.from({ length: MAX }, () => ({ p: new THREE.Vector3(), v: new THREE.Vector3(), age: 0, life: 0 }));
+let nextPart = 0;
+const HOT  = new THREE.Color(1, 0.95, 0.75);
+const MID  = new THREE.Color(1, 0.45, 0.12);
+const COOL = new THREE.Color(0.35, 0.3, 0.32);
+const tmpC = new THREE.Color();
+
+function spawn(origin, vel, life) {
+  const q = parts[nextPart];
+  nextPart = (nextPart + 1) % MAX;
+  q.p.copy(origin).add(rv(0.2));
+  q.v.copy(vel);
+  q.age = 0;
+  q.life = life;
+}
+
+function updateParticles(dt) {
+  for (let i = 0; i < MAX; i++) {
+    const q = parts[i];
+    if (q.age < q.life) {
+      q.age += dt;
+      q.p.addScaledVector(q.v, dt);
+      q.v.multiplyScalar(Math.max(0, 1 - 0.8 * dt));
+      const k = q.age / q.life;
+      if (k < 0.3) tmpC.lerpColors(HOT, MID, k / 0.3);
+      else tmpC.lerpColors(MID, COOL, (k - 0.3) / 0.7);
+      const fade = (1 - k) ** 1.5;
+      pCol[i * 3] = tmpC.r * fade;
+      pCol[i * 3 + 1] = tmpC.g * fade;
+      pCol[i * 3 + 2] = tmpC.b * fade;
+      q.p.toArray(pPos, i * 3);
+    } else {
+      pCol[i * 3] = pCol[i * 3 + 1] = pCol[i * 3 + 2] = 0; // invisible en additif
+    }
+  }
+  posAttr.needsUpdate = true;
+  colAttr.needsUpdate = true;
+}
+
+const tmpP = new THREE.Vector3(), tmpD = new THREE.Vector3(), tmpV = new THREE.Vector3(), tmpQ = new THREE.Quaternion();
+
+function emitFrom(e, thrust, dt, time) {
+  e.flame.visible = thrust > 0.01;
+  if (!e.flame.visible) { e.acc = 0; return; }
+  e.flame.scale.y = thrust * (0.9 + 0.12 * Math.sin(time * 41 + e.phase) + rand(-0.04, 0.04));
+  e.node.getWorldPosition(tmpP);
+  e.node.getWorldQuaternion(tmpQ);
+  tmpD.set(0, -1, 0).applyQuaternion(tmpQ);
+  e.acc += 150 * thrust * dt;
+  while (e.acc >= 1) {
+    e.acc -= 1;
+    // Près du sol, la fumée s'étale sur la rampe
+    const low = clamp(1 - (tmpP.y - PAD_TOP) / 14, 0, 1);
+    tmpV.copy(tmpD).multiplyScalar(rand(12, 20) * thrust).add(rv(1.2));
+    tmpV.x += rand(-1, 1) * 16 * low;
+    tmpV.z += rand(-1, 1) * 16 * low;
+    spawn(tmpP, tmpV, rand(0.5, 0.95));
+  }
+}
+
+/* ---------- État de la mission ---------- */
+let separated = false, sepTime = null;
+const boosterVel = new THREE.Vector3(), boosterSpin = new THREE.Vector3();
+const rocketVel = new THREE.Vector3(), prevPos = rocket.position.clone();
+const focus = new THREE.Vector3();
+
+function resetCycle() {
+  separated = false;
+  sepTime = null;
+  rocket.add(booster); // remet le booster sur la fusée
+  booster.position.set(0, 0, 0);
+  booster.rotation.set(0, 0, 0);
+  rocket.position.set(0, PAD_TOP, 0);
+  rocket.quaternion.identity();
+  prevPos.copy(rocket.position);
+  rocketVel.set(0, 0, 0);
+  boosterVel.set(0, 0, 0);
+  for (const q of parts) q.life = 0;
+}
+
+function separate(ft) {
+  separated = true;
+  sepTime = ft;
+  scene.attach(booster); // garde la position monde du booster
+  boosterVel.copy(rocketVel).multiplyScalar(0.9).add(rv(2.5));
+  boosterSpin.copy(rv(1.5));
+  booster.getWorldPosition(tmpP);
+  for (let i = 0; i < 70; i++) spawn(tmpP, rv(7), rand(1, 1.8)); // nuage de séparation
+}
+
+/* ---------- Boucle ---------- */
+const countEl = document.getElementById('count');
+const phaseEl = document.getElementById('phase');
+const telEl = document.getElementById('tel');
+let countText = '', phaseText = '';
+let lastT = 0, cycleStart = 0, time = 0, lastNow = performance.now() / 1000;
+
+function phaseLabel(t, ft, f) {
+  if (t < COUNTDOWN - IGNITION) return 'Préparation au lancement';
+  if (t < COUNTDOWN) return 'Allumage des moteurs';
+  if (ft < 3) return 'Décollage !';
+  if (sepTime === null) return 'Ascension';
+  if (ft - sepTime < 4) return 'Séparation des boosters';
+  if (f < 0.55) return 'Virage vers la Lune';
+  if (f < 0.9) return 'Injection translunaire';
+  if (f < 1) return 'Approche de la Lune';
+  return 'En orbite lunaire · moteurs coupés';
+}
+
+function frame() {
+  const now = performance.now() / 1000;
+  const dt = clamp(now - lastNow, 0, 0.05);
+  lastNow = now;
+  time += dt;
+
+  const t = (time - cycleStart) % CYCLE;
+  if (t < lastT) resetCycle();
+  lastT = t;
+
+  const launched = t >= COUNTDOWN;
+  const ft = launched ? t - COUNTDOWN : 0;
+  const f = clamp(ft / FLIGHT, 0, 1);
+  const u = f * f * (3 - 2 * f); // départ et arrivée en douceur
+
+  // Position et orientation de la fusée
+  if (!launched) {
+    rocket.position.set(0, PAD_TOP, 0);
+    rocket.quaternion.identity();
+    if (t >= COUNTDOWN - IGNITION) { // vibrations pendant la poussée sur la rampe
+      const shake = (t - (COUNTDOWN - IGNITION)) / IGNITION * 0.05;
+      rocket.position.x += rand(-1, 1) * shake;
+      rocket.position.z += rand(-1, 1) * shake;
+    }
+  } else {
+    path.getPointAt(u, rocket.position);
+    rocket.quaternion.setFromUnitVectors(UP, path.getTangentAt(u));
+  }
+
+  if (launched) rocketVel.subVectors(rocket.position, prevPos).divideScalar(Math.max(dt, 1e-4));
+  else rocketVel.set(0, 0, 0); // pas de vitesse pendant les vibrations sur la rampe
+  prevPos.copy(rocket.position);
+
+  if (launched && !separated && f >= SEP_F) separate(ft);
+
+  if (separated) { // le booster retombe en tournoyant
+    boosterVel.y -= 6 * dt;
+    booster.position.addScaledVector(boosterVel, dt);
+    booster.rotation.x += boosterSpin.x * dt;
+    booster.rotation.y += boosterSpin.y * dt;
+    booster.rotation.z += boosterSpin.z * dt;
+  }
+
+  // Moteurs : booster avant séparation, étage supérieur après
+  const boosterThrust = !separated && t >= COUNTDOWN - IGNITION
+    ? clamp((t - (COUNTDOWN - IGNITION)) / IGNITION, 0, 1) : 0;
+  const upperThrust = separated && f < 0.97 ? 1 : 0;
+  for (const e of boosterEngines) emitFrom(e, boosterThrust, dt, time);
+  for (const e of upperEngines) emitFrom(e, upperThrust, dt, time);
+  updateParticles(dt);
+
+  earth.rotation.y += dt * 0.03;
+  moon.rotation.y += dt * 0.01;
+
+  // Caméra : suit la fusée en gardant l'angle choisi par l'utilisateur
+  focus.copy(rocket.position);
+  focus.y += 5;
+  const shift = tmpV.subVectors(focus, controls.target);
+  camera.position.add(shift);
+  controls.target.add(shift);
+  controls.update();
+  renderer.render(scene, camera);
+
+  // Interface
+  const count = !launched ? 'T−' + Math.ceil(COUNTDOWN - t) : ft < 2.5 ? 'DÉCOLLAGE' : '';
+  if (count !== countText) {
+    countText = count;
+    countEl.textContent = count;
+    countEl.style.opacity = count ? 1 : 0;
+  }
+  const phase = phaseLabel(t, ft, f);
+  if (phase !== phaseText) { phaseText = phase; phaseEl.textContent = phase; }
+
+  const met = launched ? ft : -(COUNTDOWN - t);
+  const s = Math.floor(Math.abs(met));
+  const mmss = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  const altKm = Math.max(0, rocket.position.distanceTo(EARTH_C) - EARTH_R - PAD_TOP) * KM;
+  const moonKm = Math.max(0, rocket.position.distanceTo(MOON_C) - MOON_R) * KM;
+  const kmh = rocketVel.length() * KM * 3.6;
+  telEl.textContent = [
+    `Mission    ${launched ? 'T+' : 'T−'}${mmss}`,
+    `Altitude   ${fmt(altKm)} km`,
+    `Vitesse    ${fmt(kmh)} km/h`,
+    `Lune       ${fmt(moonKm)} km`,
+  ].join('\n');
+}
+
+function replay() {
+  cycleStart = time;
+  lastT = 0;
+  resetCycle();
+}
+document.getElementById('replay').addEventListener('click', replay);
+addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); replay(); } });
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+renderer.setAnimationLoop(frame);
+</script>
+</body>
+</html>
