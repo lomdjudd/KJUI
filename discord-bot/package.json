@@ -1,0 +1,20 @@
+{
+  "name": "kjui-discord-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bot Discord de A à Z : commandes slash, événements, déploiement et tests.",
+  "type": "module",
+  "engines": {
+    "node": ">=20.12"
+  },
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "deploy": "node src/deploy-commands.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "discord.js": "^14.27.0",
+    "dotenv": "^17.2.3"
+  }
+}
