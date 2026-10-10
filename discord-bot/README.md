@@ -76,6 +76,10 @@ Ces variables se trouvent dans `.env.example`, à copier en `.env`.
 | `WELCOME_CHANNEL_ID` | Non | Salon où envoyer le message de bienvenue | Salon système du serveur |
 | `LOG_LEVEL` | Non | `debug`, `info`, `warn` ou `error` | `info` |
 
+## Simulateur (sans Discord)
+
+`simulateur.html` reproduit les commandes et l'événement de bienvenue dans une page web, sans rien envoyer à Discord. Ouvre le fichier dans un navigateur (ou sur ton téléphone), puis tape `/` ou touche une commande. La logique des dés, les réponses de la boule magique et les embeds reprennent le code du bot.
+
 ## Tests
 
 ```bash

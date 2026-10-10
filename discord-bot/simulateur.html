@@ -1,0 +1,428 @@
+<title>Simulateur bot Discord</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Layout : une colonne de discussion, une barre de saisie en bas.
+     Palette : ardoise froide, accent corail pour l'action, sarcelle pour le bot. */
+  :root {
+    --bg: #eef0f4;
+    --surface: #ffffff;
+    --surface-2: #e4e8ef;
+    --ink: #161a22;
+    --ink-2: #5b6374;
+    --line: #d5dae3;
+    --accent: #c4512b;
+    --accent-ink: #ffffff;
+    --bot: #136f79;
+    --code: #dfe4ec;
+    --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1116;
+      --surface: #161a21;
+      --surface-2: #1e232c;
+      --ink: #e7eaf0;
+      --ink-2: #98a1b1;
+      --line: #2a3039;
+      --accent: #ff7c50;
+      --accent-ink: #200d05;
+      --bot: #55c3cc;
+      --code: #262d38;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1116;
+    --surface: #161a21;
+    --surface-2: #1e232c;
+    --ink: #e7eaf0;
+    --ink-2: #98a1b1;
+    --line: #2a3039;
+    --accent: #ff7c50;
+    --accent-ink: #200d05;
+    --bot: #55c3cc;
+    --code: #262d38;
+    color-scheme: dark;
+  }
+
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--font-ui); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .app { height: 100%; display: flex; flex-direction: column; max-width: 720px; margin-inline: auto; background: var(--bg); }
+
+  .top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .who { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
+  .who b { font-weight: 600; }
+  .sub { font-size: 12.5px; color: var(--ink-2); }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; }
+  .ghost { font: inherit; font-size: 13px; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+
+  .log { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 16px; }
+  .note { margin: 0; text-align: center; font-size: 12.5px; color: var(--ink-2); }
+  .msg { display: flex; gap: 12px; align-items: flex-start; }
+  .body { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+  .meta { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .name { font-weight: 600; }
+  .tag { font-size: 10.5px; font-weight: 600; letter-spacing: .06em; background: var(--bot); color: var(--surface); padding: 1px 5px; border-radius: 4px; }
+  .time { font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .text { margin-top: 2px; }
+  .ephem { font-size: 12px; color: var(--ink-2); font-style: italic; margin-top: 2px; }
+  code { font-family: var(--font-mono); font-size: .9em; background: var(--code); padding: 1px 5px; border-radius: 4px; }
+
+  .av { display: inline-grid; place-items: center; flex: none; width: var(--s, 40px); height: var(--s, 40px); border-radius: 50%; background: hsl(var(--h, 200) 52% 42%); color: #fff; font-weight: 600; font-size: calc(var(--s, 40px) * .42); }
+
+  .embed { margin-top: 6px; display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; background: var(--surface-2); border-left: 4px solid var(--bot); border-radius: 8px; padding: 10px 12px; }
+  .embed-main { min-width: 0; flex: 1; }
+  .embed-title { font-weight: 600; }
+  .embed-desc { margin-top: 4px; }
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 16px; margin-top: 10px; }
+  .fname { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+  .fvalue { overflow-wrap: anywhere; }
+  .big { margin-top: 8px; }
+  .thumb { flex: none; }
+
+  .composer { background: var(--surface); border-top: 1px solid var(--line); padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .palette { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+  .pal { font: inherit; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: center; text-align: left; width: 100%; color: var(--ink); background: transparent; border: 0; border-radius: 8px; padding: 8px 10px; cursor: pointer; }
+  .pal:hover, .pal:focus-visible { background: var(--surface-2); }
+  .pal span { font-size: 13px; color: var(--ink-2); }
+  .chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+  .chip { flex: none; font: 500 13px var(--font-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+  .form { display: flex; gap: 8px; }
+  .form input { flex: 1; min-width: 0; font: inherit; font-size: 16px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .form button { font: 600 15px var(--font-ui); color: var(--accent-ink); background: var(--accent); border: 0; border-radius: 10px; padding: 0 16px; cursor: pointer; }
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="who">
+      <div id="botav"></div>
+      <div>
+        <div><b>Bot de test</b> <span class="tag">BOT</span></div>
+        <div class="sub">En ligne · simulation locale</div>
+      </div>
+    </div>
+    <div class="tools">
+      <button type="button" class="ghost" id="join">Simuler une arrivée</button>
+      <button type="button" class="ghost" id="clear">Effacer</button>
+    </div>
+  </header>
+
+  <main id="log" class="log" role="log" aria-live="polite" aria-label="Conversation simulée"></main>
+
+  <section class="composer">
+    <div id="palette" class="palette" hidden></div>
+    <div id="chips" class="chips" role="toolbar" aria-label="Commandes"></div>
+    <form id="form" class="form" autocomplete="off">
+      <input id="input" type="text" placeholder="Tape / pour voir les commandes" aria-label="Commande ou message" enterkeyhint="send">
+      <button type="submit">Envoyer</button>
+    </form>
+  </section>
+</div>
+
+<script>
+  // Copie fidèle de src/commands/*.js, src/utils/dice.js et src/events/guildMemberAdd.js.
+  const COMMANDS = [
+    { name: 'ping', desc: 'Affiche la latence du bot', usage: '/ping', options: [] },
+    { name: 'help', desc: 'Affiche la liste des commandes disponibles', usage: '/help', options: [] },
+    { name: 'userinfo', desc: 'Affiche les informations sur un utilisateur', usage: '/userinfo [utilisateur]', options: ['utilisateur'] },
+    { name: 'serverinfo', desc: 'Affiche les informations du serveur', usage: '/serverinfo', options: [] },
+    { name: 'avatar', desc: 'Affiche la photo de profil d’un utilisateur en grand', usage: '/avatar [utilisateur]', options: ['utilisateur'] },
+    { name: 'roll', desc: 'Lance des dés, par exemple 2d6+3', usage: '/roll [expression]', options: ['expression'] },
+    { name: 'coinflip', desc: 'Lance une pièce : pile ou face', usage: '/coinflip', options: [] },
+    { name: '8ball', desc: 'Pose une question à la boule magique', usage: '/8ball <question>', options: ['question'] },
+    { name: 'choose', desc: 'Choisit au hasard parmi plusieurs options', usage: '/choose <options>', options: ['options'] },
+  ];
+
+  const ANSWERS = [
+    'Oui, sans aucun doute.', 'C’est certain.', 'Il en est décidément ainsi.', 'Oui, absolument.',
+    'Tu peux compter dessus.', 'Selon moi, oui.', 'Très probablement.', 'Les perspectives sont bonnes.',
+    'Oui.', 'Les signes indiquent que oui.', 'Ce n’est pas certain.', 'Reviens plus tard…',
+    'Mieux vaut ne pas te le dire maintenant.', 'Impossible à prédire pour le moment.',
+    'Concentre-toi et demande à nouveau.', 'Ne compte pas dessus.', 'Ma réponse est non.',
+    'Mes sources disent non.', 'Les perspectives ne sont pas très bonnes.', 'Très peu probable.',
+  ];
+
+  // Données simulées : aucun vrai compte ni serveur.
+  const SERVER = { name: 'Serveur de test', id: '884521796300112384', ownerId: 'u-toi', memberCount: 42, createdAt: Date.UTC(2024, 2, 12), channels: 12, roles: 8 };
+  const ME = { id: 'u-toi', name: 'Toi', createdAt: Date.UTC(2019, 5, 2), joinedAt: Date.UTC(2024, 2, 12), roleCount: 2 };
+  const MEMBERS = [
+    ME,
+    { id: 'u-alex', name: 'Alex', createdAt: Date.UTC(2021, 0, 15), joinedAt: Date.UTC(2024, 4, 20), roleCount: 3 },
+    { id: 'u-sam', name: 'Sam', createdAt: Date.UTC(2022, 8, 30), joinedAt: Date.UTC(2025, 0, 8), roleCount: 1 },
+  ];
+  const NEWCOMERS = ['Nouveau', 'Léo', 'Inès', 'Max'];
+
+  // Dés : même logique que src/utils/dice.js.
+  const DICE_PATTERN = /^(\d*)d(\d+)([+-]\d+)?$/;
+  const FORMAT_ERROR = 'Format invalide. Exemples : d6, 2d20+5.';
+  const LIMITS = {
+    count: { min: 1, max: 20, message: 'Le nombre de dés doit être entre 1 et 20.' },
+    sides: { min: 2, max: 1000, message: 'Le nombre de faces doit être entre 2 et 1000.' },
+    modifier: { min: -1000, max: 1000, message: 'Le modificateur doit être entre -1000 et 1000.' },
+  };
+
+  function checkRange(value, { min, max, message }) {
+    if (!Number.isSafeInteger(value) || value < min || value > max) throw new Error(message);
+    return value;
+  }
+
+  function parseDice(expr) {
+    const match = DICE_PATTERN.exec(expr.trim().toLowerCase());
+    if (!match) throw new Error(FORMAT_ERROR);
+    const [, countText, sidesText, modifierText] = match;
+    const count = countText === '' ? 1 : Number(countText);
+    const sides = Number(sidesText);
+    const modifier = modifierText === undefined ? 0 : Number(modifierText);
+    return {
+      count: checkRange(count, LIMITS.count),
+      sides: checkRange(sides, LIMITS.sides),
+      modifier: checkRange(modifier, LIMITS.modifier),
+    };
+  }
+
+  function rollDice({ count, sides, modifier = 0 }, random = Math.random) {
+    const rolls = Array.from({ length: count }, () => 1 + Math.floor(random() * sides));
+    const total = rolls.reduce((sum, roll) => sum + roll, 0) + modifier;
+    return { rolls, total };
+  }
+
+  // Mise en forme de /roll : même format que src/commands/roll.js.
+  function formatExpression({ count, sides, modifier }) {
+    const sign = modifier > 0 ? `+${modifier}` : modifier < 0 ? `${modifier}` : '';
+    return `${count}d${sides}${sign}`;
+  }
+  function formatModifier(modifier) {
+    if (modifier === 0) return '';
+    return ` ${modifier > 0 ? '+' : '-'} ${Math.abs(modifier)}`;
+  }
+
+  // Outils d'affichage.
+  const $ = (sel) => document.querySelector(sel);
+  const log = $('#log');
+  const palette = $('#palette');
+  const chips = $('#chips');
+  const input = $('#input');
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const hue = (s) => [...s].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
+  const avatar = (seed, size = 40) => `<span class="av" style="--s:${size}px;--h:${hue(seed)}" aria-hidden="true">${esc(seed.trim().charAt(0).toUpperCase())}</span>`;
+  const unix = (ms) => Math.floor(ms / 1000);
+  const fmtDate = (ms) => new Date(ms).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const clock = () => new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+  // Équivalent simplifié du markdown de Discord : `code`, **gras**, <t:…:D>, <@id>, sauts de ligne.
+  function md(text) {
+    return esc(text)
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/&lt;t:(\d+):D&gt;/g, (_, s) => fmtDate(s * 1000))
+      .replace(/&lt;@([\w-]+)&gt;/g, (_, id) => '@' + (MEMBERS.find((m) => m.id === id)?.name ?? 'inconnu'))
+      .replace(/\n/g, '<br>');
+  }
+
+  // Résout l'option « utilisateur » : vide = toi, sinon recherche par nom.
+  function resolveMember(arg) {
+    if (!arg) return ME;
+    const query = arg.replace(/^@/, '').toLowerCase();
+    const found = MEMBERS.find((m) => m.name.toLowerCase() === query || m.id === query);
+    if (!found) throw new Error(`Utilisateur introuvable. Membres simulés : ${MEMBERS.map((m) => '@' + m.name).join(', ')}.`);
+    return found;
+  }
+
+  // Une handler par commande, qui renvoie le contenu de la réponse du bot.
+  const HANDLERS = {
+    ping: () => ({ text: `🏓 Pong ! Latence WebSocket : **${40 + Math.floor(Math.random() * 40)} ms**` }),
+    help: () => ({
+      ephemeral: true,
+      embed: { title: 'Commandes disponibles', fields: COMMANDS.map((c) => ({ name: `/${c.name}`, value: c.desc })) },
+    }),
+    coinflip: () => ({ text: `🪙 **${Math.random() < 0.5 ? 'Pile' : 'Face'}** !` }),
+    roll: (arg) => {
+      const spec = parseDice(arg || 'd6');
+      const { rolls, total } = rollDice(spec);
+      return { text: `🎲 Résultat de \`${formatExpression(spec)}\` : [${rolls.join(', ')}]${formatModifier(spec.modifier)} = **${total}**` };
+    },
+    '8ball': (arg) => {
+      if (!arg) throw new Error('Ce paramètre est obligatoire : /8ball <question>');
+      if (arg.length > 200) throw new Error('La question ne peut pas dépasser 200 caractères.');
+      const answer = ANSWERS[Math.floor(Math.random() * ANSWERS.length)];
+      return { text: `🎱 **Question :** ${arg}\n**Réponse :** ${answer}` };
+    },
+    choose: (arg) => {
+      if (!arg) throw new Error('Ce paramètre est obligatoire : /choose <options>');
+      const choices = arg.split(',').map((c) => c.trim()).filter((c) => c !== '');
+      if (choices.length < 2) return { ephemeral: true, text: 'Indique au moins deux options, séparées par des virgules.' };
+      const pick = choices[Math.floor(Math.random() * choices.length)];
+      return { text: `🤔 Je choisis : **${pick}**` };
+    },
+    userinfo: (arg) => {
+      const user = resolveMember(arg);
+      const fields = [
+        { name: 'Identifiant', value: user.id },
+        { name: 'Compte créé le', value: `<t:${unix(user.createdAt)}:D>` },
+        { name: 'A rejoint le serveur le', value: `<t:${unix(user.joinedAt)}:D>` },
+        { name: 'Rôles', value: String(user.roleCount) },
+      ];
+      return { embed: { title: `Informations sur ${user.name}`, thumb: user.name, fields } };
+    },
+    avatar: (arg) => {
+      const user = resolveMember(arg);
+      return { embed: { title: `Avatar de ${user.name}`, image: user.name } };
+    },
+    serverinfo: () => ({
+      embed: {
+        title: 'Informations sur le serveur',
+        thumb: SERVER.name,
+        fields: [
+          { name: 'Nom', value: SERVER.name },
+          { name: 'Identifiant', value: SERVER.id },
+          { name: 'Propriétaire', value: `<@${SERVER.ownerId}>` },
+          { name: 'Membres', value: String(SERVER.memberCount) },
+          { name: 'Créé le', value: `<t:${unix(SERVER.createdAt)}:D>` },
+          { name: 'Salons', value: String(SERVER.channels) },
+          { name: 'Rôles', value: String(SERVER.roles) },
+        ],
+      },
+    }),
+  };
+
+  let messages = [];
+  let joinCount = 0;
+
+  function renderEmbed(e) {
+    const fields = (e.fields ?? []).map((f) => `<div><div class="fname">${esc(f.name)}</div><div class="fvalue">${md(f.value)}</div></div>`).join('');
+    const main = [
+      e.title ? `<div class="embed-title">${esc(e.title)}</div>` : '',
+      e.description ? `<div class="embed-desc">${md(e.description)}</div>` : '',
+      fields ? `<div class="fields">${fields}</div>` : '',
+      e.image ? `<div class="big">${avatar(e.image, 180)}</div>` : '',
+    ].join('');
+    const thumb = e.thumb ? `<div class="thumb">${avatar(e.thumb, 64)}</div>` : '';
+    return `<div class="embed"><div class="embed-main">${main}</div>${thumb}</div>`;
+  }
+
+  function renderMessage(m) {
+    if (m.who === 'note') return `<p class="note">${md(m.text)}</p>`;
+    const mine = m.who === 'me';
+    const seed = mine ? 'Toi' : 'Bot de test';
+    return `<article class="msg">${avatar(seed, 40)}<div class="body">
+      <div class="meta"><span class="name">${esc(seed)}</span>${mine ? '' : '<span class="tag">BOT</span>'}<span class="time">${m.time}</span></div>
+      ${m.text ? `<div class="text">${md(m.text)}</div>` : ''}
+      ${m.embed ? renderEmbed(m.embed) : ''}
+      ${m.ephemeral ? '<div class="ephem">Visible seulement par toi</div>' : ''}
+    </div></article>`;
+  }
+
+  function render() {
+    log.innerHTML = messages.map(renderMessage).join('');
+    log.scrollTop = log.scrollHeight;
+  }
+
+  // Envoie une commande : affiche le message de l'utilisateur, puis la réponse du bot.
+  function send(raw) {
+    messages.push({ who: 'me', text: raw, time: clock() });
+    const parsed = /^\/([a-z0-9_-]+)(?:\s+([\s\S]*))?$/i.exec(raw);
+    if (!parsed) {
+      messages.push({ who: 'note', text: 'Ce message n’est pas une commande. Tape / pour voir les commandes.' });
+      render();
+      return;
+    }
+    const name = parsed[1].toLowerCase();
+    const arg = (parsed[2] ?? '').trim();
+    let reply;
+    try {
+      reply = HANDLERS[name]
+        ? HANDLERS[name](arg)
+        : { ephemeral: true, text: `Commande introuvable : /${name}. Tape / pour voir la liste.` };
+    } catch (err) {
+      reply = { ephemeral: true, text: err.message };
+    }
+    messages.push({ who: 'bot', time: clock(), ...reply });
+    render();
+  }
+
+  // Simule guildMemberAdd : ajoute un membre et envoie le message de bienvenue.
+  function simulateJoin() {
+    const base = NEWCOMERS[joinCount % NEWCOMERS.length];
+    const lap = Math.floor(joinCount / NEWCOMERS.length);
+    const name = lap ? `${base} ${lap + 1}` : base;
+    joinCount++;
+    const member = { id: `u-new-${joinCount}`, name, createdAt: Date.now() - 30 * 86400000, joinedAt: Date.now(), roleCount: 0 };
+    MEMBERS.push(member);
+    SERVER.memberCount++;
+    messages.push({ who: 'note', text: `Événement simulé : ${name} rejoint le serveur.` });
+    messages.push({
+      who: 'bot',
+      time: clock(),
+      embed: {
+        title: 'Bienvenue !',
+        description: `Bienvenue <@${member.id}> sur **${SERVER.name}** ! Nous sommes désormais ${SERVER.memberCount} membres.`,
+        thumb: name,
+      },
+    });
+    render();
+  }
+
+  // Liste des suggestions quand on tape « / » suivi d'un début de nom.
+  function updatePalette() {
+    const match = /^\/([a-z0-9_-]*)$/i.exec(input.value);
+    if (!match) {
+      palette.hidden = true;
+      palette.innerHTML = '';
+      return;
+    }
+    const query = match[1].toLowerCase();
+    const list = COMMANDS.filter((c) => c.name.startsWith(query));
+    palette.hidden = list.length === 0;
+    palette.innerHTML = list
+      .map((c) => `<button type="button" class="pal" data-name="${c.name}"><code>${esc(c.usage)}</code><span>${esc(c.desc)}</span></button>`)
+      .join('');
+  }
+
+  function pickCommand(name) {
+    const command = COMMANDS.find((c) => c.name === name);
+    if (command.options.length === 0) {
+      input.value = '';
+      updatePalette();
+      send(`/${name}`);
+    } else {
+      input.value = `/${name} `;
+      updatePalette();
+      input.focus();
+    }
+  }
+
+  // Initialisation.
+  $('#botav').innerHTML = avatar('Bot de test', 40);
+  chips.innerHTML = COMMANDS.map((c) => `<button type="button" class="chip" data-name="${c.name}">/${c.name}</button>`).join('');
+  chips.addEventListener('click', (e) => {
+    const button = e.target.closest('.chip');
+    if (button) pickCommand(button.dataset.name);
+  });
+  palette.addEventListener('click', (e) => {
+    const button = e.target.closest('.pal');
+    if (button) pickCommand(button.dataset.name);
+  });
+  input.addEventListener('input', updatePalette);
+  $('#form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const raw = input.value.trim();
+    if (!raw) return;
+    input.value = '';
+    updatePalette();
+    send(raw);
+  });
+  $('#join').addEventListener('click', simulateJoin);
+  $('#clear').addEventListener('click', () => {
+    messages = [];
+    intro();
+  });
+
+  function intro() {
+    messages = [{ who: 'note', text: 'Simulation locale : rien n’est envoyé à Discord. Membres simulés : Toi, Alex et Sam. Tape / pour voir les commandes.' }];
+    render();
+  }
+  intro();
+</script>
