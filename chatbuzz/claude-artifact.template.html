@@ -500,6 +500,7 @@ label.btn, label.wall-opt { cursor: pointer; }
 <!-- Styles de conversation -->
 <div class="sheet-bg" id="sheetStyle" hidden><div class="sheet style-sheet">
   <div class="sheet-h st-head"><button class="iconbtn" data-close="sheetStyle" aria-label="Fermer"><svg class="ic"><use href="#i-x"></use></svg></button><h3>Choisir le modèle</h3><span style="width:40px"></span></div>
+  <p class="hint" style="margin:-4px 0 0;text-align:center">⚡ Toutes les réponses utilisent le modèle Rapide de ton abonnement.</p>
   <div id="styleBody"></div>
   <div class="st-confirm"><button class="btn confirm block" data-act="confirmStyle">Confirmer</button></div>
 </div></div>
@@ -595,11 +596,9 @@ function styleOf(chat) {
   const st = STYLES.find((x) => x.id === (chat?.style || state.prefs.style)) || STYLES[0];
   return canStyle(st) ? st : STYLES[0];
 }
-function tierFor(chat) {
-  const t = styleOf(chat).tier;
-  if (allowedTier(t)) return t;
-  return plan().tiers[plan().tiers.length - 1];
-}
+// Toutes les réponses passent par le niveau le plus rapide (famille Haiku), quel que soit le style.
+const MESSAGE_TIER = 'quick';
+function tierFor() { return MESSAGE_TIER; }
 const TIERS = {
   quick: { label: 'Rapide', icon: 'zap', desc: 'Répond presque instantanément' },
   default: { label: 'Équilibré', icon: 'gauge', desc: 'Plus de nuance, réfléchit quelques secondes' },
@@ -979,7 +978,6 @@ function openPlans() {
       li(true, p.maxCustom === Infinity ? 'Personnages illimités' : `${p.maxCustom} personnages créés`),
       li(true, `${p.maxGroups === Infinity ? 'Groupes illimités' : p.maxGroups + (p.maxGroups > 1 ? ' groupes' : ' groupe')} de ${p.groupSize} bots`),
       li(true, `${STYLES.filter((st) => p.rank >= PLAN_RANK[styleMin(st)]).length} styles de conversation sur ${STYLES.length}`),
-      li(true, 'Niveaux de modèle : ' + p.tiers.map((t) => TIERS[t].label).join(', ')),
       li(p.suggestions, 'Suggestions de réponses'),
       li(p.aiCreate, 'Création de personnage par IA'),
       li(p.avatarImage, 'Images d’avatar personnalisées'),
@@ -1273,7 +1271,7 @@ function renderStyleSheet() {
     return `<div class="st-card${sel === st.id ? ' on' : ''}${locked ? ' locked' : ''}" data-style="${st.id}" role="button" tabindex="0" aria-pressed="${sel === st.id}">
       <span class="st-emo" aria-hidden="true">${st.emoji}</span>
       <div class="st-main">
-        <div class="st-name">${esc(st.name)}<span class="st-tier">${ic(TIERS[st.tier].icon)}${TIERS[st.tier].label}</span>${locked ? `<span class="st-lock" title="Verrouillé">${ic('lock')}</span>` : ''}</div>
+        <div class="st-name">${esc(st.name)}${locked ? `<span class="st-lock" title="Verrouillé">${ic('lock')}</span>` : ''}</div>
         <div class="st-tags">${cat ? `<span class="st-tag strong">${ic(cat.icon)}${cat.label}</span>` : ''}${st.tags.map((t) => `<span class="st-tag">${esc(t)}</span>`).join('')}</div>
         ${open ? `<div class="st-more"><p>${esc(st.desc)}</p><div class="sec-label" style="margin:4px 0 0">Longueur des réponses</div><div class="seg">${[['short', 'Court'], ['medium', 'Moyen'], ['long', 'Long']].map(([v, l]) => `<button type="button" data-stylelen="${st.id}:${v}" class="${styleLen(st) === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>` : ''}
       </div>
