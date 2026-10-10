@@ -9,6 +9,9 @@ RUN npm ci --omit=dev
 
 COPY src ./src
 
+# Dossier des réglages de réflexion (/reflexion), écrit par l'utilisateur node.
+RUN mkdir -p data && chown node:node data
+
 ENV NODE_ENV=production
 USER node
 

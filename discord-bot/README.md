@@ -7,11 +7,13 @@ Bot Discord écrit de A à Z avec [discord.js](https://discord.js.org) 14 : comm
 | Commande | Description |
 |---|---|
 | `/8ball question` | Pose une question à la boule magique |
+| `/ask question` | Pose une question à Claude (IA, nécessite une clé API) |
 | `/avatar [utilisateur]` | Affiche la photo de profil d'un utilisateur en grand |
 | `/choose options` | Choisit au hasard parmi plusieurs options |
 | `/coinflip` | Lance une pièce : pile ou face |
 | `/help` | Affiche la liste des commandes disponibles |
 | `/ping` | Affiche la latence du bot |
+| `/reflexion niveau` | Règle le niveau de réflexion de Claude pour `/ask` |
 | `/roll [expression]` | Lance des dés, par exemple `2d6+3` |
 | `/serverinfo` | Affiche les informations du serveur |
 | `/userinfo [utilisateur]` | Affiche les informations sur un utilisateur |
@@ -79,6 +81,28 @@ Ces variables se trouvent dans `.env.example`, à copier en `.env`.
 ## Simulateur (sans Discord)
 
 `simulateur.html` reproduit les commandes et l'événement de bienvenue dans une page web, sans rien envoyer à Discord. Ouvre le fichier dans un navigateur (ou sur ton téléphone), puis tape `/` ou touche une commande. La logique des dés, les réponses de la boule magique et les embeds reprennent le code du bot.
+
+## Commandes IA (Claude)
+
+| Commande | Rôle |
+| --- | --- |
+| `/ask question:…` | Pose une question ou demande du code à Claude (Haiku 5.5 par défaut). La réponse s'affiche avec une animation pendant la réflexion, et est découpée si elle est longue. |
+| `/reflexion niveau:…` | Règle le niveau de réflexion de Claude pour tes prochaines questions : désactivée, légère, moyenne ou élevée. Plus la réflexion est élevée, plus la réponse est lente et coûteuse. |
+
+**Important : ces commandes utilisent une clé API, pas ton abonnement Claude Pro.** L'abonnement ne donne pas accès à l'API. Crée une clé sur [console.anthropic.com](https://console.anthropic.com), ajoute des crédits, puis mets-la dans `.env` :
+
+```
+ANTHROPIC_API_KEY=ta_cle
+AI_ALLOWED_USER_IDS=123456789012345678
+```
+
+- Seuls les administrateurs du serveur et les identifiants listés dans `AI_ALLOWED_USER_IDS` peuvent utiliser `/ask`.
+- Chaque utilisateur attend `AI_COOLDOWN_SECONDS` secondes entre deux questions, et ne peut pas en lancer deux en même temps.
+- `AI_MAX_TOKENS` limite la longueur de chaque réponse, donc le coût.
+- Le réglage de `/reflexion` est enregistré dans `data/reflexion.json` (ignoré par git).
+- Si le modèle ne prend pas en charge la réflexion étendue, `/ask` répond sans elle et l'indique sous la réponse.
+
+Après avoir ajouté ces commandes, relance `npm run deploy` pour les enregistrer sur Discord.
 
 ## Tests
 
